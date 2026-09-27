@@ -26,7 +26,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ onRegister, onGo
     soundFX.playPop();
     if (!name.trim())     { setError('Vui lòng nhập họ & tên của bạn'); return; }
     if (!email.trim())    { setError('Vui lòng nhập email'); return; }
-    if (password.length < 6) { setError('Mật khẩu tối thiểu 6 ký tự'); return; }
+    if (password.length < 8) { setError('Mật khẩu tối thiểu 8 ký tự (yêu cầu bảo mật)'); return; }
     if (password !== confirm) { setError('Mật khẩu xác nhận không khớp'); return; }
     setError('');
     setLoading(true);
@@ -156,7 +156,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ onRegister, onGo
                   type={showPass ? 'text' : 'password'}
                   value={password}
                   onChange={e => { setPassword(e.target.value); setError(''); }}
-                  placeholder="Tối thiểu 6 ký tự"
+                  placeholder="Tối thiểu 8 ký tự"
                   style={{ ...styles.input, paddingRight: 44 }}
                   autoComplete="new-password"
                 />

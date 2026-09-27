@@ -1,5 +1,7 @@
-// src/App.tsx — v4.0 with Intro + Login flow + mobile-optimized layout
+// src/App.tsx — v4.1 connected to real BE auth
 import React, { useState, useEffect } from 'react';
+import { loginApi, registerApi, getMeApi, logoutApi, isLoggedIn, authFetch, getSavedUser } from './utils/authService';
+import { MOCK_CHILDREN, MOCK_CHARACTERS, MOCK_TEMPLATES, MOCK_STORIES, MOCK_WALLET_TRANSACTIONS } from './utils/mockData';
 import {
   UserAccount,
   ChildProfile,
@@ -40,32 +42,47 @@ export default function App() {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
   const [selectedStoryToRead, setSelectedStoryToRead] = useState<Story | null>(null);
 
-  // ── Data state ───────────────────────────────────────────────────────────
-  const [currentUser, setCurrentUser] = useState<UserAccount>({
-    id: 'usr_parent_01',
-    email: 'me.lan@gmail.com',
-    fullName: 'Mẹ Lan Phương',
-    avatarUrl: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&auto=format&fit=crop&q=80',
-    phone: '0901234567',
-    role: 'PARENT',
-    kidModePinHash: '1234',
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    creditBalance: 85,
-    sellerPendingBalance: 420000,
-    sellerAvailableBalance: 750000,
-    bankAccount: {
-      bankName: 'Vietcombank',
-      accountNumber: '0071001234567',
-      accountHolder: 'TRAN LAN PHUONG',
-    },
+  // ── User State (Lấy thông tin tài khoản thật từ phiên đăng nhập) ──────────
+  const [currentUser, setCurrentUser] = useState<UserAccount>(() => {
+    const saved = getSavedUser();
+    if (saved) {
+      return {
+        id: saved.id || '',
+        email: saved.email || '',
+        fullName: saved.fullName || saved.username || 'Phụ Huynh',
+        avatarUrl: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&auto=format&fit=crop&q=80',
+        phone: saved.phone || '',
+        role: (saved.role?.toUpperCase() as any) || 'PARENT',
+        kidModePinHash: '1234',
+        createdAt: saved.createdAt || new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        creditBalance: saved.wallet?.creditBalance ?? 50,
+        sellerPendingBalance: 0,
+        sellerAvailableBalance: 0,
+      };
+    }
+    return {
+      id: '',
+      email: '',
+      fullName: '',
+      avatarUrl: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&auto=format&fit=crop&q=80',
+      phone: '',
+      role: 'PARENT',
+      kidModePinHash: '1234',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      creditBalance: 0,
+      sellerPendingBalance: 0,
+      sellerAvailableBalance: 0,
+    };
   });
 
-  const [childrenProfiles, setChildrenProfiles] = useState<ChildProfile[]>([]);
-  const [characters, setCharacters] = useState<FamilyCharacter[]>([]);
-  const [templates, setTemplates] = useState<PedagogicalTemplate[]>([]);
-  const [stories, setStories] = useState<Story[]>([]);
-  const [walletTransactions, setWalletTransactions] = useState<WalletTransaction[]>([]);
+  // ── Data state: khởi tạo bằng mock data, sẽ replace bằng BE data khi có ──────
+  const [childrenProfiles, setChildrenProfiles] = useState<ChildProfile[]>(MOCK_CHILDREN);
+  const [characters, setCharacters] = useState<FamilyCharacter[]>(MOCK_CHARACTERS);
+  const [templates, setTemplates] = useState<PedagogicalTemplate[]>(MOCK_TEMPLATES);
+  const [stories, setStories] = useState<Story[]>(MOCK_STORIES);
+  const [walletTransactions, setWalletTransactions] = useState<WalletTransaction[]>(MOCK_WALLET_TRANSACTIONS);
 
   // ── Fetch data khi vào app ───────────────────────────────────────────────
   useEffect(() => {
@@ -74,85 +91,80 @@ export default function App() {
 
   const fetchInitialData = async () => {
     try {
-      const [uRes, cRes, chRes, tRes, sRes, wRes] = await Promise.all([
-        fetch('/api/auth/me'),
-        fetch('/api/children'),
-        fetch('/api/characters'),
-        fetch('/api/templates'),
-        fetch('/api/stories'),
-        fetch('/api/wallet/summary'),
-      ]);
-      if (uRes.ok) setCurrentUser(await uRes.json());
-      if (cRes.ok) setChildrenProfiles(await cRes.json());
-      if (chRes.ok) setCharacters(await chRes.json());
-      if (tRes.ok) setTemplates(await tRes.json());
-      if (sRes.ok) setStories(await sRes.json());
-      if (wRes.ok) {
-        const wData = await wRes.json();
-        setWalletTransactions(wData.transactions || []);
+      // ── Lấy thông tin User từ BE thật (dùng JWT Bearer token) ───
+      if (isLoggedIn()) {
+        try {
+          const beUser = await getMeApi();
+          if (beUser) {
+            setCurrentUser(prev => ({
+              ...prev,
+              id: beUser.id,
+              email: beUser.email,
+              fullName: beUser.fullName || beUser.username || prev.fullName,
+              phone: beUser.phone || prev.phone,
+              role: (beUser.role?.toUpperCase() as any) || prev.role,
+              creditBalance: beUser.wallet?.creditBalance ?? prev.creditBalance,
+            }));
+          }
+        } catch {
+          // Token không hợp lệ hoặc BE chưa sẵn sàng
+        }
       }
     } catch (err) {
       console.warn('Backend loading or starting up:', err);
     }
   };
 
-  // ── Login handler — gọi API thật, fallback demo ──────────────────────────
+  // ── Login handler — gọi BE thật ─────────────────────────────────────────
   const handleLogin = async (email: string, password: string) => {
-    try {
-      const res = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
-      });
-      if (res.ok) {
-        const userData = await res.json();
-        setCurrentUser(prev => ({ ...prev, ...userData }));
-      } else {
-        // Demo fallback: bất kỳ thông tin nào đều vào được
-        const displayName = email.includes('@') ? email.split('@')[0] : email;
-        setCurrentUser(prev => ({
-          ...prev,
-          fullName: displayName.charAt(0).toUpperCase() + displayName.slice(1),
-          email,
-        }));
-      }
-    } catch {
-      // Offline / server chưa ready → demo mode
-      const displayName = email.includes('@') ? email.split('@')[0] : email;
+    // Nếu dùng tài khoản demo đặc biệt
+    if (email === 'demo@storyweaver.vn') {
       setCurrentUser(prev => ({
         ...prev,
-        fullName: displayName.charAt(0).toUpperCase() + displayName.slice(1),
+        fullName: 'Người dùng Demo',
         email,
       }));
+      setPhase('APP');
+      return;
     }
+
+    // Gọi BE thật: POST /api/v1/auth/login
+    // BE nhận emailOrUsername, response: { data: { user, tokens } }
+    const beUser = await loginApi(email, password);
+    setCurrentUser(prev => ({
+      ...prev,
+      id: beUser.id,
+      email: beUser.email,
+      fullName: beUser.fullName || beUser.username,
+      phone: beUser.phone || prev.phone,
+      role: (beUser.role?.toUpperCase() as any) || 'PARENT',
+      creditBalance: beUser.wallet?.creditBalance ?? prev.creditBalance,
+    }));
     setPhase('APP');
   };
 
-  // ── Register handler ───────────────────────────────────────────────────────
+  // ── Register handler — gọi BE thật ───────────────────────────────────────
   const handleRegister = async (name: string, email: string, password: string) => {
-    try {
-      const res = await fetch('/api/auth/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fullName: name, email, password }),
-      });
-      if (res.ok) {
-        const userData = await res.json();
-        setCurrentUser(prev => ({ ...prev, ...userData }));
-      } else {
-        // Demo fallback
-        setCurrentUser(prev => ({ ...prev, fullName: name, email }));
-      }
-    } catch {
-      setCurrentUser(prev => ({ ...prev, fullName: name, email }));
-    }
+    // Gọi BE thật: POST /api/v1/auth/register
+    // BE nhận: username, email, password, fullName
+    const username = email.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '_');
+    const beUser = await registerApi(username, email, password, name);
+    setCurrentUser(prev => ({
+      ...prev,
+      id: beUser.id,
+      email: beUser.email,
+      fullName: beUser.fullName || name,
+      role: (beUser.role?.toUpperCase() as any) || 'PARENT',
+      creditBalance: beUser.wallet?.creditBalance ?? 50,
+    }));
     setPhase('APP');
   };
 
   // ── Wallet refresh ───────────────────────────────────────────────────────
   const handleRefreshWallet = async () => {
     try {
-      const res = await fetch('/api/wallet/summary');
+      // Dùng authFetch để tự động gửi Bearer token
+      const res = await authFetch('/api/wallet/summary');
       if (res.ok) {
         const wData = await res.json();
         setWalletTransactions(wData.transactions || []);
@@ -164,6 +176,23 @@ export default function App() {
         }));
       }
     } catch {}
+  };
+
+  // ── Logout handler ────────────────────────────────────────────────────────
+  const handleLogout = async () => {
+    await logoutApi();
+    setCurrentUser({
+      id: '',
+      email: '',
+      fullName: '',
+      role: 'PARENT',
+      creditBalance: 0,
+      sellerPendingBalance: 0,
+      sellerAvailableBalance: 0,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+    setPhase('LOGIN');
   };
 
   const handleStoryCreated = (newStory: Story) => {
@@ -352,9 +381,12 @@ export default function App() {
         isOpen={isAuthModalOpen}
         onClose={() => setIsAuthModalOpen(false)}
         currentUser={currentUser}
-        onUserUpdate={u => setCurrentUser(u)}
+        onUserUpdate={u => {
+          if (u) setCurrentUser(u);
+        }}
         childrenProfiles={childrenProfiles}
         onAddChild={handleAddChild}
+        onLogout={handleLogout}
       />
 
       <StoryReaderModal

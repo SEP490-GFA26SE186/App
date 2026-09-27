@@ -14,6 +14,7 @@ import { HeyButton } from './ui/HeyButton';
 import { HeyInput } from './ui/HeyInput';
 import { UserAccount, ChildProfile } from '../../../../packages/shared-types';
 import { Colors } from '../theme/colors';
+import { loginApi, registerApi, logoutApi } from '../../../../src/utils/authService';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -23,6 +24,7 @@ interface AuthModalProps {
   childrenProfiles: ChildProfile[];
   onAddChild: (child: Partial<ChildProfile>) => void;
   initialTab?: 'LOGIN' | 'REGISTER' | 'PROFILE' | 'CHILDREN' | 'KID_PIN';
+  onLogout?: () => void;
 }
 
 export const AuthModal: React.FC<AuthModalProps> = ({
@@ -33,6 +35,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   childrenProfiles,
   onAddChild,
   initialTab = 'LOGIN',
+  onLogout,
 }) => {
   const [tab, setTab] = useState<'LOGIN' | 'REGISTER' | 'PROFILE' | 'CHILDREN' | 'KID_PIN'>(
     currentUser ? 'PROFILE' : initialTab
@@ -46,6 +49,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [newChildName, setNewChildName] = useState('');
   const [newChildAge, setNewChildAge] = useState('4');
   const [notice, setNotice] = useState<string | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
   const handleSaveProfile = () => {
     if (currentUser) {
@@ -61,6 +66,85 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         setNotice(null);
         onClose();
       }, 1000);
+    }
+  };
+
+  const handleLogoutAction = async () => {
+    try {
+      await logoutApi();
+    } catch {}
+    onUserUpdate(null);
+    if (onLogout) onLogout();
+    setTab('LOGIN');
+    onClose();
+  };
+
+  const handleLoginSubmit = async () => {
+    setErrorMsg(null);
+    if (!email.trim() || !password) {
+      setErrorMsg('Vui lòng nhập đầy đủ email và mật khẩu');
+      return;
+    }
+    setLoading(true);
+    try {
+      const beUser = await loginApi(email.trim(), password);
+      const userObj: UserAccount = {
+        id: beUser.id,
+        email: beUser.email,
+        fullName: beUser.fullName || beUser.username,
+        phone: beUser.phone || '',
+        role: (beUser.role?.toUpperCase() as any) || 'PARENT',
+        creditBalance: beUser.wallet?.creditBalance ?? 85,
+        createdAt: beUser.createdAt || new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      onUserUpdate(userObj);
+      setNotice('Đăng nhập thành công!');
+      setTimeout(() => {
+        setNotice(null);
+        onClose();
+      }, 800);
+    } catch (err: any) {
+      setErrorMsg(err?.message || 'Đăng nhập thất bại');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRegisterSubmit = async () => {
+    setErrorMsg(null);
+    if (!email.trim() || !password || !fullName.trim()) {
+      setErrorMsg('Vui lòng nhập đầy đủ họ tên, email và mật khẩu');
+      return;
+    }
+    if (password.length < 8) {
+      setErrorMsg('Mật khẩu tối thiểu 8 ký tự (yêu cầu bảo mật)');
+      return;
+    }
+    setLoading(true);
+    try {
+      const username = email.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '_');
+      const beUser = await registerApi(username, email.trim(), password, fullName.trim(), phone.trim());
+      const userObj: UserAccount = {
+        id: beUser.id,
+        email: beUser.email,
+        fullName: beUser.fullName || fullName,
+        phone: beUser.phone || phone,
+        role: (beUser.role?.toUpperCase() as any) || 'PARENT',
+        creditBalance: beUser.wallet?.creditBalance ?? 50,
+        createdAt: beUser.createdAt || new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      onUserUpdate(userObj);
+      setNotice('Đăng ký tài khoản thành công!');
+      setTimeout(() => {
+        setNotice(null);
+        onClose();
+      }, 800);
+    } catch (err: any) {
+      setErrorMsg(err?.message || 'Đăng ký thất bại');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -103,7 +187,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             {currentUser ? (
               <>
                 <TouchableOpacity
-                  onPress={() => setTab('PROFILE')}
+                  onPress={() => { setTab('PROFILE'); setErrorMsg(null); }}
                   style={[styles.tabChip, tab === 'PROFILE' && styles.tabChipActive]}
                 >
                   <Text style={[styles.tabChipText, tab === 'PROFILE' && styles.tabChipTextActive]}>
@@ -111,7 +195,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  onPress={() => setTab('CHILDREN')}
+                  onPress={() => { setTab('CHILDREN'); setErrorMsg(null); }}
                   style={[styles.tabChip, tab === 'CHILDREN' && styles.tabChipActive]}
                 >
                   <Text style={[styles.tabChipText, tab === 'CHILDREN' && styles.tabChipTextActive]}>
@@ -119,7 +203,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  onPress={() => setTab('KID_PIN')}
+                  onPress={() => { setTab('KID_PIN'); setErrorMsg(null); }}
                   style={[styles.tabChip, tab === 'KID_PIN' && styles.tabChipActive]}
                 >
                   <Text style={[styles.tabChipText, tab === 'KID_PIN' && styles.tabChipTextActive]}>
@@ -130,7 +214,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             ) : (
               <>
                 <TouchableOpacity
-                  onPress={() => setTab('LOGIN')}
+                  onPress={() => { setTab('LOGIN'); setErrorMsg(null); }}
                   style={[styles.tabChip, tab === 'LOGIN' && styles.tabChipActive]}
                 >
                   <Text style={[styles.tabChipText, tab === 'LOGIN' && styles.tabChipTextActive]}>
@@ -138,7 +222,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  onPress={() => setTab('REGISTER')}
+                  onPress={() => { setTab('REGISTER'); setErrorMsg(null); }}
                   style={[styles.tabChip, tab === 'REGISTER' && styles.tabChipActive]}
                 >
                   <Text style={[styles.tabChipText, tab === 'REGISTER' && styles.tabChipTextActive]}>
@@ -155,6 +239,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             </View>
           )}
 
+          {errorMsg && (
+            <View style={[styles.noticeBox, { backgroundColor: '#FEE2E2', borderColor: '#FECACA' }]}>
+              <Text style={[styles.noticeText, { color: '#DC2626' }]}>⚠️ {errorMsg}</Text>
+            </View>
+          )}
+
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.body}>
             {tab === 'PROFILE' && (
               <View>
@@ -165,10 +255,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 <HeyButton
                   title="🚪 Đăng xuất"
                   variant="outline"
-                  onPress={() => {
-                    onUserUpdate(null);
-                    setTab('LOGIN');
-                  }}
+                  onPress={handleLogoutAction}
                   style={styles.mtSm}
                 />
               </View>
@@ -212,22 +299,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
             {tab === 'LOGIN' && (
               <View>
-                <HeyInput label="Email" value={email} onChangeText={setEmail} keyboardType="email-address" />
+                <HeyInput label="Email / Tên đăng nhập" value={email} onChangeText={setEmail} keyboardType="email-address" />
                 <HeyInput label="Mật khẩu" value={password} onChangeText={setPassword} secureTextEntry />
                 <HeyButton
-                  title="🚀 Đăng nhập ngay"
-                  onPress={() => {
-                    onUserUpdate({
-                      id: 'usr_parent_01',
-                      email,
-                      fullName: 'Mẹ Lan Phương',
-                      role: 'PARENT',
-                      creditBalance: 85,
-                      createdAt: new Date().toISOString(),
-                      updatedAt: new Date().toISOString(),
-                    });
-                    onClose();
-                  }}
+                  title={loading ? '⏳ Đang đăng nhập...' : '🚀 Đăng nhập ngay'}
+                  onPress={handleLoginSubmit}
                   style={styles.mt}
                 />
               </View>
@@ -237,22 +313,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               <View>
                 <HeyInput label="Họ tên phụ huynh" value={fullName} onChangeText={setFullName} />
                 <HeyInput label="Email" value={email} onChangeText={setEmail} keyboardType="email-address" />
-                <HeyInput label="Mật khẩu" value={password} onChangeText={setPassword} secureTextEntry />
+                <HeyInput label="Số điện thoại (tùy chọn)" value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
+                <HeyInput label="Mật khẩu (tối thiểu 8 ký tự)" value={password} onChangeText={setPassword} secureTextEntry />
                 <HeyButton
-                  title="✨ Hoàn tất đăng ký"
+                  title={loading ? '⏳ Đang tạo tài khoản...' : '✨ Hoàn tất đăng ký'}
                   variant="teal"
-                  onPress={() => {
-                    onUserUpdate({
-                      id: 'usr_new',
-                      email,
-                      fullName,
-                      role: 'PARENT',
-                      creditBalance: 50,
-                      createdAt: new Date().toISOString(),
-                      updatedAt: new Date().toISOString(),
-                    });
-                    onClose();
-                  }}
+                  onPress={handleRegisterSubmit}
                   style={styles.mt}
                 />
               </View>

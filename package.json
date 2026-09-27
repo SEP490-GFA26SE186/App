@@ -4,7 +4,8 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "tsx server.ts",
+    "dev": "vite",
+    "mock-server": "tsx server.ts",
     "mobile": "cd apps/mobile && npx expo start",
     "start": "node server.ts",
     "build": "vite build",
