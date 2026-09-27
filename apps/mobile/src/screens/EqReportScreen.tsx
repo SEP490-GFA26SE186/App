@@ -188,4 +188,3 @@ const styles = StyleSheet.create({
     marginTop: 14,
   },
 });
-

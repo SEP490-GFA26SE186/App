@@ -1,4 +1,4 @@
-// apps/mobile/src/screens/ParentHomeScreen.tsx — VISUAL-FIRST (Minimal Text, Maximum Artwork) with Line-art Icons
+// apps/mobile/src/screens/ParentHomeScreen.tsx — VISUAL-FIRST (Minimal Text, Maximum Artwork)
 import React, { useEffect, useRef } from 'react';
 import {
   View,
@@ -10,7 +10,6 @@ import {
   Dimensions,
   Animated as RNAnimated,
 } from 'react-native';
-import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { CuteMascot } from '../components/CuteMascot';
 import {
   UserAccount,
@@ -44,6 +43,7 @@ const CURATED_DEMO_STORIES = [
     theme: 'Lòng trắc ẩn',
     time: '5p',
     rating: '5.0',
+    emoji: '🌸',
   },
   {
     id: 'd2',
@@ -53,6 +53,7 @@ const CURATED_DEMO_STORIES = [
     theme: 'Kiên trì',
     time: '6p',
     rating: '4.9',
+    emoji: '🐉',
   },
   {
     id: 'd3',
@@ -62,6 +63,7 @@ const CURATED_DEMO_STORIES = [
     theme: 'Bảo vệ biển',
     time: '5p',
     rating: '5.0',
+    emoji: '🧜‍♀️',
   },
   {
     id: 'd4',
@@ -71,16 +73,17 @@ const CURATED_DEMO_STORIES = [
     theme: 'Chia sẻ',
     time: '5p',
     rating: '5.0',
+    emoji: '🐿️',
   },
 ];
 
 const EQ_TOPICS = [
-  { id: 'eq_1', title: 'Dũng cảm', iconName: 'shield', iconColor: '#D97706', bg: '#FFF8D6', border: '#FFE57F' },
-  { id: 'eq_2', title: 'Lễ phép', iconName: 'heart', iconColor: '#DB2777', bg: '#FCE4EC', border: '#F8BBD0' },
-  { id: 'eq_3', title: 'Chia sẻ', iconName: 'users', iconColor: '#16A34A', bg: '#E8F5E9', border: '#C8E6C9' },
-  { id: 'eq_4', title: 'Tự lập', iconName: 'zap', iconColor: '#0288D1', bg: '#E3F2FD', border: '#BBDEFB' },
-  { id: 'eq_5', title: 'Thiên nhiên', iconName: 'sun', iconColor: '#059669', bg: '#E0F2F1', border: '#B2DFDB' },
-  { id: 'eq_6', title: 'Sáng tạo', iconName: 'edit-3', iconColor: '#7C3AED', bg: '#F3E5F5', border: '#E1BEE7' },
+  { id: 'eq_1', title: 'Dũng cảm', icon: '🛡️', bg: '#FFF8D6', border: '#FFE57F' },
+  { id: 'eq_2', title: 'Lễ phép', icon: '🌸', bg: '#FCE4EC', border: '#F8BBD0' },
+  { id: 'eq_3', title: 'Chia sẻ', icon: '🤝', bg: '#E8F5E9', border: '#C8E6C9' },
+  { id: 'eq_4', title: 'Tự lập', icon: '💡', bg: '#E3F2FD', border: '#BBDEFB' },
+  { id: 'eq_5', title: 'Thiên nhiên', icon: '🌿', bg: '#E0F2F1', border: '#B2DFDB' },
+  { id: 'eq_6', title: 'Sáng tạo', icon: '🎨', bg: '#F3E5F5', border: '#E1BEE7' },
 ];
 
 export const ParentHomeScreen: React.FC<ParentHomeScreenProps> = ({
@@ -129,7 +132,7 @@ export const ParentHomeScreen: React.FC<ParentHomeScreenProps> = ({
             style={styles.heroMainBtn}
             activeOpacity={0.9}
           >
-            <MaterialCommunityIcons name="creation-outline" size={18} color="#FFFFFF" style={{ marginRight: 6 }} />
+            <Text style={styles.heroMainBtnIcon}>🪄</Text>
             <Text style={styles.heroMainBtnText}>Sáng tác truyện</Text>
           </TouchableOpacity>
 
@@ -141,7 +144,7 @@ export const ParentHomeScreen: React.FC<ParentHomeScreenProps> = ({
             style={styles.heroSecBtn}
             activeOpacity={0.85}
           >
-            <Feather name="smile" size={16} color="#1E293B" style={{ marginRight: 6 }} />
+            <Text style={styles.heroSecBtnIcon}>👶</Text>
             <Text style={styles.heroSecBtnText}>Chế độ Bé</Text>
           </TouchableOpacity>
         </View>
@@ -173,8 +176,7 @@ export const ParentHomeScreen: React.FC<ParentHomeScreenProps> = ({
             />
             <View style={styles.continueInfo}>
               <View style={styles.continuePill}>
-                <Feather name="book-open" size={11} color="#2E7D32" style={{ marginRight: 4 }} />
-                <Text style={styles.continuePillText}>Đang đọc</Text>
+                <Text style={styles.continuePillText}>📖 Đang đọc</Text>
               </View>
               <Text style={styles.continueTitle} numberOfLines={1}>
                 {allDisplayStories[0].title}
@@ -185,7 +187,7 @@ export const ParentHomeScreen: React.FC<ParentHomeScreenProps> = ({
             </View>
 
             <View style={styles.continuePlayBtn}>
-              <Feather name="play" size={14} color="#16A34A" />
+              <Text style={styles.continuePlayIcon}>▶</Text>
             </View>
           </TouchableOpacity>
         </View>
@@ -195,10 +197,7 @@ export const ParentHomeScreen: React.FC<ParentHomeScreenProps> = ({
           4. MY STORIES SHELF
           ═══════════════════════════════════════════════════════ */}
       <View style={styles.sectionHeaderRow}>
-        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <Feather name="book" size={16} color="#1E293B" style={{ marginRight: 6 }} />
-          <Text style={styles.sectionTitle}>Tủ truyện của bé</Text>
-        </View>
+        <Text style={styles.sectionTitle}>📚 Tủ truyện của bé</Text>
         <TouchableOpacity onPress={() => {
           soundFX.playPop();
           onNavigateTab('MARKET');
@@ -239,8 +238,7 @@ export const ParentHomeScreen: React.FC<ParentHomeScreenProps> = ({
                 </Text>
               </View>
               <View style={styles.ratingBadge}>
-                <Feather name="star" size={10} color="#D97706" style={{ marginRight: 3 }} />
-                <Text style={styles.ratingBadgeText}>{story.ratingsAvg || '5.0'}</Text>
+                <Text style={styles.ratingBadgeText}>⭐ {story.ratingsAvg || '5.0'}</Text>
               </View>
             </View>
 
@@ -250,16 +248,15 @@ export const ParentHomeScreen: React.FC<ParentHomeScreenProps> = ({
                 {story.title}
               </Text>
               <View style={styles.storyCardMetaRow}>
-                <Feather name="file-text" size={11} color="#E2E8F0" style={{ marginRight: 4 }} />
                 <Text style={styles.storyCardPages}>
-                  {story.pages?.length || story.pages || 5} trang
+                  📄 {story.pages?.length || story.pages || 5} trang
                 </Text>
               </View>
             </View>
 
             {/* Play Circle Icon */}
             <View style={styles.playCircle}>
-              <Feather name="play" size={14} color="#FFFFFF" />
+              <Text style={styles.playCircleIcon}>▶</Text>
             </View>
           </TouchableOpacity>
         ))}
@@ -274,7 +271,7 @@ export const ParentHomeScreen: React.FC<ParentHomeScreenProps> = ({
           activeOpacity={0.85}
         >
           <View style={styles.addNewIconWrap}>
-            <MaterialCommunityIcons name="creation-outline" size={24} color="#2E7D32" />
+            <Text style={styles.addNewIcon}>🪄</Text>
           </View>
           <Text style={styles.addNewTitle}>Tạo truyện mới</Text>
         </TouchableOpacity>
@@ -284,10 +281,7 @@ export const ParentHomeScreen: React.FC<ParentHomeScreenProps> = ({
           5. EQ TOPICS
           ═══════════════════════════════════════════════════════ */}
       <View style={styles.sectionHeaderRow}>
-        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <Feather name="compass" size={16} color="#1E293B" style={{ marginRight: 6 }} />
-          <Text style={styles.sectionTitle}>Chủ đề cảm xúc & Kỹ năng</Text>
-        </View>
+        <Text style={styles.sectionTitle}>🌱 Chủ đề cảm xúc & Kỹ năng</Text>
       </View>
 
       <View style={styles.eqGrid}>
@@ -304,9 +298,7 @@ export const ParentHomeScreen: React.FC<ParentHomeScreenProps> = ({
               { backgroundColor: topic.bg, borderColor: topic.border },
             ]}
           >
-            <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center', marginBottom: 6 }}>
-              <Feather name={topic.iconName as any} size={18} color={topic.iconColor} />
-            </View>
+            <Text style={styles.eqTopicIcon}>{topic.icon}</Text>
             <Text style={styles.eqTopicTitle}>{topic.title}</Text>
           </TouchableOpacity>
         ))}
@@ -319,11 +311,11 @@ export const ParentHomeScreen: React.FC<ParentHomeScreenProps> = ({
         <View style={styles.questCard}>
           <View style={styles.questTop}>
             <View style={styles.questIconBox}>
-              <Feather name="award" size={20} color="#D97706" />
+              <Text style={styles.questIcon}>🏆</Text>
             </View>
             <View style={styles.questTextWrap}>
               <Text style={styles.questTitle}>Đọc truyện cùng bé hôm nay</Text>
-              <Text style={styles.questRewardText}>Thưởng: +10 Xu sao</Text>
+              <Text style={styles.questRewardText}>Thưởng: +10 Xu 💎</Text>
             </View>
             <Text style={styles.questProgressPercent}>1/2</Text>
           </View>
@@ -338,10 +330,7 @@ export const ParentHomeScreen: React.FC<ParentHomeScreenProps> = ({
           7. FAMILY CHARACTERS
           ═══════════════════════════════════════════════════════ */}
       <View style={styles.sectionHeaderRow}>
-        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <Feather name="users" size={16} color="#1E293B" style={{ marginRight: 6 }} />
-          <Text style={styles.sectionTitle}>Nhân vật của bé</Text>
-        </View>
+        <Text style={styles.sectionTitle}>👨‍👩‍👧 Nhân vật của bé</Text>
         <TouchableOpacity onPress={() => {
           soundFX.playPop();
           onStartStoryWizard();

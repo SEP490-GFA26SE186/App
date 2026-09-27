@@ -357,7 +357,7 @@ export const KidModeScreen: React.FC<KidModeScreenProps> = ({
                 styles.kidNavBtn,
                 styles.kidNavBtnNext,
                 activePageIndex === activeStory.pages.length - 1 &&
-                styles.kidNavBtnDisabled,
+                  styles.kidNavBtnDisabled,
               ]}
               activeOpacity={0.85}
             >
