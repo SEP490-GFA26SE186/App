@@ -1,0 +1,7 @@
+{
+  "name": "StoryWeaver - Nền tảng Truyện Thiếu Nhi Cá Nhân Hoá AI",
+  "description": "Nền tảng tạo truyện thiếu nhi cá nhân hoá theo nhân vật gia đình với AI, Kid Mode học qua truyện, chợ truyện marketplace, kiểm duyệt 100% trang và ví doanh thu.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+

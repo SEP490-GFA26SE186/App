@@ -1,0 +1,464 @@
+// prisma/schema.prisma
+// Full 16 tables schema according to StoryWeaver DFD Level 1 (D1 - D16)
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  PARENT
+  SELLER
+  MODERATOR
+  ADMIN
+}
+
+enum StoryStatus {
+  DRAFT
+  GENERATING
+  COMPLETED
+  PENDING_REVIEW
+  REJECTED
+  PUBLISHED
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  FAILED
+  CANCELLED
+}
+
+enum PayoutStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  TRANSFERRED
+}
+
+enum EqDimension {
+  EMPATHY
+  INDEPENDENCE
+  PATIENCE
+  CREATIVITY
+  COMMUNICATION
+}
+
+// ==========================================
+// D1: ACCOUNTS & CHILDREN (Hồ sơ tài khoản & Hồ sơ con)
+// ==========================================
+model Account {
+  id                    String                @id @default(uuid())
+  email                 String                @unique
+  passwordHash          String?
+  fullName              String
+  avatarUrl             String?
+  phone                 String?
+  role                  Role                  @default(PARENT)
+  kidModePinHash        String?               // Hash 4-digit PIN for Kid Mode exit
+  creditBalance         Int                   @default(50) // 💎 Credits for AI story generation
+  sellerPendingBalance  Float                 @default(0)  // VND held for 7-day escrow
+  sellerAvailableBalance Float                @default(0)  // VND available for payout
+  bankName              String?
+  bankAccountNumber     String?
+  bankAccountHolder     String?
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+
+  children              ChildProfile[]
+  familyCharacters      FamilyCharacter[]
+  stories               Story[]
+  subscriptions         PlanSubscription[]
+  orders                OrderOwnership[]
+  reviews               Review[]
+  moderationRecords     ModerationRecord[]    @relation("ModeratorActions")
+  playSessions          PlaySessionEq[]
+  withdrawalRequests    WithdrawalRequest[]
+  walletTransactions    WalletLedger[]
+  auditLogs             AuditLog[]
+
+  @@map("accounts")
+}
+
+model ChildProfile {
+  id                 String             @id @default(uuid())
+  accountId          String
+  account            Account            @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  name               String
+  nickname           String?
+  gender             String             @default("MALE")
+  birthDate          DateTime
+  readingLevel       String             @default("BEGINNER") // BEGINNER, INTERMEDIATE, ADVANCED
+  interests          String[]           @default([])
+  avatarUrl          String?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  bookshelf          ChildBookshelf[]
+  playSessions       PlaySessionEq[]
+
+  @@map("child_profiles")
+}
+
+// ==========================================
+// D2: FAMILY CHARACTERS (Nhân vật gia đình)
+// ==========================================
+model FamilyCharacter {
+  id                    String        @id @default(uuid())
+  accountId             String
+  account               Account       @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  realName              String        // Tên thật: Bé Bo, Bố Tuấn, Mẹ Mai...
+  relationRole          String        // HERO, FATHER, MOTHER, PET...
+  appearanceDescription String        // Tóc xoăn ngắn, mắt to tròn, thích mặc áo xanh...
+  personalityTraits     String[]      @default([])
+  avatarPlaceholder     String?
+  photoReferenceUrl     String?
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+
+  storyCharacters       StoryCharacterUsage[]
+
+  @@map("family_characters")
+}
+
+// ==========================================
+// D3: TEMPLATES (Khuôn mẫu sư phạm)
+// ==========================================
+model PedagogicalTemplate {
+  id                    String        @id @default(uuid())
+  title                 String        // Ví dụ: "Vượt qua sợ hãi bóng đêm"
+  category              String        // EMOTIONAL_INTELLIGENCE, DAILY_HABITS...
+  description           String
+  targetAgeGroup        String        // "2-4", "5-7", "8-10"
+  eqDimensions          EqDimension[]
+  suggestedPagesCount   Int           @default(6)
+  promptGuidance        String        // Khuôn cấu trúc truyện gửi kèm AI prompt
+  coverIllustration     String
+  isActive              Boolean       @default(true)
+  createdAt             DateTime      @default(now())
+
+  stories               Story[]
+
+  @@map("pedagogical_templates")
+}
+
+// ==========================================
+// D4: STORIES & PAGES & CHOICES (Truyện & Các trang)
+// ==========================================
+model Story {
+  id                       String               @id @default(uuid())
+  creatorId                String
+  creator                  Account              @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  title                    String
+  summary                  String?
+  coverImageUrl            String?
+  targetAgeGroup           String               @default("3-6")
+  theme                    String
+  pedagogicalTemplateId    String?
+  pedagogicalTemplate      PedagogicalTemplate? @relation(fields: [pedagogicalTemplateId], references: [id])
+  status                   StoryStatus          @default(DRAFT)
+  isAnonymized             Boolean              @default(false) // Tự động gỡ PII khi public marketplace
+  priceCredits             Int                  @default(0)     // 0 = miễn phí
+  priceVnd                 Float                @default(0)     // Giá bán chợ VND
+  sellerCommissionRate     Float                @default(0.70)  // 70% doanh thu cho Seller
+  platformCommissionRate   Float                @default(0.30)  // 30% cho nền tảng
+  publishedAt              DateTime?
+  createdAt                DateTime             @default(now())
+  updatedAt                DateTime             @updatedAt
+
+  pages                    StoryPage[]
+  charactersUsed           StoryCharacterUsage[]
+  mediaAssets              MediaAsset[]
+  aiRequestsCosts          AiRequestCost[]
+  moderationRecords        ModerationRecord[]
+  orders                   OrderOwnership[]
+  reviews                  Review[]
+  bookshelfEntries         ChildBookshelf[]
+
+  @@map("stories")
+}
+
+model StoryCharacterUsage {
+  id               String          @id @default(uuid())
+  storyId          String
+  story            Story           @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  characterId      String
+  character        FamilyCharacter @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  placeholderTag   String          // [HERO_1], [FATHER_1]
+  roleInStory      String
+
+  @@map("story_character_usages")
+}
+
+model StoryPage {
+  id                     String                 @id @default(uuid())
+  storyId                String
+  story                  Story                  @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  pageNumber             Int
+  text                   String                 // Nội dung trang (tên thật sau khôi phục)
+  redactedText           String?                // Nội dung đã che tên gửi cho AI
+  illustrationUrl        String?
+  illustrationPrompt     String?
+  audioNarrationUrl      String?
+  audioDurationSeconds   Int?
+  moderatorApproved      Boolean                @default(false)
+  moderatorNotes         String?
+  createdAt              DateTime               @default(now())
+
+  choices                StoryPageBranchChoice[]
+
+  @@unique([storyId, pageNumber])
+  @@map("story_pages")
+}
+
+model StoryPageBranchChoice {
+  id                   String      @id @default(uuid())
+  storyPageId          String
+  storyPage            StoryPage   @relation(fields: [storyPageId], references: [id], onDelete: Cascade)
+  label                String      // Nhãn lựa chọn: "Bé chọn xin lỗi bạn"
+  targetNextPageNumber Int
+  eqSignal             EqDimension
+
+  @@map("story_page_branch_choices")
+}
+
+// ==========================================
+// D5: MEDIA ASSETS (Tranh minh hoạ & Audio)
+// ==========================================
+model MediaAsset {
+  id           String      @id @default(uuid())
+  storyId      String?
+  story        Story?      @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  assetType    String      // "ILLUSTRATION" | "AUDIO_TTS" | "CHARACTER_PORTRAIT"
+  s3Key        String      // S3 object key or public URL
+  cdnUrl       String
+  mimeType     String
+  fileSizeBytes Int?
+  durationSec  Float?
+  createdAt    DateTime    @default(now())
+
+  @@map("media_assets")
+}
+
+// ==========================================
+// D6: AI REQUESTS & COSTS (Yêu cầu AI & Chi phí)
+// ==========================================
+model AiRequestCost {
+  id            String      @id @default(uuid())
+  storyId       String
+  story         Story       @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  serviceType   String      // "GEMINI_TEXT", "GEMINI_IMAGE", "VIENEU_TTS"
+  modelUsed     String      // "gemini-3.8-flash", "gemini-3.1-flash-lite-image"
+  promptTokens  Int?
+  outputTokens  Int?
+  creditsCost   Int         @default(1)
+  costUsd       Float?
+  latencyMs     Int?
+  success       Boolean     @default(true)
+  createdAt     DateTime    @default(now())
+
+  @@map("ai_requests_costs")
+}
+
+// ==========================================
+// D7: WALLET LEDGER (Sổ cái ví - 💎 & VND)
+// ==========================================
+model WalletLedger {
+  id                 String       @id @default(uuid())
+  accountId          String
+  account            Account      @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  transactionType    String       // "CREDIT_PURCHASE", "STORY_SALE", "WITHDRAWAL", "ESCROW_RELEASE"
+  amount             Float
+  currency           String       // "CREDIT" (💎) or "VND"
+  balanceBefore      Float
+  balanceAfter       Float
+  status             String       @default("COMPLETED") // PENDING, COMPLETED, FAILED
+  description        String
+  idempotencyKey     String?      @unique               // Chống xử lý trùng từ webhook payOS
+  availableAfterDate DateTime?                          // Escrow 7 ngày
+  createdAt          DateTime     @default(now())
+
+  @@map("wallet_ledger")
+}
+
+// ==========================================
+// D8: PLANS & SUBSCRIPTIONS (Gói & Đăng ký)
+// ==========================================
+model PlanSubscription {
+  id              String      @id @default(uuid())
+  accountId       String
+  account         Account     @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  planCode        String      // "FREE", "STORYTELLER", "FAIRY_VIP"
+  name            String
+  monthlyCredits  Int
+  priceVnd        Float
+  startDate       DateTime    @default(now())
+  endDate         DateTime
+  isActive        Boolean     @default(true)
+
+  @@map("plans_subscriptions")
+}
+
+// ==========================================
+// D9: ORDERS & OWNERSHIP (Đơn hàng & Quyền sở hữu)
+// ==========================================
+model OrderOwnership {
+  id                 String       @id @default(uuid())
+  accountId          String
+  account            Account      @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  storyId            String
+  story              Story        @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  orderStatus        OrderStatus  @default(PENDING)
+  totalVnd           Float
+  discountVnd        Float        @default(0)
+  voucherCode        String?
+  payosPaymentId     String?      @unique
+  payosOrderCode     BigInt?      @unique
+  sellerEarningsVnd  Float        @default(0) // 70%
+  platformFeeVnd     Float        @default(0) // 30%
+  escrowReleaseAt    DateTime?                // 7 days after purchase
+  isEscrowReleased   Boolean      @default(false)
+  createdAt          DateTime     @default(now())
+  paidAt             DateTime?
+
+  @@map("orders_ownership")
+}
+
+// ==========================================
+// D10: REVIEWS (Đánh giá truyện)
+// ==========================================
+model Review {
+  id           String      @id @default(uuid())
+  storyId      String
+  story        Story       @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  accountId    String
+  account      Account     @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  rating       Int         // 1 to 5 stars
+  comment      String?
+  createdAt    DateTime    @default(now())
+
+  @@unique([storyId, accountId])
+  @@map("reviews")
+}
+
+// ==========================================
+// D11: MODERATION RECORDS (Hồ sơ kiểm duyệt 100% trang)
+// ==========================================
+model ModerationRecord {
+  id                 String       @id @default(uuid())
+  storyId            String
+  story              Story        @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  moderatorId        String
+  moderator          Account      @relation("ModeratorActions", fields: [moderatorId], references: [id])
+  allPagesApproved   Boolean      @default(false) // Bắt buộc true 100% trang mới cho xuất bản
+  totalPagesCount    Int
+  approvedPagesCount Int
+  checklistDetail    Json         // Chi tiết kiểm tra từng trang: không bạo lực, không PII, tranh chuẩn
+  status             String       // "PENDING", "APPROVED", "REJECTED"
+  rejectionReason    String?
+  createdAt          DateTime     @default(now())
+
+  @@map("moderation_records")
+}
+
+// ==========================================
+// D12: PLAY SESSIONS & BOOKSHELF & EQ SIGNALS
+// ==========================================
+model ChildBookshelf {
+  id             String        @id @default(uuid())
+  childId        String
+  child          ChildProfile  @relation(fields: [childId], references: [id], onDelete: Cascade)
+  storyId        String
+  story          Story         @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  addedAt        DateTime      @default(now())
+  lastReadAt     DateTime?
+  readCount      Int           @default(0)
+  completedPages Int           @default(0)
+
+  @@unique([childId, storyId])
+  @@map("child_bookshelf")
+}
+
+model PlaySessionEq {
+  id                   String        @id @default(uuid())
+  accountId            String
+  account              Account       @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  childId              String
+  child                ChildProfile  @relation(fields: [childId], references: [id], onDelete: Cascade)
+  storyId              String
+  durationSeconds      Int           @default(0)
+  pagesReadCount       Int           @default(0)
+  eqSignal             EqDimension?
+  skillDescription     String?
+  verifiedByParent     Boolean       @default(false)
+  createdAt            DateTime      @default(now())
+
+  @@map("play_sessions_eq")
+}
+
+// ==========================================
+// D13: WITHDRAWAL REQUESTS (Yêu cầu rút tiền người bán)
+// ==========================================
+model WithdrawalRequest {
+  id            String        @id @default(uuid())
+  accountId     String
+  account       Account       @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  amountVnd     Float
+  bankName      String
+  bankAccount   String
+  accountHolder String
+  status        PayoutStatus  @default(PENDING)
+  adminNotes    String?
+  reviewedAt    DateTime?
+  createdAt     DateTime      @default(now())
+
+  @@map("withdrawal_requests")
+}
+
+// ==========================================
+// D14: AUDIT LOG (Nhật ký kiểm toán)
+// ==========================================
+model AuditLog {
+  id            String        @id @default(uuid())
+  accountId     String?
+  account       Account?      @relation(fields: [accountId], references: [id], onDelete: SetNull)
+  action        String        // "PUBLISH_STORY", "APPROVE_WITHDRAWAL", "ANONYMIZE_PII", etc.
+  targetEntity  String        // "Story:123", "User:456"
+  ipAddress     String?
+  payloadJson   Json?
+  createdAt     DateTime      @default(now())
+
+  @@map("audit_log")
+}
+
+// ==========================================
+// D15: BANNED KEYWORDS (Từ khoá cấm)
+// ==========================================
+model BannedKeyword {
+  id          String      @id @default(uuid())
+  keyword     String      @unique
+  category    String      // "VIOLENCE", "HATE_SPEECH", "INAPPROPRIATE"
+  severity    String      @default("HIGH")
+  createdAt   DateTime    @default(now())
+
+  @@map("banned_keywords")
+}
+
+// ==========================================
+// D16: DEFAULT BACKGROUNDS (Thư viện nền mặc định ấm áp)
+// ==========================================
+model DefaultBackground {
+  id          String      @id @default(uuid())
+  name        String      // "Phòng ngủ ấm áp", "Khu rừng cổ tích", "Bầu trời sao"
+  theme       String      // "BEDROOM", "FOREST", "SPACE", "CLASSROOM"
+  imageUrl    String
+  svgGradient String?
+  isKidMode   Boolean     @default(false)
+  createdAt   DateTime    @default(now())
+
+  @@map("default_backgrounds")
+}

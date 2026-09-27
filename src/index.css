@@ -1,0 +1,345 @@
+/* ── Google Fonts — MUST be first ── */
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Baloo+2:wght@700;800;900&display=swap');
+
+@import "tailwindcss";
+
+/* ══════════════════════════════════════════════════
+   MOBILE APP FRAME LAYOUT
+══════════════════════════════════════════════════ */
+
+/* Full-screen mode (default — no frame) */
+.sw-full {
+  min-height: 100dvh;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+.sw-full.flex-col { flex-direction: column; }
+
+/* Desktop preview — dark bg + phone frame */
+.sw-desktop-bg {
+  min-height: 100dvh;
+  background: linear-gradient(135deg, #1a0828 0%, #2d1b4e 50%, #0f1f3d 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+}
+
+/* Phone frame — max 390px like iPhone 15 */
+.sw-mobile-frame {
+  width: 100%;
+  max-width: 390px;
+  height: min(844px, 96dvh);
+  border-radius: 48px;
+  border: 10px solid #1a0a2e;
+  overflow: hidden;
+  box-shadow:
+    0 0 0 1px rgba(255,255,255,0.08),
+    0 40px 80px rgba(0,0,0,0.60),
+    inset 0 0 40px rgba(0,0,0,0.20);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  background: #FAFFFE;
+}
+
+@layer base {
+  :root {
+    --font-heading: 'Baloo 2', 'Nunito', cursive, sans-serif;
+    --font-body: 'Nunito', sans-serif;
+    --yellow: #FFD93D;
+    --yellow-dark: #F5C400;
+    --green: #6BCB77;
+    --green-dark: #4DB85A;
+    --sky: #4DABF7;
+    --lavender: #C8A8E9;
+    --bg: #FAFFFE;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    font-family: var(--font-body);
+    background-color: var(--bg);
+    color: #2C3E50;
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1, h2, h3, h4, h5, h6, .font-heading {
+    font-family: var(--font-heading);
+    letter-spacing: -0.02em;
+  }
+}
+
+/* ══════════════════════════════════════════════════
+   FAIRY GARDEN CARD SYSTEM
+══════════════════════════════════════════════════ */
+
+/* Base card — colored glow shadow, NO black border */
+.hey-card {
+  background: #ffffff;
+  border-radius: 24px;
+  border: 1px solid rgba(107, 203, 119, 0.14);
+  box-shadow:
+    0 6px 24px -4px rgba(107, 203, 119, 0.12),
+    0 2px 8px -2px rgba(107, 203, 119, 0.06);
+}
+
+/* Hover lift with spring feel */
+.hey-card-interactive {
+  transition: transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1),
+              box-shadow 0.28s ease;
+  cursor: pointer;
+}
+.hey-card-interactive:hover {
+  transform: translateY(-5px) scale(1.015);
+  box-shadow:
+    0 16px 40px -6px rgba(107, 203, 119, 0.18),
+    0 6px 16px -2px rgba(107, 203, 119, 0.10);
+}
+.hey-card-interactive:active {
+  transform: translateY(-1px) scale(0.99);
+}
+
+/* Story card — image-first, larger shadow */
+.story-card-visual {
+  border-radius: 24px;
+  overflow: hidden;
+  box-shadow:
+    0 10px 32px -4px rgba(255, 217, 61, 0.22),
+    0 4px 12px -2px rgba(255, 217, 61, 0.12);
+  transition: transform 0.30s cubic-bezier(0.34, 1.56, 0.64, 1),
+              box-shadow 0.30s ease;
+}
+.story-card-visual:hover {
+  transform: translateY(-6px) scale(1.02);
+  box-shadow:
+    0 20px 50px -6px rgba(255, 217, 61, 0.30),
+    0 8px 20px -2px rgba(255, 217, 61, 0.18);
+}
+
+/* ══════════════════════════════════════════════════
+   BUTTON SYSTEM
+══════════════════════════════════════════════════ */
+
+.bubbly-btn {
+  transition: all 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
+  border-radius: 9999px;
+  font-family: var(--font-heading);
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  user-select: none;
+}
+.bubbly-btn:hover  { transform: translateY(-2px) scale(1.04); }
+.bubbly-btn:active { transform: translateY(1px) scale(0.97); }
+
+/* Yellow primary */
+.btn-yellow {
+  background: var(--yellow);
+  color: #6B4500;
+  box-shadow: 0 6px 16px -2px rgba(245, 196, 0, 0.35);
+}
+.btn-yellow:hover {
+  background: var(--yellow-dark);
+  box-shadow: 0 10px 24px -2px rgba(245, 196, 0, 0.45);
+}
+
+/* Green secondary */
+.btn-green {
+  background: var(--green);
+  color: #ffffff;
+  box-shadow: 0 6px 16px -2px rgba(77, 184, 90, 0.30);
+}
+
+/* ══════════════════════════════════════════════════
+   ANIMATIONS
+══════════════════════════════════════════════════ */
+
+/* Floating (mascot, decorative elements) */
+@keyframes float {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  33%       { transform: translateY(-8px) rotate(1.5deg); }
+  66%       { transform: translateY(-4px) rotate(-1deg); }
+}
+
+/* Gentle bounce for CTAs */
+@keyframes bounce-gentle {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(-7px); }
+}
+
+/* Wiggle (interactive elements) */
+@keyframes wiggle {
+  0%, 100% { transform: rotate(-3deg) scale(1); }
+  25%       { transform: rotate(4deg) scale(1.05); }
+  75%       { transform: rotate(-2deg) scale(1.02); }
+}
+
+/* Soft pulse (glow rings, badges) */
+@keyframes pulse-soft {
+  0%, 100% { transform: scale(1); opacity: 0.8; }
+  50%       { transform: scale(1.07); opacity: 1; }
+}
+
+/* Shimmer (loading / skeleton) */
+@keyframes shimmer {
+  0%   { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
+}
+
+/* Pop in (element appear) */
+@keyframes pop-in {
+  0%   { transform: scale(0.6); opacity: 0; }
+  60%  { transform: scale(1.08); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+/* Slide up (content reveal) */
+@keyframes slide-up {
+  from { transform: translateY(24px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+/* Sparkle orbit (fairy effect) */
+@keyframes sparkle-orbit {
+  0%   { transform: rotate(0deg) translateX(20px) rotate(0deg);   opacity: 1; }
+  50%  { opacity: 0.4; }
+  100% { transform: rotate(360deg) translateX(20px) rotate(-360deg); opacity: 1; }
+}
+
+/* Gradient shift (hero banner) */
+@keyframes gradient-shift {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* Firefly drift */
+@keyframes firefly {
+  0%   { transform: translate(0, 0) scale(1); opacity: 0.8; }
+  25%  { transform: translate(10px, -15px) scale(1.2); opacity: 1; }
+  50%  { transform: translate(-8px, -25px) scale(0.9); opacity: 0.6; }
+  75%  { transform: translate(5px, -10px) scale(1.1); opacity: 1; }
+  100% { transform: translate(0, 0) scale(1); opacity: 0.8; }
+}
+
+/* ── Utility classes ── */
+.animate-float         { animation: float          4s  ease-in-out infinite; }
+.animate-float-slow    { animation: float          6s  ease-in-out infinite; }
+.animate-bounce-gentle { animation: bounce-gentle  2.8s ease-in-out infinite; }
+.animate-wiggle        { animation: wiggle         2.2s ease-in-out infinite; }
+.animate-pulse-soft    { animation: pulse-soft     2s   ease-in-out infinite; }
+.animate-pop-in        { animation: pop-in         0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+.animate-slide-up      { animation: slide-up       0.45s ease-out both; }
+.animate-sparkle       { animation: sparkle-orbit  3s   linear infinite; }
+.animate-gradient      { animation: gradient-shift 6s   ease infinite; }
+.animate-firefly       { animation: firefly        4s   ease-in-out infinite; }
+
+/* Delay utilities */
+.delay-100 { animation-delay: 0.1s; }
+.delay-200 { animation-delay: 0.2s; }
+.delay-300 { animation-delay: 0.3s; }
+.delay-500 { animation-delay: 0.5s; }
+.delay-700 { animation-delay: 0.7s; }
+.delay-1000{ animation-delay: 1.0s; }
+
+/* ══════════════════════════════════════════════════
+   HERO GRADIENT BACKGROUNDS
+══════════════════════════════════════════════════ */
+
+.hero-gradient-yellow {
+  background: linear-gradient(135deg, #FFD93D 0%, #FFB347 50%, #FF8C69 100%);
+  background-size: 200% 200%;
+}
+
+.hero-gradient-fairy {
+  background: linear-gradient(135deg, #a8edea 0%, #fed6e3 50%, #c2e9fb 100%);
+  background-size: 200% 200%;
+}
+
+.fairy-bg {
+  background: linear-gradient(
+    160deg,
+    #FFF9E8 0%,
+    #F0FBF1 40%,
+    #EBF5FF 100%
+  );
+}
+
+/* ══════════════════════════════════════════════════
+   SCROLLBAR — Themed
+══════════════════════════════════════════════════ */
+
+::-webkit-scrollbar        { width: 6px; height: 6px; }
+::-webkit-scrollbar-track  { background: transparent; }
+::-webkit-scrollbar-thumb  { background: rgba(107, 203, 119, 0.35); border-radius: 9999px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(107, 203, 119, 0.6); }
+
+/* ══════════════════════════════════════════════════
+   LOGIN SCREEN
+══════════════════════════════════════════════════ */
+
+/* Floating blobs */
+.login-blob {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(60px);
+  pointer-events: none;
+  opacity: 0.55;
+}
+.login-blob-1 {
+  width: 260px; height: 260px;
+  background: #FFD93D;
+  top: -60px; left: -80px;
+  animation: float 7s ease-in-out infinite;
+}
+.login-blob-2 {
+  width: 200px; height: 200px;
+  background: #6BCB77;
+  top: 80px; right: -60px;
+  animation: float 9s ease-in-out infinite reverse;
+}
+.login-blob-3 {
+  width: 180px; height: 180px;
+  background: #C8A8E9;
+  bottom: 200px; left: 20px;
+  animation: float 6s ease-in-out infinite 1s;
+}
+
+/* Spinner */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+.login-spinner {
+  display: inline-block;
+  width: 18px; height: 18px;
+  border: 2.5px solid rgba(107,75,0,0.25);
+  border-top-color: #6B4500;
+  border-radius: 9999px;
+  animation: spin 0.7s linear infinite;
+}
+
+/* Input focus */
+.login-input-wrap:focus-within {
+  border-color: #6BCB77 !important;
+  box-shadow: 0 0 0 3px rgba(107, 203, 119, 0.15);
+}
+
+/* ══════════════════════════════════════════════════
+   PARENT HOME — MOBILE COMPACT
+   Overrides when inside .sw-mobile-frame or on small screen
+══════════════════════════════════════════════════ */
+
+/* Story cards scrollable row — no padding bleed */
+.sw-mobile-frame [data-story-row],
+@media (max-width: 430px) {
+  [data-story-row] { padding-left: 12px; }
+}
+
+/* TopBar compact */
+.sw-mobile-frame [data-topbar] { padding: 10px 12px; }

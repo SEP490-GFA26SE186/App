@@ -1,0 +1,19 @@
+{
+  "expo": {
+    "name": "StoryWeaver",
+    "slug": "storyweaver-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.storyweaver.app"
+    },
+    "android": {
+      "package": "com.storyweaver.app"
+    },
+    "web": {
+      "bundler": "metro"
+    }
+  }
+}
