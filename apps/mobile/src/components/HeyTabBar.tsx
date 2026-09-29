@@ -1,4 +1,4 @@
-// apps/mobile/src/components/HeyTabBar.tsx — v2.0 Floating Pill Design
+// apps/mobile/src/components/HeyTabBar.tsx — v2.0 Floating Pill Design with Line-art Icons
 import React from 'react';
 import {
   View,
@@ -12,6 +12,7 @@ import Animated, {
   useAnimatedStyle,
   withSpring,
 } from 'react-native-reanimated';
+import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { Colors } from '../theme/colors';
 import { soundFX } from '../../../../src/utils/sound-fx';
 
@@ -24,12 +25,25 @@ interface HeyTabBarProps {
 }
 
 const tabs = [
-  { id: 'HOME',   label: 'Trang chủ', icon: '🌱' },
-  { id: 'MARKET', label: 'Tủ truyện', icon: '📚' },
-  { id: 'CREATE', label: 'Sáng tác',  icon: '🪄', highlight: true },
-  { id: 'EQ',     label: 'Tiến độ',   icon: '⭐' },
-  { id: 'WALLET', label: 'Ví Sao',    icon: '💎' },
+  { id: 'HOME',   label: 'Trang chủ', iconType: 'feather' as const, iconName: 'home' as const },
+  { id: 'MARKET', label: 'Tủ truyện', iconType: 'feather' as const, iconName: 'book-open' as const },
+  { id: 'CREATE', label: 'Sáng tác',  iconType: 'mci' as const,     iconName: 'creation-outline' as const, highlight: true },
+  { id: 'EQ',     label: 'Tiến độ',   iconType: 'feather' as const, iconName: 'trending-up' as const },
+  { id: 'WALLET', label: 'Ví Sao',    iconType: 'feather' as const, iconName: 'credit-card' as const },
 ];
+
+const TabIconRenderer: React.FC<{
+  tab: typeof tabs[0];
+  isActive: boolean;
+  size?: number;
+  color?: string;
+}> = ({ tab, isActive, size = 20, color }) => {
+  const iconColor = color || (isActive ? Colors.primaryText : Colors.textSecondary);
+  if (tab.iconType === 'mci') {
+    return <MaterialCommunityIcons name={tab.iconName as any} size={size} color={iconColor} />;
+  }
+  return <Feather name={tab.iconName as any} size={size} color={iconColor} />;
+};
 
 const AnimatedTabItem: React.FC<{
   tab: typeof tabs[0];
@@ -60,9 +74,9 @@ const AnimatedTabItem: React.FC<{
         {/* Active indicator pill */}
         {isActive && <View style={styles.activeIndicator} />}
 
-        <Text style={[styles.tabIcon, isActive && styles.tabIconActive]}>
-          {tab.icon}
-        </Text>
+        <View style={styles.tabIconBox}>
+          <TabIconRenderer tab={tab} isActive={isActive} size={20} />
+        </View>
         <Text style={[styles.tabLabel, isActive ? styles.tabLabelActive : styles.tabLabelInactive]}>
           {tab.label}
         </Text>
@@ -98,7 +112,7 @@ export const HeyTabBar: React.FC<HeyTabBarProps> = ({
                     isActive && styles.highlightCircleActive,
                   ]}
                 >
-                  <Text style={styles.highlightIcon}>{tab.icon}</Text>
+                  <TabIconRenderer tab={tab} isActive={true} size={26} color="#FFFFFF" />
                 </TouchableOpacity>
                 <Text style={[
                   styles.highlightLabel,
@@ -165,13 +179,12 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     zIndex: 0,
   },
-  tabIcon: {
-    fontSize: 19,
+  tabIconBox: {
+    height: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
     marginBottom: 2,
     zIndex: 1,
-  },
-  tabIconActive: {
-    // Scale up icon khi active
   },
   tabLabel: {
     fontSize: 10,

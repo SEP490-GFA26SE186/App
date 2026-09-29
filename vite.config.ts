@@ -21,6 +21,11 @@ export default defineConfig(() => {
         'react-native': path.resolve(import.meta.dirname, 'apps/mobile/node_modules/react-native-web'),
         // Stub out react-native-reanimated for web (mobile-only library)
         'react-native-reanimated': path.resolve(import.meta.dirname, 'src/shims/reanimated-stub.ts'),
+        // Stub out @expo/vector-icons for web (uses Lucide SVG stroke icons)
+        '@expo/vector-icons': path.resolve(import.meta.dirname, 'src/shims/vector-icons-stub.tsx'),
+        // Stub out expo-speech and expo-haptics for web
+        'expo-speech': path.resolve(import.meta.dirname, 'src/shims/expo-stub.ts'),
+        'expo-haptics': path.resolve(import.meta.dirname, 'src/shims/expo-stub.ts'),
       },
     },
     server: {

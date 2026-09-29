@@ -11,6 +11,7 @@ import {
   ActivityIndicator,
   TextInput,
 } from 'react-native';
+import { Feather, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { HeyButton } from '../components/ui/HeyButton';
 import { HeyProgressBar } from '../components/ui/HeyProgressBar';
 import {
@@ -32,13 +33,15 @@ interface StoryWizardProps {
   onUpdateCharacters: (chars: FamilyCharacter[]) => void;
 }
 
-// ─── 6 Magical Worlds Settings ────────────────────────────────────────────────
+// ─── 6 Magical Worlds Settings (Dạng nét vẽ / Line-art icons) ────────────────
 const STORY_WORLDS = [
   {
     id: 'world_forest',
     title: 'Rừng Đom Đóm Diệu Kỳ',
     desc: 'Cây cỏ phát sáng, muông thú biết nói',
-    icon: '🌲',
+    iconType: 'feather' as const,
+    iconName: 'sun' as const,
+    iconColor: '#16A34A',
     cover: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=500',
     bg: '#E8F5E9',
   },
@@ -46,7 +49,9 @@ const STORY_WORLDS = [
     id: 'world_ocean',
     title: 'Vương Quốc Dưới Biển',
     desc: 'Rạn san hô, nàng tiên cá & rùa biển',
-    icon: '🌊',
+    iconType: 'mci' as const,
+    iconName: 'waves' as const,
+    iconColor: '#0288D1',
     cover: '/s3.jpg',
     bg: '#E0F7FA',
   },
@@ -54,7 +59,9 @@ const STORY_WORLDS = [
     id: 'world_space',
     title: 'Ngân Hà Ánh Sao',
     desc: 'Phi thuyền mây & các hành tinh kẹo ngọt',
-    icon: '🚀',
+    iconType: 'ionicons' as const,
+    iconName: 'planet-outline' as const,
+    iconColor: '#7C3AED',
     cover: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=500',
     bg: '#EDE7F6',
   },
@@ -62,7 +69,9 @@ const STORY_WORLDS = [
     id: 'world_castle',
     title: 'Lâu Đài Cầu Vồng Trên Mây',
     desc: 'Cầu trượt mây, kỳ lân & chú rồng con',
-    icon: '🏰',
+    iconType: 'mci' as const,
+    iconName: 'castle' as const,
+    iconColor: '#EA580C',
     cover: '/s2.jpg',
     bg: '#FFF8E1',
   },
@@ -70,7 +79,9 @@ const STORY_WORLDS = [
     id: 'world_garden',
     title: 'Khu Vườn Hoa Sau Nhà',
     desc: 'Cây hoa nở rộ, chim sâu & bướm vàng',
-    icon: '🏡',
+    iconType: 'mci' as const,
+    iconName: 'flower-tulip-outline' as const,
+    iconColor: '#16A34A',
     cover: '/s1.jpg',
     bg: '#F1F8E9',
   },
@@ -78,7 +89,9 @@ const STORY_WORLDS = [
     id: 'world_camp',
     title: 'Thung Lũng Cắm Trại',
     desc: 'Lều ấm cúng, lửa trại bập bùng & suối reo',
-    icon: '⛺',
+    iconType: 'mci' as const,
+    iconName: 'tent' as const,
+    iconColor: '#D97706',
     cover: 'https://images.unsplash.com/photo-1502086223501-7ea6ecd79368?w=500',
     bg: '#FFF3E0',
   },
@@ -86,12 +99,12 @@ const STORY_WORLDS = [
 
 // ─── Quick Memory Idea Prompts ────────────────────────────────────────────────
 const QUICK_IDEAS = [
-  '🎈 Hôm nay bé vừa biết nhường đồ chơi cho bạn',
-  '🌙 Bé sợ bóng tối và chưa dám ngủ một mình',
-  '🚲 Bé đang tập đi xe đạp và sợ bị ngã',
-  '🌸 Bé học cách nói lời cảm ơn & xin lỗi chân thành',
-  '🎨 Bé vẽ một bức tranh đẹp và muốn tặng mẹ',
-  '🐾 Bé giúp bố mẹ chăm sóc và cho cún cưng ăn',
+  'Hôm nay bé vừa biết nhường đồ chơi cho bạn',
+  'Bé sợ bóng tối và chưa dám ngủ một mình',
+  'Bé đang tập đi xe đạp và sợ bị ngã',
+  'Bé học cách nói lời cảm ơn & xin lỗi chân thành',
+  'Bé vẽ một bức tranh đẹp và muốn tặng mẹ',
+  'Bé giúp bố mẹ chăm sóc và cho cún cưng ăn',
 ];
 
 export const StoryWizard: React.FC<StoryWizardProps> = ({
@@ -308,7 +321,7 @@ export const StoryWizard: React.FC<StoryWizardProps> = ({
             {step === 5 && (isGenerating ? 'AI Đang Sáng Tác...' : 'Duyệt Tác Phẩm')}
           </Text>
           <TouchableOpacity onPress={onCancel} style={styles.closeBtn}>
-            <Text style={styles.closeBtnText}>✕</Text>
+            <Feather name="x" size={16} color="#64748B" />
           </TouchableOpacity>
         </View>
         <HeyProgressBar progress={(step / 5) * 100} color="#2E7D32" height={6} />
@@ -340,9 +353,15 @@ export const StoryWizard: React.FC<StoryWizardProps> = ({
                     style={[styles.charCard, isSelected && styles.charCardSelected]}
                   >
                     <View style={styles.charAvatar}>
-                      <Text style={styles.charEmoji}>
-                        {char.relationRole === 'HERO' ? '👦' : char.relationRole === 'PET' ? '🐶' : char.relationRole === 'FATHER' ? '👨‍💼' : '👩‍🍳'}
-                      </Text>
+                      {char.relationRole === 'HERO' ? (
+                        <Feather name="user" size={22} color="#16A34A" />
+                      ) : char.relationRole === 'PET' ? (
+                        <MaterialCommunityIcons name="dog" size={24} color="#D97706" />
+                      ) : char.relationRole === 'FATHER' ? (
+                        <Feather name="user-check" size={22} color="#2563EB" />
+                      ) : (
+                        <MaterialCommunityIcons name="human-female" size={24} color="#DB2777" />
+                      )}
                     </View>
                     <View style={styles.charInfo}>
                       <View style={styles.charNameRow}>
@@ -358,7 +377,7 @@ export const StoryWizard: React.FC<StoryWizardProps> = ({
                       </Text>
                     </View>
                     <View style={[styles.checkCircle, isSelected && styles.checkCircleActive]}>
-                      <Text style={styles.checkText}>{isSelected ? '✓' : ''}</Text>
+                      {isSelected && <Feather name="check" size={13} color="#FFFFFF" />}
                     </View>
                   </TouchableOpacity>
                 );
@@ -371,7 +390,8 @@ export const StoryWizard: React.FC<StoryWizardProps> = ({
                 onPress={() => setShowAddCharModal(true)}
                 style={styles.addCharOutlineBtn}
               >
-                <Text style={styles.addCharOutlineText}>+ Thêm thành viên mới</Text>
+                <Feather name="plus-circle" size={16} color="#2E7D32" style={{ marginRight: 6 }} />
+                <Text style={styles.addCharOutlineText}>Thêm thành viên mới</Text>
               </TouchableOpacity>
             ) : (
               <View style={styles.addCharBox}>
@@ -453,14 +473,19 @@ export const StoryWizard: React.FC<StoryWizardProps> = ({
                     <Image source={{ uri: w.cover }} style={styles.worldThumb} />
                     <View style={styles.worldInfo}>
                       <View style={styles.worldTitleRow}>
-                        <Text style={styles.worldIcon}>{w.icon}</Text>
+                        <View style={styles.worldIconBadge}>
+                          {w.iconType === 'feather' && <Feather name={w.iconName as any} size={15} color={w.iconColor} />}
+                          {w.iconType === 'mci' && <MaterialCommunityIcons name={w.iconName as any} size={16} color={w.iconColor} />}
+                          {w.iconType === 'ionicons' && <Ionicons name={w.iconName as any} size={15} color={w.iconColor} />}
+                        </View>
                         <Text style={styles.worldTitle} numberOfLines={1}>{w.title}</Text>
                       </View>
                       <Text style={styles.worldDesc} numberOfLines={2}>{w.desc}</Text>
                     </View>
                     {isSelected && (
                       <View style={styles.worldSelectedBadge}>
-                        <Text style={{ color: '#FFFFFF', fontSize: 10, fontWeight: '900' }}>✓ ĐÃ CHỌN</Text>
+                        <Feather name="check" size={11} color="#FFFFFF" style={{ marginRight: 3 }} />
+                        <Text style={{ color: '#FFFFFF', fontSize: 10, fontWeight: '900' }}>ĐÃ CHỌN</Text>
                       </View>
                     )}
                   </TouchableOpacity>
@@ -514,7 +539,9 @@ export const StoryWizard: React.FC<StoryWizardProps> = ({
                     style={[styles.tplCard, isSelected && styles.tplCardSelected]}
                   >
                     <View style={styles.tplTopRow}>
-                      <Text style={styles.tplIcon}>🌸</Text>
+                      <View style={styles.tplIconCircle}>
+                        <Feather name="book-open" size={18} color="#7C3AED" />
+                      </View>
                       <View style={styles.tplInfo}>
                         <Text style={styles.tplTitle}>{tpl.title}</Text>
                         <Text style={styles.tplDesc}>{tpl.description}</Text>
@@ -522,11 +549,13 @@ export const StoryWizard: React.FC<StoryWizardProps> = ({
                     </View>
                     <View style={styles.tplTagRow}>
                       <View style={styles.tplAgePill}>
+                        <Feather name="calendar" size={11} color="#64748B" style={{ marginRight: 4 }} />
                         <Text style={styles.tplAgeText}>Độ tuổi: {tpl.targetAgeGroup} tuổi</Text>
                       </View>
                       {tpl.eqDimensions?.map((eq, i) => (
                         <View key={i} style={styles.tplEqPill}>
-                          <Text style={styles.tplEqText}>🌱 {eq}</Text>
+                          <Feather name="smile" size={11} color="#16A34A" style={{ marginRight: 4 }} />
+                          <Text style={styles.tplEqText}>{eq}</Text>
                         </View>
                       ))}
                     </View>
@@ -579,6 +608,7 @@ export const StoryWizard: React.FC<StoryWizardProps> = ({
                   }}
                   style={styles.quickIdeaPill}
                 >
+                  <Feather name="zap" size={12} color="#16A34A" style={{ marginRight: 5 }} />
                   <Text style={styles.quickIdeaText}>{idea}</Text>
                 </TouchableOpacity>
               ))}
@@ -599,9 +629,9 @@ export const StoryWizard: React.FC<StoryWizardProps> = ({
             <Text style={styles.subHeadingLabel}>Tông điệu câu chuyện:</Text>
             <View style={styles.toneRow}>
               {[
-                { id: 'BEDTIME', label: '🌙 Ấm áp ru ngủ', desc: 'Dịu êm trước giờ ngủ' },
-                { id: 'ADVENTURE', label: '🚀 Hào hứng phiêu lưu', desc: 'Vui vẻ & năng lượng' },
-                { id: 'GENTLE', label: '🌸 Nhẹ nhàng thủ thỉ', desc: 'Sâu lắng & tình cảm' },
+                { id: 'BEDTIME', label: 'Ấm áp ru ngủ', desc: 'Dịu êm trước giờ ngủ', icon: 'moon' },
+                { id: 'ADVENTURE', label: 'Hào hứng phiêu lưu', desc: 'Vui vẻ & năng lượng', icon: 'compass' },
+                { id: 'GENTLE', label: 'Nhẹ nhàng thủ thỉ', desc: 'Sâu lắng & tình cảm', icon: 'heart' },
               ].map((t) => (
                 <TouchableOpacity
                   key={t.id}
@@ -611,7 +641,13 @@ export const StoryWizard: React.FC<StoryWizardProps> = ({
                   }}
                   style={[styles.toneCard, storyTone === t.id && styles.toneCardActive]}
                 >
-                  <Text style={styles.toneLabel}>{t.label}</Text>
+                  <Feather
+                    name={t.icon as any}
+                    size={20}
+                    color={storyTone === t.id ? '#16A34A' : '#64748B'}
+                    style={{ marginBottom: 4 }}
+                  />
+                  <Text style={[styles.toneLabel, storyTone === t.id && { color: '#16A34A' }]}>{t.label}</Text>
                   <Text style={styles.toneDesc}>{t.desc}</Text>
                 </TouchableOpacity>
               ))}
@@ -628,7 +664,7 @@ export const StoryWizard: React.FC<StoryWizardProps> = ({
                 style={{ flex: 1 }}
               />
               <HeyButton
-                title="🪄 Sáng Tác Truyện (Gemini AI)"
+                title="Sáng Tác Truyện (Gemini AI)"
                 onPress={handleStartGeneration}
                 style={{ flex: 2 }}
               />
@@ -653,7 +689,9 @@ export const StoryWizard: React.FC<StoryWizardProps> = ({
               <View>
                 {/* Success Banner */}
                 <View style={styles.storyHeaderCard}>
-                  <Text style={styles.successEmoji}>🎉</Text>
+                  <View style={styles.successIconCircle}>
+                    <Feather name="award" size={28} color="#16A34A" />
+                  </View>
                   <Text style={styles.storyTitleResult}>{createdStory.title}</Text>
                   <Text style={styles.storySummaryResult}>{createdStory.summary || 'Tác phẩm thiếu nhi cá nhân hoá độc quyền.'}</Text>
                 </View>
@@ -671,6 +709,7 @@ export const StoryWizard: React.FC<StoryWizardProps> = ({
 
                   {/* Top Bar on Image */}
                   <View style={styles.pageNumberPill}>
+                    <Feather name="book" size={11} color="#FFFFFF" style={{ marginRight: 4 }} />
                     <Text style={styles.pageNumberText}>
                       Trang {previewPageIndex + 1}/{createdStory.pages.length}
                     </Text>
@@ -681,8 +720,14 @@ export const StoryWizard: React.FC<StoryWizardProps> = ({
                     onPress={() => handlePlayVoice(createdStory.pages[previewPageIndex]?.text || '')}
                     style={[styles.ttsBtn, isPlayingAudio && styles.ttsBtnActive]}
                   >
-                    <Text style={styles.ttsBtnText}>
-                      {isPlayingAudio ? '⏹ Dừng đọc' : '🔊 Nghe thử giọng đọc'}
+                    <Feather
+                      name={isPlayingAudio ? 'square' : 'volume-2'}
+                      size={13}
+                      color={isPlayingAudio ? '#FFFFFF' : '#1E293B'}
+                      style={{ marginRight: 5 }}
+                    />
+                    <Text style={[styles.ttsBtnText, isPlayingAudio && { color: '#FFFFFF' }]}>
+                      {isPlayingAudio ? 'Dừng đọc' : 'Nghe thử giọng đọc'}
                     </Text>
                   </TouchableOpacity>
 
@@ -700,7 +745,10 @@ export const StoryWizard: React.FC<StoryWizardProps> = ({
                       style={styles.choiceBox}
                       onPress={() => soundFX.playSparkle()}
                     >
-                      <Text style={styles.choiceHeader}>🌟 Điểm rẽ nhánh tương tác:</Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 2 }}>
+                        <Feather name="git-branch" size={13} color="#16A34A" style={{ marginRight: 5 }} />
+                        <Text style={styles.choiceHeader}>Điểm rẽ nhánh tương tác:</Text>
+                      </View>
                       <Text style={styles.choiceText}>{c.label}</Text>
                     </TouchableOpacity>
                   ))}
@@ -717,7 +765,8 @@ export const StoryWizard: React.FC<StoryWizardProps> = ({
                       }}
                       style={[styles.stepperBtn, previewPageIndex === 0 && { opacity: 0.3 }]}
                     >
-                      <Text style={styles.stepperBtnText}>← Trang trước</Text>
+                      <Feather name="chevron-left" size={15} color="#2E7D32" style={{ marginRight: 2 }} />
+                      <Text style={styles.stepperBtnText}>Trang trước</Text>
                     </TouchableOpacity>
 
                     <Text style={styles.stepperIndicator}>
@@ -734,14 +783,15 @@ export const StoryWizard: React.FC<StoryWizardProps> = ({
                       }}
                       style={[styles.stepperBtn, previewPageIndex === createdStory.pages.length - 1 && { opacity: 0.3 }]}
                     >
-                      <Text style={styles.stepperBtnText}>Trang sau →</Text>
+                      <Text style={styles.stepperBtnText}>Trang sau</Text>
+                      <Feather name="chevron-right" size={15} color="#2E7D32" style={{ marginLeft: 2 }} />
                     </TouchableOpacity>
                   </View>
                 </View>
 
                 {/* Final Action Buttons */}
                 <HeyButton
-                  title="📖 Đọc toàn bộ truyện cùng bé ngay"
+                  title="Đọc toàn bộ truyện cùng bé ngay"
                   onPress={handleFinishAndRead}
                   style={{ marginTop: 16 }}
                 />
@@ -1018,11 +1068,16 @@ const styles = StyleSheet.create({
   worldTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 6,
     marginBottom: 2,
   },
-  worldIcon: {
-    fontSize: 16,
+  worldIconBadge: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   worldTitle: {
     fontSize: 13.5,
@@ -1042,6 +1097,8 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     paddingHorizontal: 6,
     paddingVertical: 2,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
 
   // Step buttons
@@ -1073,8 +1130,13 @@ const styles = StyleSheet.create({
     gap: 8,
     marginBottom: 8,
   },
-  tplIcon: {
-    fontSize: 20,
+  tplIconCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#F3E8FF',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   tplInfo: {
     flex: 1,
@@ -1100,6 +1162,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 7,
     paddingVertical: 2,
     borderRadius: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   tplAgeText: {
     fontSize: 10,
@@ -1111,6 +1175,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 7,
     paddingVertical: 2,
     borderRadius: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   tplEqText: {
     fontSize: 10,
@@ -1132,6 +1198,8 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingHorizontal: 10,
     paddingVertical: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   quickIdeaText: {
     fontSize: 11.5,
@@ -1218,9 +1286,14 @@ const styles = StyleSheet.create({
     marginBottom: 14,
     boxShadow: '0 4px 14px rgba(76,175,80,0.1)',
   },
-  successEmoji: {
-    fontSize: 32,
-    marginBottom: 4,
+  successIconCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#DCFCE7',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 6,
   },
   storyTitleResult: {
     fontSize: 16,

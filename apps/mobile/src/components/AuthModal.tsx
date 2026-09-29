@@ -86,12 +86,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               {tab === 'PROFILE'
                 ? 'Hồ sơ tài khoản'
                 : tab === 'CHILDREN'
-                ? 'Quản lý bé yêu'
-                : tab === 'KID_PIN'
-                ? 'Mã PIN Kid Mode'
-                : tab === 'REGISTER'
-                ? 'Tạo tài khoản mới'
-                : 'Đăng nhập StoryWeaver'}
+                  ? 'Quản lý bé yêu'
+                  : tab === 'KID_PIN'
+                    ? 'Mã PIN Kid Mode'
+                    : tab === 'REGISTER'
+                      ? 'Tạo tài khoản mới'
+                      : 'Đăng nhập StoryWeaver'}
             </Text>
             <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
               <Text style={styles.closeText}>✕</Text>
