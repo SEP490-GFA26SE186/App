@@ -12,6 +12,7 @@ import { HeyChip } from '../components/ui/HeyChip';
 import { HeyProgressBar } from '../components/ui/HeyProgressBar';
 import { ChildProfile, EqReport } from '../../../../packages/shared-types';
 import { Colors } from '../theme/colors';
+import { childService } from '../services';
 
 interface EqReportScreenProps {
   childrenProfiles: ChildProfile[];
@@ -23,17 +24,31 @@ export const EqReportScreen: React.FC<EqReportScreenProps> = ({
   const [selectedChildId, setSelectedChildId] = useState<string>(
     childrenProfiles[0]?.id || 'ch_01'
   );
+  const [stats, setStats] = useState<{ completedBooksCount?: number; totalMinutes?: number }>({
+    completedBooksCount: 8,
+    totalMinutes: 65,
+  });
 
   const currentChild =
     childrenProfiles.find((c) => c.id === selectedChildId) ||
-    childrenProfiles[0] || { name: 'Bé Bo', age: 4 };
+    childrenProfiles[0] || { name: 'Bé Bin', age: 6 };
+
+  React.useEffect(() => {
+    if (selectedChildId) {
+      childService.getChildOverview(selectedChildId).then((data) => {
+        if (data?.readingStats) {
+          setStats(data.readingStats);
+        }
+      }).catch(() => {});
+    }
+  }, [selectedChildId]);
 
   const eqScores = [
-    { label: 'Thấu cảm & Yêu thương (Empathy)', score: 85, color: Colors.primary },
-    { label: 'Tự lập & Trách nhiệm (Independence)', score: 78, color: Colors.secondary },
-    { label: 'Kiên nhẫn & Cảm xúc (Patience)', score: 90, color: Colors.teal },
-    { label: 'Sáng tạo & Tư duy (Creativity)', score: 82, color: Colors.yellow },
-    { label: 'Giao tiếp & Ứng xử (Communication)', score: 88, color: Colors.green },
+    { label: 'Thấu cảm & Yêu thương (Empathy)', score: 88, color: Colors.primary },
+    { label: 'Tự lập & Trách nhiệm (Independence)', score: 82, color: Colors.secondary },
+    { label: 'Kiên nhẫn & Cảm xúc (Patience)', score: 92, color: Colors.teal },
+    { label: 'Sáng tạo & Tư duy (Creativity)', score: 85, color: Colors.yellow },
+    { label: 'Giao tiếp & Ứng xử (Communication)', score: 90, color: Colors.green },
   ];
 
   return (

@@ -22,6 +22,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { Story, StoryPage, ChildProfile } from '../../../../packages/shared-types';
 import { Colors } from '../theme/colors';
+import { kidService, authService } from '../services';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -29,7 +30,7 @@ interface KidModeScreenProps {
   child: ChildProfile;
   stories: Story[];
   correctPin: string;
-  onExitKidMode: () => void;
+  onExitKidMode: (pin?: string) => void;
   onRecordEqSignal: (signal: string, skill: string) => void;
 }
 
@@ -135,17 +136,24 @@ export const KidModeScreen: React.FC<KidModeScreenProps> = ({
     return `${mins}:${s < 10 ? '0' : ''}${s}`;
   };
 
-  const handleVerifyPin = (pin: string) => {
-    if (pin === correctPin || pin === '1234') {
+  const handleVerifyPin = async (pin: string) => {
+    try {
+      await authService.exitKidMode(pin);
       setShowPinModal(false);
-      onExitKidMode();
-    } else {
-      setPinError(true);
-      setTimeout(() => {
-        setEnteredPin('');
-        setPinError(false);
-      }, 900);
+      onExitKidMode(pin);
+      return;
+    } catch {
+      if (pin === correctPin || pin === '1234') {
+        setShowPinModal(false);
+        onExitKidMode(pin);
+        return;
+      }
     }
+    setPinError(true);
+    setTimeout(() => {
+      setEnteredPin('');
+      setPinError(false);
+    }, 900);
   };
 
   const handlePressPinKey = (num: string) => {

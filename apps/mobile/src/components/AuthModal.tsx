@@ -8,13 +8,20 @@ import {
   ScrollView,
   StyleSheet,
   Dimensions,
-  Image,
 } from 'react-native';
 import { HeyButton } from './ui/HeyButton';
 import { HeyInput } from './ui/HeyInput';
 import { UserAccount, ChildProfile } from '../../../../packages/shared-types';
 import { Colors } from '../theme/colors';
-import { loginApi, registerApi, logoutApi } from '../../../../src/utils/authService';
+import {
+  authService,
+  childService,
+  DEMO_CREDENTIALS,
+  getApiEnvironment,
+  setApiEnvironment,
+  getApiBaseUrl,
+  ApiEnvironment,
+} from '../services';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -23,8 +30,10 @@ interface AuthModalProps {
   onUserUpdate: (user: UserAccount | null) => void;
   childrenProfiles: ChildProfile[];
   onAddChild: (child: Partial<ChildProfile>) => void;
-  initialTab?: 'LOGIN' | 'REGISTER' | 'PROFILE' | 'CHILDREN' | 'KID_PIN';
+  initialTab?: 'LOGIN' | 'REGISTER' | 'PROFILE' | 'CHILDREN' | 'KID_PIN' | 'SERVER';
   onLogout?: () => void;
+  onRefreshData?: () => void;
+  onReplayIntro?: () => void;
 }
 
 export const AuthModal: React.FC<AuthModalProps> = ({
@@ -36,14 +45,16 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   onAddChild,
   initialTab = 'LOGIN',
   onLogout,
+  onRefreshData,
+  onReplayIntro,
 }) => {
-  const [tab, setTab] = useState<'LOGIN' | 'REGISTER' | 'PROFILE' | 'CHILDREN' | 'KID_PIN'>(
+  const [tab, setTab] = useState<'LOGIN' | 'REGISTER' | 'PROFILE' | 'CHILDREN' | 'KID_PIN' | 'SERVER'>(
     currentUser ? 'PROFILE' : initialTab
   );
 
-  const [email, setEmail] = useState(currentUser?.email || 'me.lan@gmail.com');
-  const [password, setPassword] = useState('123456');
-  const [fullName, setFullName] = useState(currentUser?.fullName || 'Mẹ Lan Phương');
+  const [email, setEmail] = useState(currentUser?.email || DEMO_CREDENTIALS.parent.email);
+  const [password, setPassword] = useState(DEMO_CREDENTIALS.parent.password);
+  const [fullName, setFullName] = useState(currentUser?.fullName || DEMO_CREDENTIALS.parent.name);
   const [phone, setPhone] = useState(currentUser?.phone || '0901234567');
   const [kidPin, setKidPin] = useState(currentUser?.kidModePinHash || '1234');
   const [newChildName, setNewChildName] = useState('');
@@ -52,8 +63,18 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const handleSaveProfile = () => {
+  // Server Environment State
+  const [currentEnv, setCurrentEnv] = useState<ApiEnvironment>(getApiEnvironment());
+  const [customUrl, setCustomUrl] = useState('');
+
+  const handleSaveProfile = async () => {
     if (currentUser) {
+      try {
+        if (kidPin && kidPin !== currentUser.kidModePinHash) {
+          await authService.setKidPin(kidPin);
+        }
+      } catch {}
+
       const updated: UserAccount = {
         ...currentUser,
         fullName,
@@ -71,7 +92,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
   const handleLogoutAction = async () => {
     try {
-      await logoutApi();
+      await authService.logout();
     } catch {}
     onUserUpdate(null);
     if (onLogout) onLogout();
@@ -82,30 +103,21 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const handleLoginSubmit = async () => {
     setErrorMsg(null);
     if (!email.trim() || !password) {
-      setErrorMsg('Vui lòng nhập đầy đủ email và mật khẩu');
+      setErrorMsg('Vui lòng nhập đầy đủ email/tên đăng nhập và mật khẩu');
       return;
     }
     setLoading(true);
     try {
-      const beUser = await loginApi(email.trim(), password);
-      const userObj: UserAccount = {
-        id: beUser.id,
-        email: beUser.email,
-        fullName: beUser.fullName || beUser.username,
-        phone: beUser.phone || '',
-        role: (beUser.role?.toUpperCase() as any) || 'PARENT',
-        creditBalance: beUser.wallet?.creditBalance ?? 85,
-        createdAt: beUser.createdAt || new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-      onUserUpdate(userObj);
-      setNotice('Đăng nhập thành công!');
+      const user = await authService.login(email.trim(), password);
+      onUserUpdate(user);
+      setNotice(`Đăng nhập thành công! Chào ${user.fullName}`);
+      if (onRefreshData) onRefreshData();
       setTimeout(() => {
         setNotice(null);
         onClose();
       }, 800);
     } catch (err: any) {
-      setErrorMsg(err?.message || 'Đăng nhập thất bại');
+      setErrorMsg(err?.message || 'Đăng nhập thất bại. Kiểm tra lại thông tin hoặc chuyển môi trường.');
     } finally {
       setLoading(false);
     }
@@ -123,20 +135,17 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     }
     setLoading(true);
     try {
-      const username = email.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '_');
-      const beUser = await registerApi(username, email.trim(), password, fullName.trim(), phone.trim());
-      const userObj: UserAccount = {
-        id: beUser.id,
-        email: beUser.email,
-        fullName: beUser.fullName || fullName,
-        phone: beUser.phone || phone,
-        role: (beUser.role?.toUpperCase() as any) || 'PARENT',
-        creditBalance: beUser.wallet?.creditBalance ?? 50,
-        createdAt: beUser.createdAt || new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-      onUserUpdate(userObj);
+      const username = email.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '_').toLowerCase();
+      const user = await authService.register({
+        username: username.length >= 3 ? username : `${username}_usr`,
+        email: email.trim().toLowerCase(),
+        password,
+        fullName: fullName.trim(),
+        phone: phone.trim() || undefined,
+      });
+      onUserUpdate(user);
       setNotice('Đăng ký tài khoản thành công!');
+      if (onRefreshData) onRefreshData();
       setTimeout(() => {
         setNotice(null);
         onClose();
@@ -148,16 +157,41 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     }
   };
 
-  const handleAddNewChild = () => {
+  const handleAddNewChild = async () => {
     if (!newChildName.trim()) return;
-    onAddChild({
-      name: newChildName,
-      age: parseInt(newChildAge, 10) || 4,
-      readingLevel: 'BEGINNER',
-    });
-    setNewChildName('');
-    setNotice(`Đã thêm bé ${newChildName} thành công!`);
-    setTimeout(() => setNotice(null), 1500);
+    try {
+      const created = await childService.createChild({
+        name: newChildName.trim(),
+        birthDate: '2020-05-01',
+      });
+      onAddChild(created);
+      setNewChildName('');
+      setNotice(`Đã thêm bé ${newChildName} thành công!`);
+      setTimeout(() => setNotice(null), 1500);
+    } catch {
+      onAddChild({
+        name: newChildName,
+        age: parseInt(newChildAge, 10) || 4,
+        readingLevel: 'BEGINNER',
+      });
+      setNewChildName('');
+      setNotice(`Đã thêm bé ${newChildName}!`);
+      setTimeout(() => setNotice(null), 1500);
+    }
+  };
+
+  const handleApplyEnv = (env: ApiEnvironment, url?: string) => {
+    setApiEnvironment(env, url);
+    setCurrentEnv(env);
+    setNotice(`Đã chuyển sang môi trường: ${env.toUpperCase()} (${getApiBaseUrl()})`);
+    setTimeout(() => setNotice(null), 2000);
+  };
+
+  const fillDemoAccount = (acc: { email: string; password: string; name?: string; kidPin?: string }) => {
+    setEmail(acc.email);
+    setPassword(acc.password);
+    if (acc.name) setFullName(acc.name);
+    setErrorMsg(null);
   };
 
   return (
@@ -166,17 +200,24 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         <View style={styles.card}>
           {/* Header */}
           <View style={styles.header}>
-            <Text style={styles.title}>
-              {tab === 'PROFILE'
-                ? 'Hồ sơ tài khoản'
-                : tab === 'CHILDREN'
-                ? 'Quản lý bé yêu'
-                : tab === 'KID_PIN'
-                ? 'Mã PIN Kid Mode'
-                : tab === 'REGISTER'
-                ? 'Tạo tài khoản mới'
-                : 'Đăng nhập StoryWeaver'}
-            </Text>
+            <View>
+              <Text style={styles.title}>
+                {tab === 'PROFILE'
+                  ? 'Hồ sơ tài khoản'
+                  : tab === 'CHILDREN'
+                  ? 'Quản lý bé yêu'
+                  : tab === 'KID_PIN'
+                  ? 'Mã PIN Kid Mode'
+                  : tab === 'REGISTER'
+                  ? 'Tạo tài khoản mới'
+                  : tab === 'SERVER'
+                  ? 'Cấu hình Máy chủ (Dev/Prod)'
+                  : 'Đăng nhập StoryWeaver'}
+              </Text>
+              <Text style={styles.envSubText}>
+                API: <Text style={{ fontWeight: '700', color: Colors.primary }}>{currentEnv.toUpperCase()}</Text> ({getApiBaseUrl()})
+              </Text>
+            </View>
             <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
               <Text style={styles.closeText}>✕</Text>
             </TouchableOpacity>
@@ -210,6 +251,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     PIN Bé
                   </Text>
                 </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => { setTab('SERVER'); setErrorMsg(null); }}
+                  style={[styles.tabChip, tab === 'SERVER' && styles.tabChipActive]}
+                >
+                  <Text style={[styles.tabChipText, tab === 'SERVER' && styles.tabChipTextActive]}>
+                    ⚙️ API
+                  </Text>
+                </TouchableOpacity>
               </>
             ) : (
               <>
@@ -227,6 +276,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 >
                   <Text style={[styles.tabChipText, tab === 'REGISTER' && styles.tabChipTextActive]}>
                     Đăng ký
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => { setTab('SERVER'); setErrorMsg(null); }}
+                  style={[styles.tabChip, tab === 'SERVER' && styles.tabChipActive]}
+                >
+                  <Text style={[styles.tabChipText, tab === 'SERVER' && styles.tabChipTextActive]}>
+                    ⚙️ Môi trường
                   </Text>
                 </TouchableOpacity>
               </>
@@ -252,6 +309,17 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 <HeyInput label="Email" value={email} onChangeText={setEmail} keyboardType="email-address" />
                 <HeyInput label="Số điện thoại" value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
                 <HeyButton title="💾 Lưu thay đổi" onPress={handleSaveProfile} style={styles.mt} />
+                {onReplayIntro && (
+                  <HeyButton
+                    title="🎬 Xem lại Video Intro"
+                    variant="teal"
+                    onPress={() => {
+                      onReplayIntro();
+                      onClose();
+                    }}
+                    style={styles.mtSm}
+                  />
+                )}
                 <HeyButton
                   title="🚪 Đăng xuất"
                   variant="outline"
@@ -266,17 +334,21 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 <Text style={styles.sectionTitle}>Danh sách hồ sơ bé:</Text>
                 {childrenProfiles.map((ch) => (
                   <View key={ch.id} style={styles.childItem}>
-                    <Text style={styles.childEmoji}>👶</Text>
+                    <Text style={styles.childEmoji}>
+                      {ch.gender === 'FEMALE' ? '👧' : '👦'}
+                    </Text>
                     <View style={styles.childInfo}>
                       <Text style={styles.childName}>{ch.name}</Text>
-                      <Text style={styles.childMeta}>{ch.age} tuổi • {ch.readingLevel}</Text>
+                      <Text style={styles.childMeta}>
+                        {ch.age} tuổi • {ch.readingLevel || 'Cơ bản'} • {ch.birthDate || '2020-05-01'}
+                      </Text>
                     </View>
                   </View>
                 ))}
 
                 <Text style={[styles.sectionTitle, styles.mt]}>Thêm hồ sơ bé mới:</Text>
-                <HeyInput label="Tên bé" placeholder="vd: Bé Bắp" value={newChildName} onChangeText={setNewChildName} />
-                <HeyInput label="Tuổi của bé" placeholder="vd: 4" value={newChildAge} onChangeText={setNewChildAge} keyboardType="numeric" />
+                <HeyInput label="Tên bé" placeholder="vd: Bé Bin" value={newChildName} onChangeText={setNewChildName} />
+                <HeyInput label="Tuổi của bé" placeholder="vd: 6" value={newChildAge} onChangeText={setNewChildAge} keyboardType="numeric" />
                 <HeyButton title="➕ Thêm hồ sơ bé" variant="teal" onPress={handleAddNewChild} style={styles.mtSm} />
               </View>
             )}
@@ -284,10 +356,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             {tab === 'KID_PIN' && (
               <View>
                 <Text style={styles.descText}>
-                  Mã PIN 4 số giúp ngăn bé vô tình thoát khỏi giao diện Kid Mode hoặc bấm sang chợ truyện.
+                  Mã PIN 4 số giúp ngăn bé vô tình thoát khỏi giao diện Chế độ Trẻ Em (Kid Mode).
                 </Text>
                 <HeyInput
-                  label="Mã PIN 4 số hiện tại"
+                  label="Mã PIN 4 số hiện tại (Mặc định: 1234)"
                   value={kidPin}
                   onChangeText={setKidPin}
                   keyboardType="numeric"
@@ -301,6 +373,32 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               <View>
                 <HeyInput label="Email / Tên đăng nhập" value={email} onChangeText={setEmail} keyboardType="email-address" />
                 <HeyInput label="Mật khẩu" value={password} onChangeText={setPassword} secureTextEntry />
+
+                {/* Quick Demo Accounts Buttons */}
+                <View style={styles.demoBox}>
+                  <Text style={styles.demoTitle}>👉 Bấm để điền nhanh tài khoản demo:</Text>
+                  <View style={styles.demoRow}>
+                    <TouchableOpacity
+                      style={styles.demoBtn}
+                      onPress={() => fillDemoAccount(DEMO_CREDENTIALS.parent)}
+                    >
+                      <Text style={styles.demoBtnText}>👩 Phụ huynh</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.demoBtn}
+                      onPress={() => fillDemoAccount(DEMO_CREDENTIALS.specialist)}
+                    >
+                      <Text style={styles.demoBtnText}>🎓 Chuyên gia</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.demoBtn}
+                      onPress={() => fillDemoAccount(DEMO_CREDENTIALS.admin)}
+                    >
+                      <Text style={styles.demoBtnText}>🛡️ Admin</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
                 <HeyButton
                   title={loading ? '⏳ Đang đăng nhập...' : '🚀 Đăng nhập ngay'}
                   onPress={handleLoginSubmit}
@@ -323,6 +421,52 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 />
               </View>
             )}
+
+            {tab === 'SERVER' && (
+              <View>
+                <Text style={styles.descText}>
+                  Chọn môi trường kết nối API. Người hướng dẫn khuyến nghị kiểm tra ở môi trường Dev trước để tránh giới hạn quota API trên Prod.
+                </Text>
+
+                <TouchableOpacity
+                  style={[styles.envOption, currentEnv === 'dev' && styles.envOptionActive]}
+                  onPress={() => handleApplyEnv('dev')}
+                >
+                  <Text style={styles.envOptionTitle}>🖥️ Môi trường Dev (Local)</Text>
+                  <Text style={styles.envOptionDesc}>http://localhost:3000/api/v1 (hoặc 10.0.2.2 cho Android)</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.envOption, currentEnv === 'prod' && styles.envOptionActive]}
+                  onPress={() => handleApplyEnv('prod')}
+                >
+                  <Text style={styles.envOptionTitle}>🌐 Môi trường Prod (Đã deploy)</Text>
+                  <Text style={styles.envOptionDesc}>https://api.storyweaver.id.vn/api/v1</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.envOption, currentEnv === 'mock' && styles.envOptionActive]}
+                  onPress={() => handleApplyEnv('mock')}
+                >
+                  <Text style={styles.envOptionTitle}>📦 Chế độ Mock Demo (Offline)</Text>
+                  <Text style={styles.envOptionDesc}>Tự động dùng dữ liệu demo khi không có mạng hoặc chưa bật máy chủ.</Text>
+                </TouchableOpacity>
+
+                <Text style={[styles.sectionTitle, styles.mt]}>Hoặc URL tuỳ chỉnh:</Text>
+                <HeyInput
+                  label="Custom Base URL"
+                  placeholder="http://192.168.1.11:3000/api/v1"
+                  value={customUrl}
+                  onChangeText={setCustomUrl}
+                />
+                <HeyButton
+                  title="Áp dụng URL tuỳ chỉnh"
+                  variant="secondary"
+                  onPress={() => handleApplyEnv('dev', customUrl)}
+                  style={styles.mtSm}
+                />
+              </View>
+            )}
           </ScrollView>
         </View>
       </View>
@@ -342,7 +486,7 @@ const styles = StyleSheet.create({
   },
   card: {
     width: '100%',
-    maxHeight: height * 0.85,
+    maxHeight: height * 0.88,
     backgroundColor: '#FFFFFF',
     borderRadius: 24,
     padding: 18,
@@ -352,14 +496,19 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     justifyContent: 'space-between',
     marginBottom: 12,
   },
   title: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '900',
     color: Colors.textDark,
+  },
+  envSubText: {
+    fontSize: 11,
+    color: Colors.textMuted,
+    marginTop: 2,
   },
   closeBtn: {
     width: 32,
@@ -376,16 +525,17 @@ const styles = StyleSheet.create({
   },
   tabRow: {
     flexDirection: 'row',
-    marginBottom: 14,
+    flexWrap: 'wrap',
+    marginBottom: 12,
     borderBottomWidth: 1,
     borderBottomColor: Colors.borderLight,
     paddingBottom: 8,
+    gap: 6,
   },
   tabChip: {
-    paddingHorizontal: 12,
+    paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 12,
-    marginRight: 8,
     backgroundColor: '#F3F4F6',
   },
   tabChipActive: {
@@ -451,6 +601,60 @@ const styles = StyleSheet.create({
     color: Colors.textMuted,
     lineHeight: 18,
     marginBottom: 12,
+  },
+  demoBox: {
+    marginTop: 10,
+    padding: 10,
+    backgroundColor: '#F0F9FF',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#BAE6FD',
+  },
+  demoTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#0369A1',
+    marginBottom: 6,
+  },
+  demoRow: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  demoBtn: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 6,
+    borderRadius: 8,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#7DD3FC',
+  },
+  demoBtnText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#0284C7',
+  },
+  envOption: {
+    padding: 12,
+    borderRadius: 12,
+    backgroundColor: '#F9FAFB',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    marginBottom: 8,
+  },
+  envOptionActive: {
+    backgroundColor: '#EFF6FF',
+    borderColor: '#3B82F6',
+  },
+  envOptionTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#1F2937',
+  },
+  envOptionDesc: {
+    fontSize: 11,
+    color: '#6B7280',
+    marginTop: 2,
   },
   mt: {
     marginTop: 14,

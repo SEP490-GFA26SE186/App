@@ -22,6 +22,7 @@ import {
 import { Colors } from '../theme/colors';
 import { speechTTS } from '../../../../src/utils/speech-tts';
 import { soundFX } from '../../../../src/utils/sound-fx';
+import { characterService, storyService, apiFetch } from '../services';
 
 interface StoryWizardProps {
   characters: FamilyCharacter[];
@@ -145,21 +146,32 @@ export const StoryWizard: React.FC<StoryWizardProps> = ({
     }
   };
 
-  const handleAddNewCharacter = () => {
+  const handleAddNewCharacter = async () => {
     if (!newCharName.trim()) return;
     soundFX.playPuppy();
-    const created: FamilyCharacter = {
-      id: `char_${Date.now()}`,
-      parentId: currentUser.id,
-      name: newCharName.trim(),
-      relationRole: newCharRole,
-      appearanceDescription: newCharTrait || 'Nụ cười tươi tắn, trang phục đáng yêu',
-      personalityTraits: ['Thân thiện', 'Tốt bụng'],
-      avatarPlaceholder: newCharRole === 'HERO' ? '👦' : newCharRole === 'PET' ? '🐶' : '👨‍👩‍👧',
-    };
-    const updated = [...characters, created];
-    onUpdateCharacters(updated);
-    setSelectedCharIds([...selectedCharIds, created.id]);
+    try {
+      const created = await characterService.createCharacter({
+        name: newCharName.trim(),
+        appearance: newCharTrait || 'Nụ cười tươi tắn, trang phục đáng yêu',
+        role: newCharRole,
+      });
+      const updated = [...characters, created];
+      onUpdateCharacters(updated);
+      setSelectedCharIds([...selectedCharIds, created.id]);
+    } catch {
+      const created: FamilyCharacter = {
+        id: `char_${Date.now()}`,
+        parentId: currentUser.id,
+        name: newCharName.trim(),
+        relationRole: newCharRole,
+        appearanceDescription: newCharTrait || 'Nụ cười tươi tắn, trang phục đáng yêu',
+        personalityTraits: ['Thân thiện', 'Tốt bụng'],
+        avatarPlaceholder: newCharRole === 'HERO' ? '👦' : newCharRole === 'PET' ? '🐶' : '👨‍👩‍👧',
+      };
+      const updated = [...characters, created];
+      onUpdateCharacters(updated);
+      setSelectedCharIds([...selectedCharIds, created.id]);
+    }
     setNewCharName('');
     setNewCharTrait('');
     setShowAddCharModal(false);
@@ -183,22 +195,19 @@ export const StoryWizard: React.FC<StoryWizardProps> = ({
         setGenerationStageText('🎨 Đang phác thảo tranh minh họa từng trang sách...');
       }, 2200);
 
-      const res = await fetch('/api/stories/ai-generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userPrompt: `${userPrompt}. Thế giới: ${selectedWorldId}. Phong cách: ${storyTone}`,
-          templateId: selectedTemplateId,
-          characterIds: selectedCharIds,
-        }),
-      });
-
       let finalStory: Story;
 
-      if (res.ok) {
-        const data = await res.json();
-        finalStory = data.story || data;
-      } else {
+      try {
+        const data = await apiFetch<any>('/stories/ai-generate', {
+          method: 'POST',
+          body: JSON.stringify({
+            userPrompt: `${userPrompt}. Thế giới: ${selectedWorldId}. Phong cách: ${storyTone}`,
+            templateId: selectedTemplateId,
+            characterIds: selectedCharIds,
+          }),
+        });
+        finalStory = data?.story || data;
+      } catch {
         // Fallback local pedagogical generation
         const selectedTemplate = templates.find((t) => t.id === selectedTemplateId) || templates[0];
         const selectedChars = characters.filter((c) => selectedCharIds.includes(c.id));
