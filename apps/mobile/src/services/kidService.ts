@@ -1,93 +1,77 @@
 // apps/mobile/src/services/kidService.ts
-import { kidFetch } from './apiClient';
-import { storyService } from './storyService';
-import { DEMO_STORIES } from './demoData';
-import { Story } from '../../../../packages/shared-types';
+// Mọi hàm dùng kidSessionToken (kidFetch), KHÔNG dùng token Parent. Lỗi → throw ApiError (401 = phiên Kid mất).
+import { kidFetch, invalidResponseError } from './apiClient';
+import type { KidDataSource } from '../types/viewModels';
+import type { KidAnswerResultDto, KidPlayDto, KidShelfItemDto } from '../types/api';
 
-export const kidService = {
+export const kidService: KidDataSource & {
+  getUiAudio: () => Promise<Record<string, { text: string; audioUrl: string | null }>>;
+} = {
   /**
-   * Kệ sách Chế độ Trẻ Em (yêu cầu kidSessionToken): GET /kid/bookshelf
+   * Tủ sách của bé: GET /kid/bookshelf → data { items[] } (chỉ truyện đã sẵn sàng, không có trang).
+   * Danh sách rỗng là hợp lệ.
    */
-  getKidShelf: async (): Promise<Story[]> => {
-    try {
-      const data = await kidFetch<{ items: any[] }>('/kid/bookshelf');
-      const items = data?.items || (Array.isArray(data) ? data : []);
-      if (items.length > 0) {
-        return items.map((item) => storyService.formatStory(item.story || item));
-      }
-      return DEMO_STORIES;
-    } catch (error) {
-      return DEMO_STORIES;
-    }
+  getShelf: async (): Promise<KidShelfItemDto[]> => {
+    const data = await kidFetch<{ items?: KidShelfItemDto[] }>('/kid/bookshelf');
+    if (!Array.isArray(data?.items)) throw invalidResponseError('tủ sách của bé');
+    return data.items;
   },
 
   /**
-   * Bắt đầu phiên đọc truyện của bé: POST /kid/sessions { storyId }
+   * Bắt đầu/tiếp tục đọc: POST /kid/sessions { storyId } → 201 { session, story }.
+   * 404 = không có trên tủ sách; 422 `errors[{path:'storyId'}]` = truyện chưa sẵn sàng.
    */
-  startReading: async (storyId: string): Promise<{ session: any; story: Story }> => {
-    try {
-      const data = await kidFetch<{ session: any; story: any }>('/kid/sessions', {
-        method: 'POST',
-        body: JSON.stringify({ storyId }),
-      });
-      return {
-        session: data?.session,
-        story: storyService.formatStory(data?.story || data),
-      };
-    } catch (error) {
-      const found = DEMO_STORIES.find((s) => s.id === storyId) || DEMO_STORIES[0];
-      return {
-        session: { id: `sess_${Date.now()}` },
-        story: found,
-      };
+  startReading: async (storyId: string): Promise<KidPlayDto> => {
+    const data = await kidFetch<Partial<KidPlayDto>>('/kid/sessions', {
+      method: 'POST',
+      body: JSON.stringify({ storyId }),
+    });
+    if (!data?.session?.id || !data.story?.id || !Array.isArray(data.story.pages) || !Array.isArray(data.story.checkpoints)) {
+      throw invalidResponseError('bắt đầu đọc truyện');
     }
+    return data as KidPlayDto;
+  },
+
+  /** Lưu trang đang đọc: PUT /kid/sessions/:id/progress { pageId } */
+  saveProgress: async (sessionId: string, pageId: string): Promise<void> => {
+    await kidFetch(`/kid/sessions/${sessionId}/progress`, {
+      method: 'PUT',
+      body: JSON.stringify({ pageId }),
+    });
   },
 
   /**
-   * Lưu tiến độ đọc trang: PUT /kid/sessions/:sessionId/progress { pageId }
+   * Trả lời điểm dừng: POST /kid/sessions/:id/answers (BE `.strict()`: chỉ gửi
+   * checkpointId, emotion, optionId, skipped, timeToFirstMs, questionReplays) → data { result }.
    */
-  saveProgress: async (sessionId: string, pageId: string): Promise<boolean> => {
-    try {
-      await kidFetch(`/kid/sessions/${sessionId}/progress`, {
-        method: 'PUT',
-        body: JSON.stringify({ pageId }),
-      });
-      return true;
-    } catch (error) {
-      return true;
+  answer: async (
+    sessionId: string,
+    body: {
+      checkpointId: string;
+      emotion?: string;
+      optionId?: string;
+      skipped?: boolean;
+      timeToFirstMs?: number;
+      questionReplays?: number;
     }
+  ): Promise<KidAnswerResultDto> => {
+    const data = await kidFetch<{ result?: KidAnswerResultDto }>(`/kid/sessions/${sessionId}/answers`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+    if (!data?.result?.checkpointId) throw invalidResponseError('trả lời điểm dừng');
+    return data.result;
   },
 
-  /**
-   * Trả lời điểm dừng câu hỏi EQ: POST /kid/sessions/:sessionId/answers
-   */
-  answerCheckpoint: async (sessionId: string, body: { checkpointId: string; optionId?: string; emotionChoice?: string }): Promise<any> => {
-    try {
-      const data = await kidFetch(`/kid/sessions/${sessionId}/answers`, {
-        method: 'POST',
-        body: JSON.stringify(body),
-      });
-      return data?.result || data;
-    } catch (error) {
-      return {
-        checkpointId: body.checkpointId,
-        correct: true,
-        done: true,
-      };
-    }
+  /** Hoàn thành lượt đọc: POST /kid/sessions/:id/complete (idempotent) */
+  complete: async (sessionId: string): Promise<void> => {
+    await kidFetch(`/kid/sessions/${sessionId}/complete`, { method: 'POST' });
   },
 
-  /**
-   * Hoàn thành lượt đọc truyện: POST /kid/sessions/:sessionId/complete
-   */
-  completeReading: async (sessionId: string): Promise<boolean> => {
-    try {
-      await kidFetch(`/kid/sessions/${sessionId}/complete`, {
-        method: 'POST',
-      });
-      return true;
-    } catch (error) {
-      return true;
-    }
+  /** Câu đọc dùng chung (tên cảm xúc…): GET /kid/ui-audio → { assets } — chỉ lấy dữ liệu; phát âm thanh chờ chốt thư viện (C11) */
+  getUiAudio: async () => {
+    const data = await kidFetch<{ assets?: Record<string, { text: string; audioUrl: string | null }> }>('/kid/ui-audio');
+    if (!data?.assets || typeof data.assets !== 'object') throw invalidResponseError('âm thanh giao diện');
+    return data.assets;
   },
 };

@@ -1,12 +1,22 @@
 // apps/mobile/src/services/apiClient.ts
-import { getApiBaseUrl } from './config';
+import { getApiBaseUrl, API_NOT_CONFIGURED_MESSAGE } from './config';
 import { safeStorage, STORAGE_KEYS } from './storage';
+
+/** Phần tử `errors[]` của BE; có thể kèm `attemptsLeft` / `retryAfterSeconds` (PIN) hoặc `narration` (422 truyện chưa sẵn sàng) */
+export interface ApiErrorItem {
+  path?: string;
+  message?: string;
+  attemptsLeft?: number;
+  retryAfterSeconds?: number;
+  narration?: unknown;
+  [key: string]: unknown;
+}
 
 export class ApiError extends Error {
   status?: number;
-  errors?: Array<{ path: string; message: string }>;
+  errors?: ApiErrorItem[];
 
-  constructor(message: string, status?: number, errors?: Array<{ path: string; message: string }>) {
+  constructor(message: string, status?: number, errors?: ApiErrorItem[]) {
     super(message);
     this.name = 'ApiError';
     this.status = status;
@@ -22,6 +32,41 @@ export const extractErrorMessage = (errorData: any, fallback = 'Có lỗi xảy 
   return errorData.message || fallback;
 };
 
+/** Thiếu cấu hình API → lỗi rõ ràng (status 0: không phải lỗi xác thực), không gửi request tới URL đoán */
+const resolveBaseUrl = (): string => {
+  const url = getApiBaseUrl();
+  if (!url) throw new ApiError(API_NOT_CONFIGURED_MESSAGE, 0);
+  return url;
+};
+
+/** Response 2xx nhưng sai hình dạng so với contract BE: không được coi là thành công */
+export const invalidResponseError = (what: string): ApiError =>
+  new ApiError(`Phản hồi ${what} từ máy chủ không hợp lệ. Vui lòng thử lại.`, 502);
+
+/** Quá hạn này request bị hủy → ApiError status 0 (mất mạng/máy chủ không phản hồi) */
+const REQUEST_TIMEOUT_MS = 20000;
+
+const fetchWithTimeout = async (url: string, init: RequestInit): Promise<Response> => {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  // Người gọi (vd. màn đã rời) có thể hủy request qua init.signal
+  const caller = init.signal;
+  const onCallerAbort = () => controller.abort();
+  if (caller?.aborted) controller.abort();
+  else caller?.addEventListener('abort', onCallerAbort);
+  try {
+    return await fetch(url, { ...init, signal: controller.signal });
+  } catch (err: any) {
+    if (err?.name === 'AbortError' && !caller?.aborted) {
+      throw new ApiError('Máy chủ phản hồi quá lâu. Ba mẹ kiểm tra mạng rồi thử lại nhé.', 0);
+    }
+    throw err;
+  } finally {
+    clearTimeout(timer);
+    caller?.removeEventListener('abort', onCallerAbort);
+  }
+};
+
 // Refresh token handler
 let isRefreshing = false;
 let refreshPromise: Promise<string> | null = null;
@@ -35,24 +80,45 @@ const refreshAccessToken = async (): Promise<string> => {
   refreshPromise = (async () => {
     try {
       const refreshToken = safeStorage.getItem(STORAGE_KEYS.REFRESH_TOKEN);
-      if (!refreshToken) throw new Error('Không có refresh token');
+      if (!refreshToken) throw new ApiError('Không có refresh token', 401);
 
-      const url = `${getApiBaseUrl()}/auth/refresh-tokens`;
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ refreshToken }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        safeStorage.removeItem(STORAGE_KEYS.ACCESS_TOKEN);
-        safeStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
-        throw new Error(extractErrorMessage(data, 'Phiên đăng nhập đã hết hạn'));
+      const url = `${resolveBaseUrl()}/auth/refresh-tokens`;
+      let res: Response;
+      try {
+        res = await fetchWithTimeout(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ refreshToken }),
+        });
+      } catch (err) {
+        // Mất mạng/quá hạn tạm thời: KHÔNG xóa phiên
+        if (err instanceof ApiError) throw err;
+        throw new ApiError('Không thể kết nối đến máy chủ. Vui lòng kiểm tra mạng.', 0);
       }
 
-      const newAccessToken = data.data.tokens.accessToken;
-      const newRefreshToken = data.data.tokens.refreshToken;
+      let data: any = null;
+      try {
+        data = await res.json();
+      } catch {
+        data = null;
+      }
+
+      if (!res.ok) {
+        if (res.status >= 500) {
+          // Lỗi máy chủ tạm thời: KHÔNG xóa phiên
+          throw new ApiError(extractErrorMessage(data, `Lỗi máy chủ (${res.status})`), res.status);
+        }
+        // 4xx: refresh token bị BE từ chối → phiên thực sự không còn hợp lệ
+        safeStorage.removeItem(STORAGE_KEYS.ACCESS_TOKEN);
+        safeStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
+        throw new ApiError(extractErrorMessage(data, 'Phiên đăng nhập đã hết hạn'), 401);
+      }
+
+      const newAccessToken = data?.data?.tokens?.accessToken;
+      const newRefreshToken = data?.data?.tokens?.refreshToken;
+      if (!newAccessToken) {
+        throw new ApiError('Phản hồi làm mới phiên từ máy chủ không hợp lệ.', 502);
+      }
       safeStorage.setItem(STORAGE_KEYS.ACCESS_TOKEN, newAccessToken);
       if (newRefreshToken) {
         safeStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, newRefreshToken);
@@ -69,10 +135,12 @@ const refreshAccessToken = async (): Promise<string> => {
 
 export interface RequestOptions extends RequestInit {
   skipAuth?: boolean;
+  /** true: trả nguyên envelope BE `{success,message,data,pagination?...}` (cho endpoint phân trang) */
+  raw?: boolean;
 }
 
 export const apiFetch = async <T = any>(endpoint: string, options: RequestOptions = {}): Promise<T> => {
-  const baseUrl = getApiBaseUrl();
+  const baseUrl = resolveBaseUrl();
   const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
   const url = `${baseUrl}${cleanEndpoint}`;
 
@@ -90,8 +158,9 @@ export const apiFetch = async <T = any>(endpoint: string, options: RequestOption
 
   let res: Response;
   try {
-    res = await fetch(url, { ...options, headers });
+    res = await fetchWithTimeout(url, { ...options, headers });
   } catch (err: any) {
+    if (err instanceof ApiError) throw err;
     throw new ApiError(err?.message === 'Network request failed' ? 'Không thể kết nối đến máy chủ. Vui lòng kiểm tra mạng hoặc chế độ máy chủ.' : (err?.message || 'Lỗi mạng'), 0);
   }
 
@@ -101,8 +170,12 @@ export const apiFetch = async <T = any>(endpoint: string, options: RequestOption
     try {
       const newToken = await refreshAccessToken();
       headers['Authorization'] = `Bearer ${newToken}`;
-      res = await fetch(url, { ...options, headers });
-    } catch {
+      res = await fetchWithTimeout(url, { ...options, headers });
+    } catch (refreshError) {
+      // Lỗi mạng/5xx khi refresh: giữ phiên, báo lỗi thật để người dùng thử lại
+      if (refreshError instanceof ApiError && refreshError.status !== 401) {
+        throw refreshError;
+      }
       safeStorage.removeItem(STORAGE_KEYS.ACCESS_TOKEN);
       throw new ApiError('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.', 401);
     }
@@ -120,12 +193,12 @@ export const apiFetch = async <T = any>(endpoint: string, options: RequestOption
     throw new ApiError(errorMsg, res.status, json?.errors);
   }
 
-  return json?.data ?? json;
+  return options.raw ? json : json?.data ?? json;
 };
 
 // Client for Kid Mode with kidSessionToken
 export const kidFetch = async <T = any>(endpoint: string, options: RequestInit = {}): Promise<T> => {
-  const baseUrl = getApiBaseUrl();
+  const baseUrl = resolveBaseUrl();
   const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
   const url = `${baseUrl}${cleanEndpoint}`;
 
@@ -141,8 +214,9 @@ export const kidFetch = async <T = any>(endpoint: string, options: RequestInit =
 
   let res: Response;
   try {
-    res = await fetch(url, { ...options, headers });
+    res = await fetchWithTimeout(url, { ...options, headers });
   } catch (err: any) {
+    if (err instanceof ApiError) throw err;
     throw new ApiError('Không thể kết nối đến máy chủ trong Chế độ Trẻ Em.', 0);
   }
 

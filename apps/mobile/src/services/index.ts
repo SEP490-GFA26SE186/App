@@ -7,4 +7,4 @@ export * from './childService';
 export * from './characterService';
 export * from './storyService';
 export * from './kidService';
-export * from './demoData';
+export * from './billingService';
