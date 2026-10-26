@@ -40,18 +40,17 @@ export const ModeratorAdminScreen: React.FC = () => {
     },
   ];
 
-  const [queue, setQueue] = useState<Story[]>(samplePendingStories);
+  const [queue] = useState<Story[]>(samplePendingStories);
   const [notice, setNotice] = useState<string | null>(null);
 
-  const handleApprove = (storyId: string) => {
-    setQueue(queue.filter((s) => s.id !== storyId));
-    setNotice('✅ Đã phê duyệt và xuất bản truyện lên Chợ!');
+  // SCOPE PENDING (D5): chưa kết nối BE → không thay đổi hàng đợi, không báo thành công giả.
+  const handleApprove = (_storyId: string) => {
+    setNotice('Chưa kết nối máy chủ: chưa thể phê duyệt truyện.');
     setTimeout(() => setNotice(null), 2500);
   };
 
-  const handleReject = (storyId: string) => {
-    setQueue(queue.filter((s) => s.id !== storyId));
-    setNotice('❌ Đã từ chối truyện và gửi phản hồi cho tác giả.');
+  const handleReject = (_storyId: string) => {
+    setNotice('Chưa kết nối máy chủ: chưa thể từ chối truyện.');
     setTimeout(() => setNotice(null), 2500);
   };
 
@@ -66,7 +65,7 @@ export const ModeratorAdminScreen: React.FC = () => {
         <Text style={styles.bannerTag}>🛡️ Ban Kiểm Duyệt Nội Dung & An Toàn</Text>
         <Text style={styles.bannerTitle}>Bảo Vệ 100% Nội Dung Cho Trẻ</Text>
         <Text style={styles.bannerSubtitle}>
-          Kiểm duyệt từ ngữ nhạy cảm, bạo lực, rò rỉ danh tính trẻ em (PII) trước khi xuất bản.
+          Kiểm duyệt từ ngữ nhạy cảm, bạo lực, rò rỉ danh tính trẻ em (PII) trước khi xuất bản. (Dữ liệu mẫu – chưa kết nối máy chủ)
         </Text>
       </View>
 

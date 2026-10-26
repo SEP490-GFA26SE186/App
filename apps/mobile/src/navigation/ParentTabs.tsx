@@ -78,13 +78,14 @@ export const ParentTabs: React.FC<ParentTabsProps> = ({ currentUser, nav, active
     }
   };
 
+  // SCOPE PENDING (D5): lối vào Chợ truyện chỉ hiện ở __DEV__, ẩn khỏi production
   const moreItems: MoreMenuItem[] = [
     { key: 'children', icon: '👶', title: 'Bé nhà mình', description: 'Hồ sơ từng bé', onPress: () => navigate(ROUTES.CHILDREN) },
     { key: 'characters', icon: '👨‍👩‍👧', title: 'Nhân vật gia đình', description: 'Người thân xuất hiện trong truyện', onPress: () => navigate(ROUTES.CHARACTERS) },
     { key: 'settings', icon: '⚙️', title: 'Cài đặt', description: 'Tài khoản, mã PIN Chế độ Trẻ Em, máy chủ', onPress: () => navigate(ROUTES.SETTINGS) },
     { key: 'help', icon: '❓', title: 'Trợ giúp', description: 'Câu hỏi thường gặp', onPress: () => navigate(ROUTES.HELP) },
     { key: 'market', icon: '🛒', title: 'Chợ truyện', description: 'Chưa kết nối máy chủ', badge: 'Đang chờ quyết định phạm vi', onPress: () => navigate(ROUTES.MARKET) },
-  ];
+  ].filter((item) => __DEV__ || item.key !== 'market');
 
   const renderRoute = () => {
     switch (nav.current.route) {

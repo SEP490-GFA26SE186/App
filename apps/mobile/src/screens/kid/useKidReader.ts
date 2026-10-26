@@ -173,13 +173,9 @@ export const useKidReader = (source: KidDataSource) => {
       if (alive.current) setResults((r) => ({ ...r, [cp.id]: result }));
     } catch (e) {
       if (!alive.current) return;
-      if (e instanceof ApiError && e.status === 409) {
-        // Lượt đọc đã kết thúc ở nơi khác: không chấm thêm, cho bé đọc tiếp
-        setResults((r) => ({ ...r, [cp.id]: { checkpointId: cp.id, attempts: 1, skipped: false, done: true, correct: null } }));
-      } else {
-        if (isLost(e)) setLost(true);
-        setActionError(messageOf(e, 'Chưa gửi được câu trả lời. Bé thử lại nhé.'));
-      }
+      // 409 (BE: 'Lượt đọc này đã kết thúc', câu trả lời KHÔNG được lưu) cũng hiện lỗi thật, không coi là xong
+      if (isLost(e)) setLost(true);
+      setActionError(messageOf(e, 'Chưa gửi được câu trả lời. Bé thử lại nhé.'));
     } finally {
       busy.current = false;
       if (alive.current) setSubmitting(false);
