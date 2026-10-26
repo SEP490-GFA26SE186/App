@@ -85,14 +85,15 @@ export const HeyTopBar: React.FC<HeyTopBarProps> = ({
             onPress={onOpenMenu}
             style={styles.avatarButton}
           >
-            <Image
-              source={{
-                uri:
-                  currentUser?.avatarUrl ||
-                  'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150',
-              }}
-              style={styles.avatarImage}
-            />
+            {currentUser?.avatarUrl ? (
+              <Image source={{ uri: currentUser.avatarUrl }} style={styles.avatarImage} />
+            ) : (
+              <View style={[styles.avatarImage, { alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFF9E0' }]}>
+                <Text style={{ fontSize: 16, fontWeight: '900', color: '#7A5A00' }}>
+                  {(currentUser?.fullName || '?').trim().charAt(0).toUpperCase()}
+                </Text>
+              </View>
+            )}
           </TouchableOpacity>
         </View>
       </View>

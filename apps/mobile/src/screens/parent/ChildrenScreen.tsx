@@ -1,7 +1,7 @@
 // apps/mobile/src/screens/parent/ChildrenScreen.tsx
-// B3 – Hồ sơ bé (Web: ChildrenPage). Danh sách + chọn bé + thêm hồ sơ (BE thật); sửa/xóa chờ tích hợp API (C6).
+// B3/C6 – Hồ sơ bé (Web: ChildrenPage). Danh sách + chọn bé + thêm/sửa/xóa hồ sơ qua BE thật.
 import React, { useState } from 'react';
-import { View, Text, ScrollView, StyleSheet } from 'react-native';
+import { Alert, View, Text, ScrollView, StyleSheet } from 'react-native';
 import { ChildProfile } from '../../../../../packages/shared-types';
 import { HeyButton } from '../../components/ui/HeyButton';
 import { HeyCard } from '../../components/ui/HeyCard';
@@ -11,6 +11,7 @@ import { ScreenHeader } from '../../components/ui/ScreenHeader';
 import { ChildFormSheet } from '../../components/parent/ChildFormSheet';
 import { Colors } from '../../theme/colors';
 import { ageLabel, childEmoji, formatBirthDate } from '../../utils/child';
+import { childService } from '../../services';
 import type { DataStatus } from '../../stores/useParentData';
 
 interface ChildrenScreenProps {
@@ -19,7 +20,8 @@ interface ChildrenScreenProps {
   dataStatus: DataStatus;
   hasKidPin: boolean;
   onSelect: (id: string) => void;
-  onChildCreated: (child: ChildProfile) => void;
+  onChildSaved: (child: ChildProfile, isNew: boolean) => void;
+  onChildDeleted: (id: string) => void;
   onOpenKidMode: (child: ChildProfile) => void;
   onOpenSettings: () => void;
   onBack: () => void;
@@ -31,12 +33,44 @@ export const ChildrenScreen: React.FC<ChildrenScreenProps> = ({
   dataStatus,
   hasKidPin,
   onSelect,
-  onChildCreated,
+  onChildSaved,
+  onChildDeleted,
   onOpenKidMode,
   onOpenSettings,
   onBack,
 }) => {
   const [formOpen, setFormOpen] = useState(false);
+  const [editing, setEditing] = useState<ChildProfile | undefined>(undefined);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const openForm = (child?: ChildProfile) => {
+    setEditing(child);
+    setFormOpen(true);
+  };
+  const confirmDelete = (child: ChildProfile) => {
+    if (deletingId) return;
+    Alert.alert(
+      `Xóa hồ sơ của ${child.name}?`,
+      'Tủ sách và tiến độ đọc của bé sẽ không còn hiển thị. Thao tác này không hoàn tác được.',
+      [
+        { text: 'Hủy', style: 'cancel' },
+        {
+          text: 'Xóa',
+          style: 'destructive',
+          onPress: async () => {
+            setDeletingId(child.id);
+            try {
+              await childService.deleteChild(child.id);
+              onChildDeleted(child.id);
+            } catch (err: any) {
+              Alert.alert('Không xóa được hồ sơ', err?.message || 'Vui lòng thử lại.');
+            } finally {
+              setDeletingId(null);
+            }
+          },
+        },
+      ]
+    );
+  };
   const loading = dataStatus === 'loading' && childrenProfiles.length === 0;
 
   return (
@@ -47,7 +81,7 @@ export const ChildrenScreen: React.FC<ChildrenScreenProps> = ({
         onBack={onBack}
       />
 
-      <HeyButton title="➕ Thêm hồ sơ bé mới" onPress={() => setFormOpen(true)} style={styles.addBtn} />
+      <HeyButton title="➕ Thêm hồ sơ bé mới" onPress={() => openForm()} style={styles.addBtn} />
 
       {!hasKidPin && (
         <HeyCard variant="yellow" style={styles.notice}>
@@ -90,24 +124,28 @@ export const ChildrenScreen: React.FC<ChildrenScreenProps> = ({
                   <HeyButton title="Chọn bé" variant="outline" size="sm" onPress={() => onSelect(c.id)} style={styles.actionBtn} />
                 )}
                 <HeyButton title="👶 Chế độ Bé" variant="teal" size="sm" onPress={() => onOpenKidMode(c)} style={styles.actionBtn} />
+                <HeyButton title="✏️ Sửa" variant="outline" size="sm" onPress={() => openForm(c)} style={styles.actionBtn} />
+                <HeyButton
+                  title={deletingId === c.id ? '⏳ Đang xóa...' : '🗑️ Xóa'}
+                  variant="outline"
+                  size="sm"
+                  disabled={!!deletingId}
+                  onPress={() => confirmDelete(c)}
+                  style={styles.actionBtn}
+                />
               </View>
             </HeyCard>
           );
         })
       )}
 
-      {childrenProfiles.length > 0 && (
-        <Text style={styles.footnote}>
-          Chỉnh sửa và xóa hồ sơ bé sẽ có khi ứng dụng kết nối đầy đủ với máy chủ.
-        </Text>
-      )}
-
       <ChildFormSheet
         visible={formOpen}
+        child={editing}
         onClose={() => setFormOpen(false)}
-        onCreated={(child) => {
-          onChildCreated(child);
-          onSelect(child.id);
+        onSaved={(child) => {
+          onChildSaved(child, !editing);
+          if (!editing) onSelect(child.id);
         }}
       />
     </ScrollView>
@@ -128,7 +166,6 @@ const styles = StyleSheet.create({
   cardInfo: { flex: 1 },
   name: { fontSize: 17, fontWeight: '900', color: Colors.textPrimary },
   meta: { fontSize: 12, color: Colors.textSecondary, marginTop: 2 },
-  cardActions: { flexDirection: 'row', gap: 8, marginTop: 12, justifyContent: 'flex-end' },
+  cardActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12, justifyContent: 'flex-end' },
   actionBtn: { minWidth: 110 },
-  footnote: { fontSize: 11, color: Colors.textSecondary, textAlign: 'center', marginTop: 8 },
 });

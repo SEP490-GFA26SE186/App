@@ -1,7 +1,7 @@
 // apps/mobile/src/components/parent/ChildFormSheet.tsx
-// Form thêm hồ sơ bé (POST /children): name ≤100, birthDate YYYY-MM-DD (nhập chữ, không picker).
-// Chỉ báo thành công khi BE tạo xong; lỗi (vd vượt giới hạn hồ sơ của gói) hiện nguyên văn từ BE.
-import React, { useRef, useState } from 'react';
+// Form thêm/sửa hồ sơ bé (POST/PUT /children): name ≤100, birthDate YYYY-MM-DD (nhập chữ, không picker).
+// Chỉ báo thành công khi BE lưu xong; lỗi (vd vượt giới hạn hồ sơ của gói) hiện nguyên văn từ BE.
+import React, { useEffect, useRef, useState } from 'react';
 import { Text, StyleSheet } from 'react-native';
 import { ChildProfile } from '../../../../../packages/shared-types';
 import { Sheet } from '../ui/Sheet';
@@ -12,11 +12,14 @@ import { CHILD_NAME_MAX, validateBirthDate } from '../../utils/validation';
 
 interface ChildFormSheetProps {
   visible: boolean;
+  /** Có giá trị = sửa hồ sơ này; không có = thêm mới */
+  child?: ChildProfile;
   onClose: () => void;
-  onCreated: (child: ChildProfile) => void;
+  onSaved: (child: ChildProfile) => void;
 }
 
-export const ChildFormSheet: React.FC<ChildFormSheetProps> = ({ visible, onClose, onCreated }) => {
+export const ChildFormSheet: React.FC<ChildFormSheetProps> = ({ visible, child, onClose, onSaved }) => {
+  const editing = !!child;
   const [name, setName] = useState('');
   const [birthDate, setBirthDate] = useState('');
   const [errors, setErrors] = useState<{ name?: string; birthDate?: string }>({});
@@ -24,10 +27,17 @@ export const ChildFormSheet: React.FC<ChildFormSheetProps> = ({ visible, onClose
   const [submitting, setSubmitting] = useState(false);
   const submittingRef = useRef(false);
 
+  // Mỗi lần mở: nạp giá trị hiện tại (sửa) hoặc để trống (thêm)
+  useEffect(() => {
+    if (!visible) return;
+    setName(child?.name ?? '');
+    setBirthDate(child?.birthDate ?? '');
+    setErrors({});
+    setFormError(null);
+  }, [visible, child?.id]);
+
   const close = () => {
     if (submittingRef.current) return;
-    setFormError(null);
-    setErrors({});
     onClose();
   };
 
@@ -45,13 +55,12 @@ export const ChildFormSheet: React.FC<ChildFormSheetProps> = ({ visible, onClose
     submittingRef.current = true;
     setSubmitting(true);
     try {
-      const created = await childService.createChild({ name: name.trim(), birthDate: birthDate.trim() });
-      setName('');
-      setBirthDate('');
-      onCreated(created);
+      const payload = { name: name.trim(), birthDate: birthDate.trim() };
+      const saved = child ? await childService.updateChild(child.id, payload) : await childService.createChild(payload);
+      onSaved(saved);
       onClose();
     } catch (err: any) {
-      setFormError(err?.message || 'Không thể tạo hồ sơ bé. Vui lòng thử lại.');
+      setFormError(err?.message || (editing ? 'Không thể lưu hồ sơ bé. Vui lòng thử lại.' : 'Không thể tạo hồ sơ bé. Vui lòng thử lại.'));
     } finally {
       submittingRef.current = false;
       setSubmitting(false);
@@ -61,7 +70,7 @@ export const ChildFormSheet: React.FC<ChildFormSheetProps> = ({ visible, onClose
   return (
     <Sheet
       visible={visible}
-      title="Thêm hồ sơ bé"
+      title={editing ? 'Sửa hồ sơ bé' : 'Thêm hồ sơ bé'}
       description="Mỗi bé có một hồ sơ riêng để theo dõi tủ sách và tiến độ EQ."
       onClose={close}
     >
@@ -89,7 +98,7 @@ export const ChildFormSheet: React.FC<ChildFormSheetProps> = ({ visible, onClose
       />
       {!!formError && <Text style={styles.formError}>⚠️ {formError}</Text>}
       <HeyButton
-        title={submitting ? '⏳ Đang tạo...' : 'Tạo hồ sơ'}
+        title={submitting ? '⏳ Đang lưu...' : editing ? 'Lưu thay đổi' : 'Tạo hồ sơ'}
         onPress={submit}
         disabled={submitting}
         style={styles.btn}

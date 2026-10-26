@@ -1,6 +1,6 @@
 // apps/mobile/src/navigation/ParentTabs.tsx
 // Khung giao diện Parent: thanh trên, dải trạng thái dữ liệu, nội dung theo route, thanh tab, modal đọc truyện.
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Alert, View, Text, StyleSheet, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { Role, Story } from '../../../../packages/shared-types';
 import { SessionUser } from '../types/sessionUser';
@@ -22,6 +22,7 @@ import { HelpScreen } from '../screens/parent/HelpScreen';
 import { MarketplaceScreen } from '../screens/scope-pending/MarketplaceScreen';
 import { SellerDashboard } from '../screens/scope-pending/SellerDashboard';
 import { ModeratorAdminScreen } from '../screens/scope-pending/ModeratorAdminScreen';
+import { authService, storyService } from '../services';
 import { useAuth, useKidSession, useParentData } from '../stores/SessionProvider';
 import { ParentNavigation } from './useParentNavigation';
 import { ROUTES } from './routes';
@@ -44,6 +45,38 @@ export const ParentTabs: React.FC<ParentTabsProps> = ({ currentUser, nav, active
   const [selectedStoryToRead, setSelectedStoryToRead] = useState<Story | null>(null);
   const { navigate, goBack } = nav;
   const hasKidPin = !!currentUser.kidModePinHash;
+
+  // Làm mới số dư credit từ BE (GET /auth/me); lỗi thì giữ số cũ, không đoán
+  const mounted = useRef(true);
+  useEffect(() => () => {
+    mounted.current = false;
+  }, []);
+  const refreshCredit = () => {
+    authService
+      .getMe()
+      .then((u) => mounted.current && auth.setCurrentUser(u))
+      .catch(() => {});
+  };
+
+  // Thêm truyện vào tủ sách của bé đang chọn (POST /bookshelf); 422 = truyện chưa sẵn sàng cho bé (BE nêu lý do)
+  const shelfBusy = useRef(false);
+  const addToShelf = async (story: Story) => {
+    const child = data.selectedChild;
+    if (!child) {
+      Alert.alert('Chưa có hồ sơ bé', 'Ba mẹ cần thêm hồ sơ bé trước khi đưa truyện lên tủ sách.');
+      return;
+    }
+    if (shelfBusy.current) return;
+    shelfBusy.current = true;
+    try {
+      await storyService.addToShelf(child.id, story.id);
+      Alert.alert('Đã thêm', `“${story.title}” đã nằm trên tủ sách của ${child.name}.`);
+    } catch (e: any) {
+      Alert.alert('Chưa thêm được', e?.errors?.[0]?.message || e?.message || 'Vui lòng thử lại.');
+    } finally {
+      shelfBusy.current = false;
+    }
+  };
 
   const moreItems: MoreMenuItem[] = [
     { key: 'children', icon: '👶', title: 'Bé nhà mình', description: 'Hồ sơ từng bé', onPress: () => navigate(ROUTES.CHILDREN) },
@@ -70,7 +103,7 @@ export const ParentTabs: React.FC<ParentTabsProps> = ({ currentUser, nav, active
             onOpenLibrary={() => navigate(ROUTES.LIBRARY)}
             onOpenEq={() => navigate(ROUTES.EQ)}
             onOpenChildren={() => navigate(ROUTES.CHILDREN)}
-            onSelectStoryToRead={setSelectedStoryToRead}
+            onOpenStory={(s) => navigate(ROUTES.STORY, { storyId: s.id })}
           />
         );
       case ROUTES.LIBRARY:
@@ -82,16 +115,21 @@ export const ParentTabs: React.FC<ParentTabsProps> = ({ currentUser, nav, active
             dataStatus={data.dataStatus}
             onSelectChild={data.selectChild}
             onOpenStory={(s) => navigate(ROUTES.STORY, { storyId: s.id })}
-            onAddToShelf={() => notSupported('Thêm truyện vào tủ sách của bé')}
+            onAddToShelf={addToShelf}
             onCreateStory={() => navigate(ROUTES.CREATE)}
           />
         );
       case ROUTES.STORY:
         return (
           <StoryDetailScreen
-            story={data.stories.find((s) => s.id === nav.current.params?.storyId)}
+            key={nav.current.params?.storyId}
+            storyId={nav.current.params?.storyId as string}
+            summary={data.stories.find((s) => s.id === nav.current.params?.storyId)}
+            selectedChild={data.selectedChild}
             onBack={goBack}
             onRead={setSelectedStoryToRead}
+            onStoryLoaded={data.upsertStory}
+            onCreditsChanged={refreshCredit}
             onUnsupported={notSupported}
           />
         );
@@ -100,8 +138,15 @@ export const ParentTabs: React.FC<ParentTabsProps> = ({ currentUser, nav, active
           <StoryWizard
             characters={data.characters}
             templates={data.templates}
-            onCharacterCreated={(c) => data.setCharacters((prev) => [...prev, c])}
-            onCancel={() => navigate(ROUTES.HOME)}
+            creditBalance={currentUser.creditBalance}
+            onCharacterCreated={data.addCharacter}
+            onStoryCreated={data.upsertStory}
+            onOpenStory={(id) => {
+              void data.reload();
+              navigate(ROUTES.STORY, { storyId: id });
+            }}
+            onCreditsChanged={refreshCredit}
+            onCancel={() => navigate(ROUTES.LIBRARY)}
           />
         );
       case ROUTES.EQ:
@@ -124,7 +169,17 @@ export const ParentTabs: React.FC<ParentTabsProps> = ({ currentUser, nav, active
             dataStatus={data.dataStatus}
             hasKidPin={hasKidPin}
             onSelect={data.selectChild}
-            onChildCreated={data.addChild}
+            onChildSaved={(child, isNew) => {
+              if (isNew) data.addChild(child);
+              else {
+                data.replaceChild(child);
+                void data.reload(); // tên bé đồng bộ sang nhân vật đại diện
+              }
+            }}
+            onChildDeleted={(id) => {
+              data.removeChild(id);
+              void data.reload(); // nhân vật đại diện bị BE xóa theo
+            }}
             onOpenKidMode={(c) => kid.openKidMode(c)}
             onOpenSettings={() => navigate(ROUTES.SETTINGS)}
             onBack={goBack}
@@ -135,7 +190,8 @@ export const ParentTabs: React.FC<ParentTabsProps> = ({ currentUser, nav, active
           <CharactersScreen
             characters={data.characters}
             dataStatus={data.dataStatus}
-            onCharacterCreated={(c) => data.setCharacters((prev) => [...prev, c])}
+            onCharacterSaved={(c, isNew) => (isNew ? data.addCharacter(c) : data.replaceCharacter(c))}
+            onCharacterDeleted={data.removeCharacter}
             onBack={goBack}
           />
         );

@@ -1,9 +1,11 @@
 // apps/mobile/src/screens/parent/StoryWizard.tsx
 // B5 – Xưởng truyện: tạo truyện theo 3 lối vào (Web: CreateStoryPage). Một trang gồm các mục đánh số:
 // 1) lối vào  2) nội dung  3) nhân vật (đúng 1 nhân vật chính)  4) độ dài + tên truyện.
-// Dữ liệu nhập chỉ nằm trong state màn hình. Bước "Tạo truyện" CHƯA nối BE (C8: POST /stories → /generate → poll):
-// hiện GenerationPanel 'unsupported', không gọi endpoint nào, không tạo truyện/ID/tiến độ giả, không trừ credit.
-import React, { useMemo, useState } from 'react';
+// C8: nối BE thật. Lối "Chuyện mẫu": POST /stories → POST /generate → poll /generation.
+// Lối "Kể chuyện nhà mình": POST /stories/analyze → xác nhận → POST /stories (analysisToken) → generate → poll.
+// Lối "Tự viết": trình soạn trang/điểm dừng chưa có trên Mobile → "Chưa hỗ trợ", không gọi API.
+// Credit do BE giữ/hoàn; Mobile chỉ hiển thị giá (GET /stories/ai-pricing) và số dư (GET /auth/me).
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { View, Text, ScrollView, Switch, TouchableOpacity, StyleSheet } from 'react-native';
 import { PedagogicalTemplate } from '../../../../../packages/shared-types';
 import { HeyButton } from '../../components/ui/HeyButton';
@@ -14,9 +16,11 @@ import { Badge } from '../../components/ui/Badge';
 import { StateView } from '../../components/ui/StateView';
 import { ScreenHeader } from '../../components/ui/ScreenHeader';
 import { CharacterFormSheet } from '../../components/parent/CharacterFormSheet';
-import { GenerationPanel } from '../../components/parent/GenerationPanel';
+import { GenerationRunner } from '../../components/parent/GenerationRunner';
+import { storyService } from '../../services';
+import type { AiPricingDto, AnalyzeStoryResultDto } from '../../types/api';
 import { Colors } from '../../theme/colors';
-import { CharacterView } from '../../types/viewModels';
+import { CharacterView, StoryView } from '../../types/viewModels';
 import {
   AI_LENGTHS,
   SITUATION_MAX,
@@ -29,7 +33,15 @@ import {
 interface StoryWizardProps {
   characters: CharacterView[];
   templates: PedagogicalTemplate[];
+  /** Số dư credit từ BE (null = chưa biết) */
+  creditBalance: number | null;
   onCharacterCreated: (character: CharacterView) => void;
+  /** BE đã tạo truyện (bản nháp) */
+  onStoryCreated: (story: StoryView) => void;
+  /** AI viết xong: mở truyện */
+  onOpenStory: (storyId: string) => void;
+  /** Số dư credit có thể đã đổi (giữ/hoàn) */
+  onCreditsChanged: () => void;
   onCancel: () => void;
 }
 
@@ -53,7 +65,16 @@ const Section: React.FC<{ step: number; title: string; hint?: string; children: 
   </HeyCard>
 );
 
-export const StoryWizard: React.FC<StoryWizardProps> = ({ characters, templates, onCharacterCreated, onCancel }) => {
+export const StoryWizard: React.FC<StoryWizardProps> = ({
+  characters,
+  templates,
+  creditBalance,
+  onCharacterCreated,
+  onStoryCreated,
+  onOpenStory,
+  onCreditsChanged,
+  onCancel,
+}) => {
   const [entry, setEntry] = useState<StoryEntry | null>(null);
   const [topicId, setTopicId] = useState<string | null>(null);
   const [situation, setSituation] = useState('');
@@ -64,18 +85,38 @@ export const StoryWizard: React.FC<StoryWizardProps> = ({ characters, templates,
   const [useTts, setUseTts] = useState(true);
   const [charSheet, setCharSheet] = useState(false);
   const [error, setError] = useState('');
-  const [submitted, setSubmitted] = useState(false);
+  const [pricing, setPricing] = useState<AiPricingDto | null>(null);
+  const [pricingError, setPricingError] = useState(false);
+  const [analysis, setAnalysis] = useState<AnalyzeStoryResultDto | null>(null);
+  const [busy, setBusy] = useState(false);
+  const busyRef = useRef(false);
+  // Truyện đã tạo ở BE đang được AI viết (hoặc chờ thử lại)
+  const [generating, setGenerating] = useState<string | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    storyService
+      .getAiPricing()
+      .then((p) => alive && setPricing(p))
+      .catch(() => alive && setPricingError(true));
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   const isAi = entry === 'family' || entry === 'topic';
 
   const toggleCharacter = (id: string) => {
     const next = selected.includes(id) ? selected.filter((x) => x !== id) : [...selected, id];
     setSelected(next);
+    setAnalysis(null);
     // Nhân vật chính bị bỏ chọn (hoặc chưa có) → lấy nhân vật đầu tiên còn lại
     if (!next.includes(mainId ?? '')) setMainId(next[0] ?? null);
   };
 
   const situationLength = situation.trim().length;
+  const cost = isAi ? pricing?.lengths.find((l) => l.length === length)?.credits : undefined;
+  const notEnough = cost != null && creditBalance != null && creditBalance < cost;
   // Cùng quy tắc với Web (`missing`)
   const missing = useMemo(() => {
     if (!entry) return 'Ba mẹ chọn một lối vào nhé';
@@ -86,23 +127,97 @@ export const StoryWizard: React.FC<StoryWizardProps> = ({ characters, templates,
     if (selected.length === 0) return 'Ba mẹ chọn ít nhất một nhân vật nhé';
     if (!title.trim()) return 'Ba mẹ đặt tên cho truyện nhé';
     if (title.trim().length > 200) return 'Tên truyện tối đa 200 ký tự';
+    if (notEnough) return `Truyện này cần ${cost} credit, ba mẹ còn ${creditBalance} credit`;
     return '';
-  }, [entry, topicId, templates, situationLength, selected, title]);
+  }, [entry, topicId, templates, situationLength, selected, title, notEnough, cost, creditBalance]);
+
+  // Nhân vật chính đứng đầu (→ token {NV1}); analyze và tạo truyện phải gửi cùng thứ tự
+  const orderedCharacters = () =>
+    [mainId as string, ...selected.filter((id) => id !== mainId)].map((characterId) => ({ characterId, isMain: characterId === mainId }));
+
+  const familyMessage = (err: any): string => {
+    if (err?.status === 429) return err.message || 'Hôm nay ba mẹ đã phân tích nhiều lần rồi, mai thử lại nhé';
+    if (err?.status >= 500) return 'Chưa phân tích được, ba mẹ thử lại nhé';
+    return err?.errors?.[0]?.message || err?.message || 'Có lỗi xảy ra, ba mẹ thử lại nhé';
+  };
+
+  // Chạy một thao tác ghi: chặn bấm đúp, hiện lỗi BE nguyên văn
+  const run = async (task: () => Promise<void>, onError: (e: any) => string) => {
+    if (busyRef.current) return;
+    busyRef.current = true;
+    setBusy(true);
+    setError('');
+    try {
+      await task();
+    } catch (e: any) {
+      setError(onError(e));
+    } finally {
+      busyRef.current = false;
+      setBusy(false);
+    }
+  };
+
+  const createAndGenerate = (payload: Parameters<typeof storyService.createStory>[0]) =>
+    run(async () => {
+      const story = await storyService.createStory(payload);
+      onStoryCreated(story);
+      setGenerating(story.id);
+    }, (e) => e?.errors?.[0]?.message || e?.message || 'Chưa tạo được truyện.');
 
   const submit = () => {
     if (missing) {
       setError(missing);
       return;
     }
-    setError('');
-    setSubmitted(true);
+    if (entry === 'topic') {
+      void createAndGenerate({
+        entry: 'topic',
+        topicId: topicId as string,
+        length,
+        title: title.trim(),
+        characters: orderedCharacters(),
+        useTts,
+      });
+    } else if (entry === 'family') {
+      void run(async () => {
+        setAnalysis(
+          await storyService.analyze({ situation: situation.trim(), characters: orderedCharacters(), length })
+        );
+      }, familyMessage);
+    }
   };
 
-  if (submitted) {
+  const createFamily = () => {
+    if (!analysis) return;
+    if (analysis.expiresAt && new Date(analysis.expiresAt) <= new Date()) {
+      setAnalysis(null);
+      setError('Bản phân tích đã hết hạn, ba mẹ bấm “Xem bé sẽ tập gì” lại nhé');
+      return;
+    }
+    void createAndGenerate({
+      entry: 'family',
+      length,
+      title: title.trim(),
+      characters: orderedCharacters(),
+      useTts,
+      situation: situation.trim(),
+      analysisToken: analysis.analysisToken,
+      scored: true,
+    });
+  };
+
+  if (generating) {
     return (
       <ScrollView contentContainerStyle={styles.content}>
-        <ScreenHeader title="Tạo truyện" onBack={() => setSubmitted(false)} />
-        <GenerationPanel status="unsupported" onBack={() => setSubmitted(false)} />
+        <ScreenHeader title="AI đang viết truyện" subtitle={title.trim() || undefined} onBack={onCancel} />
+        <GenerationRunner
+          storyId={generating}
+          start
+          onSucceeded={() => onOpenStory(generating)}
+          onCreditsChanged={onCreditsChanged}
+          onBack={onCancel}
+        />
+        <Text style={styles.hint}>Truyện đã được lưu ở “Tủ truyện”. Ba mẹ có thể thoát, AI vẫn tiếp tục viết.</Text>
       </ScrollView>
     );
   }
@@ -135,7 +250,7 @@ export const StoryWizard: React.FC<StoryWizardProps> = ({ characters, templates,
           <HeyInput
             placeholder="Hôm nay ở trường, bé bị bạn giành mất đồ chơi và đã khóc…"
             value={situation}
-            onChangeText={(t) => { setSituation(t); setError(''); }}
+            onChangeText={(t) => { setSituation(t); setAnalysis(null); setError(''); }}
             multiline
             numberOfLines={5}
             hint={`${situationLength}/${SITUATION_MAX} ký tự (tối thiểu ${SITUATION_MIN})`}
@@ -207,10 +322,18 @@ export const StoryWizard: React.FC<StoryWizardProps> = ({ characters, templates,
               <>
                 <View style={styles.chips}>
                   {AI_LENGTHS.map((l) => (
-                    <HeyChip key={l.value} label={`${l.label} · ${l.pages} trang`} selected={length === l.value} onPress={() => setLength(l.value)} />
+                    <HeyChip key={l.value} label={`${l.label} · ${l.pages} trang`} selected={length === l.value} onPress={() => { setLength(l.value); setAnalysis(null); }} />
                   ))}
                 </View>
-                <Text style={styles.hint}>Số credit cho từng độ dài do máy chủ quy định (bảng giá chưa được kết nối).</Text>
+                <Text style={styles.hint}>
+                  {pricingError
+                    ? 'Chưa tải được bảng giá credit; máy chủ vẫn kiểm tra credit khi viết.'
+                    : cost == null
+                      ? 'Đang tải giá...'
+                      : cost === 0
+                        ? 'Lần viết này miễn phí.'
+                        : `AI viết truyện này dùng ${cost} credit${creditBalance != null ? ` (ba mẹ đang có ${creditBalance})` : ''}. Nếu AI viết lỗi, credit được hoàn lại.`}
+                </Text>
               </>
             )}
             <HeyInput
@@ -228,15 +351,49 @@ export const StoryWizard: React.FC<StoryWizardProps> = ({ characters, templates,
           </Section>
 
           {!!error && <Text style={styles.error}>⚠️ {error}</Text>}
-          <HeyButton title="🪄 Tạo truyện" onPress={submit} size="lg" style={styles.submit} />
+
+          {entry === 'family' && !!analysis && (
+            <HeyCard variant="yellow" style={styles.section}>
+              <Text style={styles.sectionTitle}>Bé sẽ tập gì?</Text>
+              <Text style={styles.entryDesc}>{analysis.momentSummary}</Text>
+              {analysis.subSkills.length > 0 && (
+                <View style={styles.chips}>
+                  {analysis.subSkills.map((k) => (
+                    <Badge key={k.id} label={k.nameVi} tone="info" />
+                  ))}
+                </View>
+              )}
+              <HeyButton
+                title={busy ? '⏳ Đang tạo...' : `🪄 Tạo truyện${cost ? ` (${cost} credit)` : ''}`}
+                onPress={createFamily}
+                disabled={busy}
+                size="lg"
+              />
+            </HeyCard>
+          )}
+
+          {entry === 'handwritten' ? (
+            <HeyButton title="Tạo truyện tự viết (chưa hỗ trợ)" disabled onPress={() => {}} size="lg" style={styles.submit} />
+          ) : (
+            !(entry === 'family' && analysis) && (
+              <HeyButton
+                title={busy ? '⏳ Đang xử lý...' : entry === 'family' ? '🔎 Xem bé sẽ tập gì' : '🪄 Tạo truyện'}
+                onPress={submit}
+                disabled={busy}
+                size="lg"
+                style={styles.submit}
+              />
+            )
+          )}
         </>
       )}
 
       <CharacterFormSheet
         visible={charSheet}
         onClose={() => setCharSheet(false)}
-        onCreated={(c) => {
+        onSaved={(c) => {
           onCharacterCreated(c);
+          setAnalysis(null);
           setSelected((prev) => [...prev, c.id]);
           setMainId((prev) => prev ?? c.id);
         }}

@@ -1,20 +1,24 @@
 // apps/mobile/src/screens/parent/ParentHomeScreen.tsx
 // B2 – Trang chủ phụ huynh (Web: ParentDashboardPage). Lời chào + chọn bé + lối tắt + truyện gần đây + chuyện mẫu.
-// Chỉ hiện dữ liệu BE thật đang có (bé, truyện, chuyện mẫu). Số liệu đọc hôm nay và EQ cần API (C7) → hiện chưa kết nối.
+// Dữ liệu BE thật: bé, truyện, chuyện mẫu, và (C7) tổng quan của bé đang chọn: GET /children/:id/overview.
 import React from 'react';
-import { View, Text, Image, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
-import { ChildProfile, PedagogicalTemplate, Story } from '../../../../../packages/shared-types';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
+import { ChildProfile, PedagogicalTemplate } from '../../../../../packages/shared-types';
+import { StoryView } from '../../types/viewModels';
 import { SessionUser } from '../../types/sessionUser';
 import { HeyButton } from '../../components/ui/HeyButton';
 import { HeyCard } from '../../components/ui/HeyCard';
 import { HeyChip } from '../../components/ui/HeyChip';
 import { Badge } from '../../components/ui/Badge';
 import { StateView } from '../../components/ui/StateView';
+import { StoryCover } from '../../components/ui/StoryCover';
 import { ChildSwitcher } from '../../components/parent/ChildSwitcher';
 import { CuteMascot } from '../../components/CuteMascot';
 import { Colors } from '../../theme/colors';
 import { STORY_STATUS_LABELS } from '../../constants/story';
 import { soundFX } from '../../utils/sound-fx';
+import { childService } from '../../services';
+import { useAsyncResource } from '../../utils/useAsyncResource';
 import type { DataStatus } from '../../stores/useParentData';
 
 const getGreeting = (): string => {
@@ -29,7 +33,7 @@ interface ParentHomeScreenProps {
   currentUser: SessionUser;
   childrenProfiles: ChildProfile[];
   selectedChild?: ChildProfile;
-  stories: Story[];
+  stories: StoryView[];
   templates: PedagogicalTemplate[];
   dataStatus: DataStatus;
   onSelectChild: (id: string) => void;
@@ -38,7 +42,7 @@ interface ParentHomeScreenProps {
   onOpenLibrary: () => void;
   onOpenEq: () => void;
   onOpenChildren: () => void;
-  onSelectStoryToRead: (story: Story) => void;
+  onOpenStory: (story: StoryView) => void;
 }
 
 export const ParentHomeScreen: React.FC<ParentHomeScreenProps> = ({
@@ -54,11 +58,18 @@ export const ParentHomeScreen: React.FC<ParentHomeScreenProps> = ({
   onOpenLibrary,
   onOpenEq,
   onOpenChildren,
-  onSelectStoryToRead,
+  onOpenStory,
 }) => {
   const latest = stories[0];
   const drafts = stories.filter((s) => s.status === 'DRAFT');
   const loadingEmpty = dataStatus === 'loading' && childrenProfiles.length === 0;
+  const childId = selectedChild?.id;
+  const overview = useAsyncResource(
+    () => (childId ? childService.getChildOverview(childId) : Promise.resolve(null)),
+    [childId]
+  );
+  const ov = overview.data;
+  const eqWithData = ov ? ov.eqReport.competencies.filter((c) => c.level != null).length : 0;
 
   return (
     <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -109,20 +120,39 @@ export const ParentHomeScreen: React.FC<ParentHomeScreenProps> = ({
         />
       </View>
 
-      <HeyCard style={styles.block}>
-        <Text style={styles.blockTitle}>Hôm nay của bé</Text>
-        <Text style={styles.muted}>
-          Thời gian đọc, số lượt đọc và truyện đã đọc xong sẽ hiển thị khi ứng dụng kết nối với máy chủ.
-        </Text>
-        <Badge label="Chưa kết nối" tone="warning" />
-      </HeyCard>
+      {!!selectedChild && (
+        <HeyCard style={styles.block}>
+          <Text style={styles.blockTitle}>Hôm nay của {selectedChild.name}</Text>
+          {overview.status === 'loading' && <Text style={styles.muted}>Đang tải...</Text>}
+          {overview.status === 'error' && (
+            <>
+              <Text style={styles.muted}>{overview.error}</Text>
+              <HeyButton title="Thử lại" variant="outline" size="sm" onPress={() => void overview.reload()} style={styles.retry} />
+            </>
+          )}
+          {ov && (
+            <>
+              <Text style={styles.muted}>
+                ⏱ Đã đọc {ov.todayUsage.usedMinutes} phút · {ov.todayUsage.sessionsCount} lượt đọc · {ov.todayUsage.completedCount} lượt hoàn thành
+              </Text>
+              <Text style={styles.muted}>
+                📚 {ov.readingStats.booksInBookshelf} truyện trên tủ sách · {ov.readingStats.completedStories} lượt đọc xong
+              </Text>
+              {!!ov.readingStats.lastReadStory && (
+                <Text style={styles.muted}>📖 Đọc gần nhất: {ov.readingStats.lastReadStory.title}</Text>
+              )}
+              <Text style={styles.muted}>🌱 EQ: {eqWithData}/5 năng lực đã có dữ liệu</Text>
+            </>
+          )}
+        </HeyCard>
+      )}
 
       {latest && (
         <>
           <Text style={styles.sectionTitle}>Truyện gần đây</Text>
-          <TouchableOpacity activeOpacity={0.9} onPress={() => onSelectStoryToRead(latest)}>
+          <TouchableOpacity activeOpacity={0.9} onPress={() => onOpenStory(latest)}>
             <HeyCard style={styles.latest}>
-              <Image source={{ uri: latest.coverImageUrl }} style={styles.thumb} />
+              <StoryCover uri={latest.coverImageUrl} style={styles.thumb} />
               <View style={styles.latestInfo}>
                 <Text style={styles.latestTitle} numberOfLines={2}>
                   {latest.title}
@@ -184,6 +214,7 @@ const styles = StyleSheet.create({
   block: { marginBottom: 12, gap: 6 },
   blockTitle: { fontSize: 15, fontWeight: '900', color: Colors.textPrimary },
   muted: { fontSize: 12, color: Colors.textSecondary, lineHeight: 18 },
+  retry: { alignSelf: 'flex-start' },
   sectionTitle: { fontSize: 15, fontWeight: '900', color: Colors.textPrimary, marginTop: 6, marginBottom: 8 },
   latest: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 12 },
   thumb: { width: 64, height: 64, borderRadius: 12, backgroundColor: '#F1F5F9' },

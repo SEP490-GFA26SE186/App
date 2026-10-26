@@ -1,4 +1,5 @@
-// apps/mobile/src/screens/KidModeScreen.tsx — v2.0 Fairy Garden Theme
+// apps/mobile/src/screens/kid/KidModeScreen.tsx — v2.0 Fairy Garden Theme
+// Kid Mode: tủ sách → đọc truyện → điểm dừng EQ. Dữ liệu qua `source` (kidService thật; UI Preview dùng fixture).
 import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
@@ -8,8 +9,7 @@ import {
   Image,
   StyleSheet,
   Modal,
-  Dimensions,
-  Animated as RNAnimated,
+  ActivityIndicator,
 } from 'react-native';
 import Animated, {
   useSharedValue,
@@ -20,22 +20,24 @@ import Animated, {
   withSequence,
   Easing,
 } from 'react-native-reanimated';
-import { Story, StoryPage, ChildProfile } from '../../../../../packages/shared-types';
+import { ChildProfile } from '../../../../../packages/shared-types';
 import { Colors } from '../../theme/colors';
-import { kidService, authService } from '../../services';
-
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+import { authService } from '../../services/authService';
+import { ApiError } from '../../services/apiClient';
+import { childEmoji } from '../../utils/child';
+import { KidCheckpointCard } from '../../components/kid/KidCheckpointCard';
+import type { KidShelfItemDto } from '../../types/api';
+import type { KidDataSource } from '../../types/viewModels';
+import { useKidReader } from './useKidReader';
 
 interface KidModeScreenProps {
   child: ChildProfile;
-  stories: Story[];
+  /** Nguồn dữ liệu: kidService (BE) ở Kid Mode thật; fixture ở UI Preview */
+  source: KidDataSource;
   // Reject khi BE từ chối/lỗi; resolve khi BE đã xác minh PIN (màn này sẽ được gỡ)
   onExitKidMode: (pin: string) => Promise<void>;
   // Kid session mất/hết hạn: không thể thoát bằng PIN → App xóa phiên và buộc đăng nhập lại bằng mật khẩu
   onKidSessionLost: () => void;
-  onRecordEqSignal: (signal: string, skill: string) => void;
-  /** Ghi chú dưới trạng thái "tủ sách trống" (vd chưa kết nối máy chủ) */
-  shelfNotice?: string;
   /**
    * CHỈ cho UI Preview (dev-only, ADR-020): có giá trị = đây KHÔNG phải Kid Mode thật.
    * Không có PIN, không phiên Kid, không gọi API; nút thoát đóng preview trực tiếp.
@@ -45,10 +47,11 @@ interface KidModeScreenProps {
 
 // Animated Story Card với stagger effect
 const AnimatedStoryCard: React.FC<{
-  story: Story;
+  item: KidShelfItemDto;
   index: number;
+  loading: boolean;
   onPress: () => void;
-}> = ({ story, index, onPress }) => {
+}> = ({ item, index, loading, onPress }) => {
   const opacity = useSharedValue(0);
   const translateY = useSharedValue(28);
   const scale = useSharedValue(0.94);
@@ -78,25 +81,26 @@ const AnimatedStoryCard: React.FC<{
     ] as any,
   }));
 
+  const cover = item.coverImageUrl || item.cover?.imageUrl;
+  const progress = item.readingProgress;
+  const pillText = progress?.isCompleted ? '↺ Đọc lại' : progress && progress.progressPercentage > 0 ? `▶ Đọc tiếp · ${progress.progressPercentage}%` : '▶ Đọc ngay';
+
   return (
-    <TouchableOpacity activeOpacity={1} onPress={handlePress} style={styles.storyCardTouch}>
+    <TouchableOpacity activeOpacity={1} onPress={handlePress} disabled={loading} style={styles.storyCardTouch}>
       <Animated.View style={[styles.storyCard, animStyle]}>
-        <Image
-          source={{
-            uri:
-              story.coverImageUrl ||
-              'https://images.unsplash.com/photo-1512820790803-83ca734da794?w=500',
-          }}
-          style={styles.coverImage}
-        />
-        {/* Gradient overlay on image */}
-        <View style={styles.coverOverlay} />
+        {cover ? (
+          <Image source={{ uri: cover }} style={styles.coverImage} />
+        ) : (
+          <View style={[styles.coverImage, extra.coverPlaceholder]}>
+            <Text style={extra.placeholderEmoji}>📖</Text>
+          </View>
+        )}
         <View style={styles.cardContent}>
           <Text style={styles.storyCardTitle} numberOfLines={2}>
-            {story.title}
+            {item.title}
           </Text>
           <View style={styles.playPill}>
-            <Text style={styles.playPillText}>▶ Đọc ngay</Text>
+            {loading ? <ActivityIndicator size="small" color={Colors.textOnYellow} /> : <Text style={styles.playPillText}>{pillText}</Text>}
           </View>
         </View>
       </Animated.View>
@@ -106,23 +110,22 @@ const AnimatedStoryCard: React.FC<{
 
 export const KidModeScreen: React.FC<KidModeScreenProps> = ({
   child,
-  stories,
+  source,
   onExitKidMode,
   onKidSessionLost,
-  onRecordEqSignal,
-  shelfNotice,
   preview: previewProp,
 }) => {
   // Phòng thủ chiều sâu: prop preview bỏ qua PIN nên bị vô hiệu hóa hoàn toàn ngoài __DEV__
   const preview = __DEV__ ? previewProp : undefined;
-  const [activeStory, setActiveStory] = useState<Story | null>(null);
-  const [activePageIndex, setActivePageIndex] = useState(0);
-  const [isPlayingAudio, setIsPlayingAudio] = useState(false);
+  const reader = useKidReader(source);
+  const { play, page } = reader;
 
   // PIN Lock
   const [showPinModal, setShowPinModal] = useState(false);
   const [enteredPin, setEnteredPin] = useState('');
   const [pinError, setPinError] = useState(false);
+  const [pinMessage, setPinMessage] = useState<string | null>(null);
+  const lockedUntilRef = useRef(0);
   const verifyingPinRef = useRef(false);
   const [sessionLost, setSessionLost] = useState(false);
 
@@ -148,6 +151,12 @@ export const KidModeScreen: React.FC<KidModeScreenProps> = ({
         setEnteredPin('');
         return;
       }
+      // BE trả sẵn thông báo: "Còn N lần thử" (401, kèm attemptsLeft) hoặc khóa tạm (429, kèm retryAfterSeconds)
+      if (err instanceof ApiError && err.status === 429) {
+        const wait = err.errors?.[0]?.retryAfterSeconds;
+        lockedUntilRef.current = Date.now() + (typeof wait === 'number' ? wait : 900) * 1000;
+      }
+      setPinMessage(err instanceof Error && err.message ? err.message : 'Chưa xác nhận được mã PIN. Ba mẹ thử lại nhé.');
       setPinError(true);
       setTimeout(() => {
         setEnteredPin('');
@@ -158,23 +167,35 @@ export const KidModeScreen: React.FC<KidModeScreenProps> = ({
     }
   };
 
+  // BE chấp nhận PIN 4–6 số (auth.validation exitKidMode) → nhập tối đa 6 số rồi bấm "Xác nhận"
   const handlePressPinKey = (num: string) => {
-    if (sessionLost) return;
-    if (enteredPin.length < 4) {
-      const nextPin = enteredPin + num;
-      setEnteredPin(nextPin);
-      if (nextPin.length === 4) {
-        handleVerifyPin(nextPin);
-      }
-    }
+    if (sessionLost || verifyingPinRef.current || Date.now() < lockedUntilRef.current) return;
+    if (enteredPin.length < 6) setEnteredPin(enteredPin + num);
   };
 
-  const activePage = activeStory?.pages[activePageIndex];
+  const confirmPin = () => {
+    if (sessionLost || enteredPin.length < 4 || Date.now() < lockedUntilRef.current) return;
+    void handleVerifyPin(enteredPin);
+  };
+
+  const closePinModal = () => {
+    setShowPinModal(false);
+    setPinMessage(null);
+    setEnteredPin('');
+  };
 
   const headerStyle = useAnimatedStyle(() => ({
     opacity: headerOpacity.value,
     transform: [{ translateY: headerTranslateY.value }] as any,
   }));
+
+  const nextLabel = reader.openCheckpoint
+    ? ''
+    : reader.pendingCheckpoint
+      ? 'Trả lời câu hỏi 🌟'
+      : reader.isLast
+        ? 'Đọc xong 🎉'
+        : 'Trang sau 👉';
 
   return (
     <View style={styles.container}>
@@ -190,9 +211,7 @@ export const KidModeScreen: React.FC<KidModeScreenProps> = ({
         {/* Left: Avatar + Greeting */}
         <View style={styles.avatarRow}>
           <View style={styles.kidAvatar}>
-            <Text style={styles.avatarEmoji}>
-              {child?.gender === 'FEMALE' || child?.gender === 'GIRL' ? '👧' : '👦'}
-            </Text>
+            <Text style={styles.avatarEmoji}>{childEmoji(child)}</Text>
           </View>
           <View>
             <Text style={styles.kidGreeting}>
@@ -213,8 +232,17 @@ export const KidModeScreen: React.FC<KidModeScreenProps> = ({
         </View>
       </Animated.View>
 
+      {reader.lost && !preview && (
+        <View style={extra.lostBanner}>
+          <Text style={extra.lostText}>Phiên Chế độ Bé không còn hợp lệ. Ba mẹ đăng nhập lại bằng mật khẩu để tiếp tục.</Text>
+          <TouchableOpacity onPress={onKidSessionLost} style={extra.lostBtn} activeOpacity={0.85}>
+            <Text style={extra.lostBtnText}>Đăng nhập lại</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
       {/* ── MAIN CONTENT ── */}
-      {!activeStory ? (
+      {!play ? (
         /* Story Shelf View */
         <ScrollView
           style={styles.body}
@@ -230,50 +258,78 @@ export const KidModeScreen: React.FC<KidModeScreenProps> = ({
 
           <Text style={styles.shelfTitle}>Tủ sách của {child?.name || 'bé'} 📚</Text>
 
+          {!!reader.actionError && <Text style={extra.errorText}>{reader.actionError}</Text>}
+
+          {reader.shelfStatus === 'loading' && reader.shelf.length === 0 && (
+            <View style={styles.emptyState}>
+              <ActivityIndicator size="large" color={Colors.primary} />
+              <Text style={[styles.emptySubtitle, { marginTop: 12 }]}>Đang mở tủ sách...</Text>
+            </View>
+          )}
+
+          {reader.shelfStatus === 'error' && (
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyEmoji}>☁️</Text>
+              <Text style={styles.emptyTitle}>Chưa mở được tủ sách</Text>
+              <Text style={styles.emptySubtitle}>{reader.shelfError}</Text>
+              {!reader.lost && (
+                <TouchableOpacity onPress={() => void reader.reloadShelf()} style={extra.retryBtn} activeOpacity={0.85}>
+                  <Text style={extra.retryText}>Thử lại</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          )}
+
           <View style={styles.grid}>
-            {stories.map((s, index) => (
+            {reader.shelf.map((item, index) => (
               <AnimatedStoryCard
-                key={s.id}
-                story={s}
+                key={item.storyId}
+                item={item}
                 index={index}
-                onPress={() => {
-                  setActiveStory(s);
-                  setActivePageIndex(0);
-                }}
+                loading={reader.startingId === item.storyId}
+                onPress={() => void reader.open(item.storyId)}
               />
             ))}
           </View>
 
-          {stories.length === 0 && (
+          {reader.shelfStatus === 'ready' && reader.shelf.length === 0 && (
             <View style={styles.emptyState}>
               <Text style={styles.emptyEmoji}>🌱</Text>
               <Text style={styles.emptyTitle}>Tủ sách còn trống</Text>
               <Text style={styles.emptySubtitle}>
-                Ba mẹ đưa truyện lên tủ sách cho bé ở trang sáng tác truyện nhé.
+                Ba mẹ đưa truyện lên tủ sách cho bé ở mục Tủ truyện nhé.
               </Text>
-              {!!shelfNotice && <Text style={styles.emptySubtitle}>{shelfNotice}</Text>}
             </View>
           )}
         </ScrollView>
+      ) : reader.finished ? (
+        <View style={extra.doneBox}>
+          <Text style={styles.emptyEmoji}>🎉</Text>
+          <Text style={styles.emptyTitle}>Bé đọc xong rồi!</Text>
+          <Text style={styles.emptySubtitle}>{play.story.title}</Text>
+          <TouchableOpacity onPress={reader.closeStory} style={extra.retryBtn} activeOpacity={0.85}>
+            <Text style={extra.retryText}>Về tủ sách</Text>
+          </TouchableOpacity>
+        </View>
       ) : (
         /* Reading View */
         <View style={styles.readingContainer}>
           {/* Reader Header */}
           <View style={styles.readerHeader}>
             <TouchableOpacity
-              onPress={() => setActiveStory(null)}
+              onPress={reader.closeStory}
               style={styles.backToShelfBtn}
               activeOpacity={0.8}
             >
               <Text style={styles.backToShelfText}>← Tủ truyện</Text>
             </TouchableOpacity>
             <Text style={styles.readingStoryTitle} numberOfLines={1}>
-              {activeStory.title}
+              {play.story.title}
             </Text>
             {/* Page progress pill */}
             <View style={styles.pageProgressPill}>
               <Text style={styles.pageProgressText}>
-                {activePageIndex + 1}/{activeStory.pages.length}
+                {reader.pageIndex + 1}/{reader.pageCount}
               </Text>
             </View>
           </View>
@@ -281,102 +337,68 @@ export const KidModeScreen: React.FC<KidModeScreenProps> = ({
           <ScrollView style={styles.pageScroll} showsVerticalScrollIndicator={false}>
             {/* Illustration Card — NO hard border */}
             <View style={styles.pageIllustrationBox}>
-              <Image
-                source={{
-                  uri:
-                    activePage?.illustrationUrl ||
-                    activeStory.coverImageUrl ||
-                    'https://images.unsplash.com/photo-1512820790803-83ca734da794?w=600',
-                }}
-                style={styles.pageImage}
-                resizeMode="cover"
-              />
-              {/* Audio FAB */}
-              <TouchableOpacity
-                onPress={() => setIsPlayingAudio(!isPlayingAudio)}
-                style={styles.audioFab}
-                activeOpacity={0.85}
-              >
-                <Text style={styles.audioFabText}>
-                  {isPlayingAudio ? '⏹' : '🔊'}
-                </Text>
-              </TouchableOpacity>
+              {page?.imageUrl ? (
+                <Image source={{ uri: page.imageUrl }} style={styles.pageImage} resizeMode="cover" />
+              ) : (
+                <View style={[styles.pageImage, extra.coverPlaceholder]}>
+                  <Text style={extra.placeholderEmoji}>🌈</Text>
+                </View>
+              )}
             </View>
 
             {/* Story text card */}
             <View style={styles.pageTextBox}>
-              <Text style={styles.pageText}>{activePage?.text}</Text>
+              <Text style={styles.pageText}>{page?.text}</Text>
             </View>
 
-            {/* EQ Choice buttons */}
-            {activePage?.choices && activePage.choices.length > 0 && (
-              <View>
-                <Text style={styles.choiceQuestion}>
-                  Bé muốn làm gì tiếp theo? 🌟
-                </Text>
-                <View style={styles.choiceRow}>
-                  {activePage.choices.map((ch, i) => (
-                    <TouchableOpacity
-                      key={ch.id}
-                      activeOpacity={0.85}
-                      onPress={() => {
-                        onRecordEqSignal(ch.eqSignal || '', 'Courage');
-                        if (activePageIndex < activeStory.pages.length - 1) {
-                          setActivePageIndex(activePageIndex + 1);
-                        }
-                      }}
-                      style={[
-                        styles.kidChoiceBtn,
-                        i === 0 ? styles.choiceBtnLeft : styles.choiceBtnRight,
-                      ]}
-                    >
-                      <Text style={styles.kidChoiceText}>
-                        {i === 0 ? '🌺' : '✨'} {ch.label}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
+            {/* Điểm dừng EQ (BE chấm và trả gợi ý/đáp án) */}
+            {reader.openCheckpoint && (
+              <KidCheckpointCard
+                checkpoint={reader.openCheckpoint}
+                result={reader.resultOf(reader.openCheckpoint.id)}
+                submitting={reader.submitting}
+                error={reader.actionError}
+                onChoose={(choice) => void reader.submit(choice)}
+                onSkip={() => void reader.submit({ skipped: true })}
+                onContinue={reader.continueAfterCheckpoint}
+              />
             )}
+
+            {!reader.openCheckpoint && !!reader.actionError && <Text style={extra.errorText}>{reader.actionError}</Text>}
 
             {/* Bottom padding */}
             <View style={{ height: 20 }} />
           </ScrollView>
 
           {/* Page Navigation Buttons */}
-          <View style={styles.readingNav}>
-            <TouchableOpacity
-              disabled={activePageIndex === 0}
-              onPress={() => setActivePageIndex((p) => Math.max(0, p - 1))}
-              style={[
-                styles.kidNavBtn,
-                activePageIndex === 0 && styles.kidNavBtnDisabled,
-              ]}
-              activeOpacity={0.85}
-            >
-              <Text style={styles.kidNavBtnText}>👈 Trang trước</Text>
-            </TouchableOpacity>
+          {!reader.openCheckpoint && (
+            <View style={styles.readingNav}>
+              <TouchableOpacity
+                disabled={reader.pageIndex === 0}
+                onPress={reader.prev}
+                style={[
+                  styles.kidNavBtn,
+                  reader.pageIndex === 0 && styles.kidNavBtnDisabled,
+                ]}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.kidNavBtnText}>👈 Trang trước</Text>
+              </TouchableOpacity>
 
-            <TouchableOpacity
-              disabled={activePageIndex === activeStory.pages.length - 1}
-              onPress={() =>
-                setActivePageIndex((p) =>
-                  Math.min(activeStory.pages.length - 1, p + 1)
-                )
-              }
-              style={[
-                styles.kidNavBtn,
-                styles.kidNavBtnNext,
-                activePageIndex === activeStory.pages.length - 1 &&
-                  styles.kidNavBtnDisabled,
-              ]}
-              activeOpacity={0.85}
-            >
-              <Text style={[styles.kidNavBtnText, styles.kidNavBtnNextText]}>
-                Trang sau 👉
-              </Text>
-            </TouchableOpacity>
-          </View>
+              <TouchableOpacity
+                disabled={reader.submitting}
+                onPress={reader.next}
+                style={[styles.kidNavBtn, styles.kidNavBtnNext, reader.submitting && styles.kidNavBtnDisabled]}
+                activeOpacity={0.85}
+              >
+                {reader.submitting ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <Text style={[styles.kidNavBtnText, styles.kidNavBtnNextText]}>{nextLabel}</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
       )}
 
@@ -391,8 +413,12 @@ export const KidModeScreen: React.FC<KidModeScreenProps> = ({
 
             <Text style={styles.pinTitle}>Khoá Phụ Huynh</Text>
             <Text style={styles.pinSubtitle}>
-              Nhập mã PIN 4 số của ba mẹ để thoát
+              Nhập mã PIN của ba mẹ (4–6 số) để thoát
             </Text>
+
+            {!!pinMessage && !sessionLost && (
+              <Text style={[styles.pinSubtitle, { color: '#B91C1C', marginBottom: 12 }]}>{pinMessage}</Text>
+            )}
 
             {sessionLost && (
               <View style={{ alignItems: 'center', marginBottom: 12 }}>
@@ -413,7 +439,7 @@ export const KidModeScreen: React.FC<KidModeScreenProps> = ({
 
             {/* PIN dots */}
             <View style={styles.dotsRow}>
-              {[0, 1, 2, 3].map((idx) => (
+              {Array.from({ length: Math.max(4, enteredPin.length) }, (_, idx) => idx).map((idx) => (
                 <View
                   key={idx}
                   style={[
@@ -427,32 +453,36 @@ export const KidModeScreen: React.FC<KidModeScreenProps> = ({
 
             {/* Keypad */}
             <View style={styles.keypad}>
-              {['1', '2', '3', '4', '5', '6', '7', '8', '9', 'C', '0', '✕'].map(
+              {['1', '2', '3', '4', '5', '6', '7', '8', '9', 'C', '0', '⌫'].map(
                 (key) => (
                   <TouchableOpacity
                     key={key}
                     onPress={() => {
-                      if (key === 'C') {
-                        if (!verifyingPinRef.current) setEnteredPin('');
-                      }
-                      else if (key === '✕') setShowPinModal(false);
+                      if (verifyingPinRef.current) return;
+                      if (key === 'C') setEnteredPin('');
+                      else if (key === '⌫') setEnteredPin((p) => p.slice(0, -1));
                       else handlePressPinKey(key);
                     }}
-                    style={[
-                      styles.keyBtn,
-                      key === '✕' && styles.keyBtnCancel,
-                    ]}
+                    style={styles.keyBtn}
                     activeOpacity={0.75}
                   >
-                    <Text style={[
-                      styles.keyText,
-                      key === '✕' && styles.keyTextCancel,
-                    ]}>
-                      {key}
-                    </Text>
+                    <Text style={styles.keyText}>{key}</Text>
                   </TouchableOpacity>
                 )
               )}
+            </View>
+            <View style={extra.pinActions}>
+              <TouchableOpacity onPress={closePinModal} style={[styles.keyBtn, styles.keyBtnCancel, extra.pinActionBtn]} activeOpacity={0.75}>
+                <Text style={[styles.keyText, styles.keyTextCancel]}>Hủy</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={confirmPin}
+                disabled={enteredPin.length < 4}
+                style={[extra.pinConfirm, enteredPin.length < 4 && styles.kidNavBtnDisabled]}
+                activeOpacity={0.85}
+              >
+                <Text style={extra.pinConfirmText}>Xác nhận</Text>
+              </TouchableOpacity>
             </View>
           </View>
         </View>
@@ -460,6 +490,23 @@ export const KidModeScreen: React.FC<KidModeScreenProps> = ({
     </View>
   );
 };
+
+const extra = StyleSheet.create({
+  pinActions: { flexDirection: 'row', gap: 10, width: '100%', alignItems: 'center' },
+  pinActionBtn: { flex: 1, width: undefined, aspectRatio: undefined, paddingVertical: 14, marginBottom: 0 },
+  pinConfirm: { flex: 2, backgroundColor: Colors.secondary, borderRadius: 18, paddingVertical: 14, alignItems: 'center' },
+  pinConfirmText: { color: '#FFFFFF', fontSize: 15, fontWeight: '900' },
+  coverPlaceholder: { alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFF9E0' },
+  placeholderEmoji: { fontSize: 44 },
+  errorText: { color: '#B91C1C', fontSize: 13, fontWeight: '700', textAlign: 'center', marginBottom: 12 },
+  retryBtn: { marginTop: 14, backgroundColor: Colors.primary, borderRadius: 16, paddingHorizontal: 20, paddingVertical: 10 },
+  retryText: { color: Colors.textOnYellow, fontWeight: '900', fontSize: 14 },
+  doneBox: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
+  lostBanner: { backgroundColor: '#FEE2E2', paddingHorizontal: 14, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', gap: 10 },
+  lostText: { flex: 1, fontSize: 12, color: '#B91C1C', fontWeight: '700' },
+  lostBtn: { backgroundColor: '#2563EB', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8 },
+  lostBtnText: { color: '#FFFFFF', fontWeight: '800', fontSize: 12 },
+});
 
 const styles = StyleSheet.create({
   previewBanner: {

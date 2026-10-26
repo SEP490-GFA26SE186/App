@@ -1,8 +1,8 @@
 // apps/mobile/src/screens/parent/CharactersScreen.tsx
-// B4 – Nhân vật gia đình (Web: FamilyCharactersPage). Danh sách + thêm nhân vật (BE thật); sửa/xóa chờ API (C6).
+// B4/C6 – Nhân vật gia đình (Web: FamilyCharactersPage). Danh sách + thêm/sửa/xóa nhân vật qua BE thật.
 // Không có "role" (rev8). Chân dung AI đang tạm dừng (B5) nên chỉ hiện nhãn trạng thái BE trả.
 import React, { useState } from 'react';
-import { View, Text, ScrollView, StyleSheet } from 'react-native';
+import { Alert, View, Text, Image, ScrollView, StyleSheet } from 'react-native';
 import { HeyButton } from '../../components/ui/HeyButton';
 import { HeyCard } from '../../components/ui/HeyCard';
 import { Badge } from '../../components/ui/Badge';
@@ -11,6 +11,7 @@ import { ScreenHeader } from '../../components/ui/ScreenHeader';
 import { CharacterFormSheet } from '../../components/parent/CharacterFormSheet';
 import { Colors } from '../../theme/colors';
 import { CharacterView } from '../../types/viewModels';
+import { characterService } from '../../services';
 import type { DataStatus } from '../../stores/useParentData';
 
 const PORTRAIT_LABELS: Record<string, string> = {
@@ -24,17 +25,46 @@ const PORTRAIT_LABELS: Record<string, string> = {
 interface CharactersScreenProps {
   characters: CharacterView[];
   dataStatus: DataStatus;
-  onCharacterCreated: (character: CharacterView) => void;
+  onCharacterSaved: (character: CharacterView, isNew: boolean) => void;
+  onCharacterDeleted: (id: string) => void;
   onBack: () => void;
 }
 
 export const CharactersScreen: React.FC<CharactersScreenProps> = ({
   characters,
   dataStatus,
-  onCharacterCreated,
+  onCharacterSaved,
+  onCharacterDeleted,
   onBack,
 }) => {
   const [formOpen, setFormOpen] = useState(false);
+  const [editing, setEditing] = useState<CharacterView | undefined>(undefined);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const openForm = (c?: CharacterView) => {
+    setEditing(c);
+    setFormOpen(true);
+  };
+  const confirmDelete = (c: CharacterView) => {
+    if (deletingId) return;
+    Alert.alert(`Xóa nhân vật ${c.name}?`, 'Các truyện đã tạo vẫn giữ nguyên.', [
+      { text: 'Hủy', style: 'cancel' },
+      {
+        text: 'Xóa',
+        style: 'destructive',
+        onPress: async () => {
+          setDeletingId(c.id);
+          try {
+            await characterService.deleteCharacter(c.id);
+            onCharacterDeleted(c.id);
+          } catch (err: any) {
+            Alert.alert('Không xóa được nhân vật', err?.message || 'Vui lòng thử lại.');
+          } finally {
+            setDeletingId(null);
+          }
+        },
+      },
+    ]);
+  };
   const loading = dataStatus === 'loading' && characters.length === 0;
 
   return (
@@ -48,7 +78,7 @@ export const CharactersScreen: React.FC<CharactersScreenProps> = ({
       <View style={styles.topRow}>
         <Badge label={`${characters.length} nhân vật`} tone="neutral" />
       </View>
-      <HeyButton title="➕ Thêm nhân vật" onPress={() => setFormOpen(true)} style={styles.addBtn} />
+      <HeyButton title="➕ Thêm nhân vật" onPress={() => openForm()} style={styles.addBtn} />
 
       {loading ? (
         <StateView variant="loading" title="Đang tải nhân vật..." />
@@ -66,6 +96,7 @@ export const CharactersScreen: React.FC<CharactersScreenProps> = ({
         <View style={styles.grid}>
           {characters.map((c) => (
             <HeyCard key={c.id} style={styles.card}>
+              {!!c.photoReferenceUrl && <Image source={{ uri: c.photoReferenceUrl }} style={styles.portrait} />}
               <Text style={styles.name} numberOfLines={1}>
                 {c.name}
               </Text>
@@ -79,19 +110,28 @@ export const CharactersScreen: React.FC<CharactersScreenProps> = ({
                 />
                 {!!c.childId && <Badge label="Nhân vật của bé" tone="info" />}
               </View>
+              <View style={styles.actions}>
+                <HeyButton title="✏️ Sửa" variant="outline" size="sm" onPress={() => openForm(c)} />
+                {!c.childId && (
+                  <HeyButton
+                    title={deletingId === c.id ? '⏳' : '🗑️ Xóa'}
+                    variant="outline"
+                    size="sm"
+                    disabled={!!deletingId}
+                    onPress={() => confirmDelete(c)}
+                  />
+                )}
+              </View>
             </HeyCard>
           ))}
         </View>
       )}
 
-      {characters.length > 0 && (
-        <Text style={styles.footnote}>Chỉnh sửa và xóa nhân vật sẽ có khi ứng dụng kết nối đầy đủ với máy chủ.</Text>
-      )}
-
       <CharacterFormSheet
         visible={formOpen}
+        character={editing}
         onClose={() => setFormOpen(false)}
-        onCreated={onCharacterCreated}
+        onSaved={(c) => onCharacterSaved(c, !editing)}
       />
     </ScrollView>
   );
@@ -106,5 +146,6 @@ const styles = StyleSheet.create({
   name: { fontSize: 15, fontWeight: '900', color: Colors.textPrimary },
   appearance: { fontSize: 12, color: Colors.textSecondary, lineHeight: 17 },
   badges: { gap: 4, marginTop: 4 },
-  footnote: { fontSize: 11, color: Colors.textSecondary, textAlign: 'center', marginTop: 12 },
+  portrait: { width: '100%', aspectRatio: 1, borderRadius: 12, backgroundColor: '#F1F5F9' },
+  actions: { flexDirection: 'row', gap: 6, marginTop: 6, flexWrap: 'wrap' },
 });

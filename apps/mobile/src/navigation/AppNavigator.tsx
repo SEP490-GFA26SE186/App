@@ -11,6 +11,7 @@ import { LoginScreen } from '../screens/auth/LoginScreen';
 import { RegisterScreen } from '../screens/auth/RegisterScreen';
 import { BootScreen, BootErrorScreen } from '../screens/auth/BootScreen';
 import { KidModeScreen } from '../screens/kid/KidModeScreen';
+import { kidService } from '../services/kidService';
 import { ParentTabs } from './ParentTabs';
 import { useParentNavigation } from './useParentNavigation';
 
@@ -38,14 +39,9 @@ const AuthedNavigator: React.FC = () => {
       <Screen>
         <KidModeScreen
           child={kid.kidChild}
-          // Tủ sách của bé phải lấy từ API kệ sách Kid (C9); chưa nối nên để trống, không đổ truyện của phụ huynh vào
-          stories={[]}
-          shelfNotice="Tủ sách của bé sẽ hiển thị khi ứng dụng kết nối với máy chủ."
+          source={kidService}
           onExitKidMode={kid.exitKidMode}
           onKidSessionLost={auth.onKidSessionLost}
-          onRecordEqSignal={(signal, skill) => {
-            console.log('Record EQ signal:', signal, skill);
-          }}
         />
       </Screen>
     );

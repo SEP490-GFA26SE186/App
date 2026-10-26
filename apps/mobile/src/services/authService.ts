@@ -36,6 +36,9 @@ const AUTH_VI_MESSAGES: Record<string, string> = {
   'Password must be at least 8 characters': 'Mật khẩu có ít nhất 8 ký tự',
   'Email or username is required': 'Ba mẹ nhập email hoặc tên đăng nhập nhé',
   'Password is required': 'Ba mẹ nhập mật khẩu nhé',
+  'Account password is incorrect': 'Mật khẩu hiện tại chưa đúng',
+  'New password must be at least 8 characters': 'Mật khẩu mới có ít nhất 8 ký tự',
+  'Mật khẩu mới phải khác mật khẩu hiện tại.': 'Mật khẩu mới phải khác mật khẩu hiện tại.',
 };
 
 const translateAuthError = (error: unknown): unknown =>
@@ -177,6 +180,21 @@ export const authService = {
   },
 
   /**
+   * Đổi mật khẩu: PUT /auth/change-password { currentPassword, newPassword(8–100) }.
+   * 400 'Account password is incorrect' = mật khẩu hiện tại sai. Không đổi token (BE giữ phiên hiện tại).
+   */
+  changePassword: async (currentPassword: string, newPassword: string): Promise<void> => {
+    try {
+      await apiFetch('/auth/change-password', {
+        method: 'PUT',
+        body: JSON.stringify({ currentPassword, newPassword }),
+      });
+    } catch (error) {
+      throw translateAuthError(error);
+    }
+  },
+
+  /**
    * Thiết lập mã PIN Kid Mode: POST /auth/kid-pin/set
    */
   setKidPin: async (pin: string): Promise<boolean> => {
@@ -270,8 +288,7 @@ export const authService = {
       id: raw.id,
       email: raw.email,
       fullName: raw.fullName || raw.username || 'Phụ huynh',
-      // BE không trả avatar (API_MAPPING §1): ảnh mặc định cho UI
-      avatarUrl: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&auto=format&fit=crop&q=80',
+      // BE không trả avatar (API_MAPPING §1): UI tự hiện chữ cái đầu của tên
       phone: raw.phone || '',
       role: (raw.role?.toUpperCase() as any) || 'PARENT',
       kidModePinHash: raw.hasKidPin ? '****' : '',

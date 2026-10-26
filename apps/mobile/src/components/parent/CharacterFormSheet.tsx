@@ -1,6 +1,7 @@
 // apps/mobile/src/components/parent/CharacterFormSheet.tsx
-// Form thêm nhân vật gia đình (POST /characters): name ≤100, appearance 3–1000, KHÔNG có role (rev8).
-import React, { useRef, useState } from 'react';
+// Form thêm/sửa nhân vật gia đình (POST/PUT /characters): name ≤100, appearance 3–1000, KHÔNG có role (rev8).
+// Nhân vật đại diện của bé (có childId): BE không cho đổi tên ở đây → chỉ sửa mô tả.
+import React, { useEffect, useRef, useState } from 'react';
 import { Text, StyleSheet } from 'react-native';
 import { Sheet } from '../ui/Sheet';
 import { HeyInput } from '../ui/HeyInput';
@@ -11,11 +12,15 @@ import { APPEARANCE_MAX, APPEARANCE_MIN, CHARACTER_NAME_MAX } from '../../utils/
 
 interface CharacterFormSheetProps {
   visible: boolean;
+  /** Có giá trị = sửa nhân vật này; không có = thêm mới */
+  character?: CharacterView;
   onClose: () => void;
-  onCreated: (character: CharacterView) => void;
+  onSaved: (character: CharacterView) => void;
 }
 
-export const CharacterFormSheet: React.FC<CharacterFormSheetProps> = ({ visible, onClose, onCreated }) => {
+export const CharacterFormSheet: React.FC<CharacterFormSheetProps> = ({ visible, character, onClose, onSaved }) => {
+  const editing = !!character;
+  const nameLocked = !!character?.childId;
   const [name, setName] = useState('');
   const [appearance, setAppearance] = useState('');
   const [errors, setErrors] = useState<{ name?: string; appearance?: string }>({});
@@ -23,10 +28,16 @@ export const CharacterFormSheet: React.FC<CharacterFormSheetProps> = ({ visible,
   const [submitting, setSubmitting] = useState(false);
   const submittingRef = useRef(false);
 
+  useEffect(() => {
+    if (!visible) return;
+    setName(character?.name ?? '');
+    setAppearance(character?.appearanceDescription ?? '');
+    setErrors({});
+    setFormError(null);
+  }, [visible, character?.id]);
+
   const close = () => {
     if (submittingRef.current) return;
-    setFormError(null);
-    setErrors({});
     onClose();
   };
 
@@ -45,13 +56,17 @@ export const CharacterFormSheet: React.FC<CharacterFormSheetProps> = ({ visible,
     submittingRef.current = true;
     setSubmitting(true);
     try {
-      const created = await characterService.createCharacter({ name: name.trim(), appearance: appearance.trim() });
-      setName('');
-      setAppearance('');
-      onCreated(created);
+      const saved = character
+        ? await characterService.updateCharacter(character.id, {
+            // Nhân vật của bé: không gửi `name` (BE trả 422 nếu đổi tên)
+            ...(nameLocked ? {} : { name: name.trim() }),
+            appearance: appearance.trim(),
+          })
+        : await characterService.createCharacter({ name: name.trim(), appearance: appearance.trim() });
+      onSaved(saved);
       onClose();
     } catch (err: any) {
-      setFormError(err?.message || 'Không thể thêm nhân vật. Vui lòng thử lại.');
+      setFormError(err?.message || (editing ? 'Không thể lưu nhân vật. Vui lòng thử lại.' : 'Không thể thêm nhân vật. Vui lòng thử lại.'));
     } finally {
       submittingRef.current = false;
       setSubmitting(false);
@@ -61,7 +76,7 @@ export const CharacterFormSheet: React.FC<CharacterFormSheetProps> = ({ visible,
   return (
     <Sheet
       visible={visible}
-      title="Thêm nhân vật gia đình"
+      title={editing ? 'Sửa nhân vật' : 'Thêm nhân vật gia đình'}
       description="Ông bà, anh chị em, bạn bè, thú cưng… Tên thật không gửi cho AI, chỉ mô tả ngoại hình."
       onClose={close}
     >
@@ -69,11 +84,13 @@ export const CharacterFormSheet: React.FC<CharacterFormSheetProps> = ({ visible,
         label="Tên gọi trong truyện *"
         placeholder="Nhập tên nhân vật"
         value={name}
+        editable={!nameLocked}
         onChangeText={(t) => {
           setName(t);
           setErrors((e) => ({ ...e, name: undefined }));
         }}
         error={errors.name}
+        hint={nameLocked ? 'Nhân vật của bé: đổi tên ở mục “Bé nhà mình”.' : undefined}
       />
       <HeyInput
         label="Mô tả ngoại hình, tính cách *"
@@ -90,7 +107,7 @@ export const CharacterFormSheet: React.FC<CharacterFormSheetProps> = ({ visible,
       />
       {!!formError && <Text style={styles.formError}>⚠️ {formError}</Text>}
       <HeyButton
-        title={submitting ? '⏳ Đang thêm...' : 'Thêm nhân vật'}
+        title={submitting ? '⏳ Đang lưu...' : editing ? 'Lưu thay đổi' : 'Thêm nhân vật'}
         onPress={submit}
         disabled={submitting}
         style={styles.btn}

@@ -1,6 +1,6 @@
 # API MAPPING – Mobile ⇄ Web ⇄ BE
 
-> Xác minh bằng đọc code tĩnh (BE `83025f8`, Web `a6aeb5b`, App `f1f5217`). **Runtime chưa kiểm chứng.** Điểm không chắc ghi UNKNOWN. Swagger: `/api/v1/docs`. Nguồn Web: `Web/src/services/*.js`.
+> Xác minh bằng đọc code tĩnh (BE `83025f8`, Web `a6aeb5b`, App `f1f5217`); **hiệu chỉnh ở Phase C (2026-10-26) theo source BE** – các dòng đánh dấu ✔C là đã đối chiếu trực tiếp. **Runtime chưa kiểm chứng.** Điểm không chắc ghi UNKNOWN. Swagger: `/api/v1/docs`. Nguồn Web: `Web/src/services/*.js`.
 
 Ký hiệu: ✅ khớp/có API · ⚠️ lệch · ❌ BE không có · 🔒 BLOCKED · ⏸ SCOPE PENDING
 
@@ -69,17 +69,17 @@ Ký hiệu: ✅ khớp/có API · ⚠️ lệch · ❌ BE không có · 🔒 BLO
 | `GET /kid/me` | kid token | — | — | ✅ |
 | `POST /kid/sessions` | `{storyId}` | 201 `{session{id,storyId,isFirstPlay,status,currentPageId,startedAt,completedAt}, story{id,title,useTts,topic,pages[{id,pageOrder,text,audioUrl,imageUrl}], checkpoints[{id,afterPageId,afterPageOrder,type,question,questionAudioUrl,options[{id,text,textAudioUrl}],result}]}}`; 422 `errors[{path:'storyId',narration}]` nếu chưa ready/không trong bookshelf | `formatStory` đọc `contentText/choices/eqSignal` | ❌ |
 | `GET /kid/sessions/:id` | — | — | — | ✅ |
-| `POST /kid/sessions/:id/answer` | `{checkpointId, emotion?(happy\|sad\|angry\|scared\|neutral), optionId?, skipped?, timeToFirstMs?, questionReplays?}` (`.strict()`) | `{checkpointId,attempts,skipped,done,correct,hint?,hintAudioUrl?,answer?,feedback?,feedbackAudioUrl?}`; session xong → 409 | gửi `emotionChoice` → 400 | ❌ |
+| `POST /kid/sessions/:id/answers` ✔C (số nhiều) | `{checkpointId, emotion?(happy\|sad\|angry\|scared\|neutral), optionId?, skipped?, timeToFirstMs?, questionReplays?}` (`.strict()`) | `data.result = {checkpointId,attempts,skipped,done,correct,hint?,hintAudioUrl?,answer?,feedback?,feedbackAudioUrl?}`; session xong → 409 | gửi `emotionChoice` → 400 | ❌ |
 | `PUT /kid/sessions/:id/progress` | `{pageId}` | — | — | ✅ |
 | `POST /kid/sessions/:id/complete` | — | idempotent | — | ✅ |
 | `GET /kid/ui-audio` | — | `{assets:{key:{text,audioUrl}}}` | — | ✅ |
 - Checkpoint type: `emotion_self\|emotion_other\|perspective\|problem_solving\|reflection`. Chỉ lần trả lời đầu của lượt đầu được chấm.
-- UNKNOWN: path chính xác của answer (`/kid/sessions/:id/answer`) – xác nhận trong Swagger/`BE/src/modules/kid` khi implement.
+- ✔C Path answer là `/kid/sessions/:id/answers` (kid.routes.js). Kid shelf: `items[]` có `storyId` (không `story`).
 
 ## 5. Plans / Credit (P0 – chỉ xem)
 | Endpoint | Response | KL |
 |---|---|---|
-| `GET /plans` | mảng `{id,code,name,durationMonths,priceVnd,creditsPerMonth,maxChildren,maxCharacters,canSell}` (Web xử lý mảng hoặc `.plans`) | ✅ |
+| `GET /plans` ✔C | `data.plans[]` `{code,name,durationMonths,priceVnd(chuỗi),creditsPerMonth,maxChildren,maxCharacters,canSell}` | ✅ |
 | `GET /subscriptions/me` | `{isFallback, plan, status, periodStart, periodEnd, nextCreditGrantAt, usage{childrenCount,charactersCount}}` (free: 2 children, 5 characters) | ✅ |
 | `GET /subscriptions/me/credit-history?page&limit≤50` | `{entries[{id,createdAt,entryType,amount,balanceAfter,context}], pagination}` | ✅ |
 | Top-up credit | **không tồn tại** | ❌ không tạo ví giả |
@@ -102,3 +102,12 @@ Ký hiệu: ✅ khớp/có API · ⚠️ lệch · ❌ BE không có · 🔒 BLO
 
 ## 7. Checklist đối chiếu khi implement mỗi API
 1. Đọc validation (zod) trong `BE/src/modules/<module>`. 2. Đối chiếu Swagger. 3. Đối chiếu Web service. 4. Viết type DTO theo BE. 5. Mapper không bịa field. 6. Xử lý đủ mã lỗi.
+
+## 8. Hiệu chỉnh Phase C (đối chiếu source BE)
+- `GET /stories`, `GET /bookshelf`: `ApiResponse.paginated` → `{success,message,data:[…],pagination}` (mảng ở `data`, `pagination` top-level; bookshelf thêm `child`).
+- `PUT /auth/change-password {currentPassword,newPassword(8–100)}` tồn tại (400 `Account password is incorrect`).
+- `POST /stories`: `entry` ∈ topic|family|handwritten; `length` ∈ short|medium|long|custom; family cần `situation` 20–2000 + `analysisToken`; topic cần `topicId` và **không** gửi `situation`; `useAiImage` mặc định false, `useTts` mặc định true.
+- `GET /stories/:id`: `pages[].{id,pageOrder,sceneId,contentText,audioUrl}`, `scenes[].{id,imageUrl}`, `checkpoints[].{afterPageOrder,type,question,locked,options}`, `readiness{ready,reason}`.
+- `POST /auth/kid-mode/exit`: 401 `errors[0].attemptsLeft` (PIN sai) / 429 `errors[0].retryAfterSeconds` (khóa 15 phút); route công khai nhận `kidSessionToken`.
+- `GET /children/:id/overview` = `{profile,todayUsage{usedMinutes,sessionsCount,completedCount…},readingStats{booksInBookshelf,completedStories,lastReadStory,lastReadAt},eqReport}`.
+- `GET /subscriptions/me` = `{isFallback,plan,status,periodStart,periodEnd,nextCreditGrantAt,usage{childrenCount,charactersCount}}`.

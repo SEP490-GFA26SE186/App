@@ -1,7 +1,7 @@
 // apps/mobile/src/screens/parent/EqReportScreen.tsx
 // B8 – Hành trình EQ (Web: EqJourneyPage). Chỉ hiện MỨC theo 5 năng lực CASEL, không điểm/%.
-// Báo cáo thật (GET /children/:id/eq-report) chưa được nối (C7): khi `report` chưa có, hiện trạng thái chưa kết nối,
-// KHÔNG hiện số liệu dựng sẵn. Khi có `report`, hiển thị đúng dữ liệu BE; level = null → "Chưa có dữ liệu".
+// C7: báo cáo thật từ GET /children/:id/eq-report của bé đang chọn (loading/error/retry). Không số liệu dựng sẵn:
+// level = null → "Chưa có dữ liệu".
 import React from 'react';
 import { View, Text, ScrollView, StyleSheet } from 'react-native';
 import { ChildProfile } from '../../../../../packages/shared-types';
@@ -11,14 +11,13 @@ import { ScreenHeader } from '../../components/ui/ScreenHeader';
 import { ChildSwitcher } from '../../components/parent/ChildSwitcher';
 import { Colors } from '../../theme/colors';
 import { CASEL, EQ_LEVELS, EQ_REPORT_NOTE, EqLevel, levelLabel } from '../../constants/eq';
-import type { EqReportDto } from '../../types/api';
+import { childService } from '../../services';
+import { useAsyncResource } from '../../utils/useAsyncResource';
 
 interface EqReportScreenProps {
   childrenProfiles: ChildProfile[];
   selectedChildId?: string;
   onSelectChild: (id: string) => void;
-  /** Báo cáo của bé đang chọn do BE trả; chưa nối API → undefined */
-  report?: EqReportDto | null;
 }
 
 const LevelBar: React.FC<{ level: EqLevel | null }> = ({ level }) => {
@@ -37,9 +36,14 @@ export const EqReportScreen: React.FC<EqReportScreenProps> = ({
   childrenProfiles,
   selectedChildId,
   onSelectChild,
-  report,
 }) => {
   const child = childrenProfiles.find((c) => c.id === selectedChildId) ?? childrenProfiles[0];
+  const childId = child?.id;
+  const res = useAsyncResource(
+    () => (childId ? childService.getChildEqReport(childId) : Promise.resolve(null)),
+    [childId]
+  );
+  const report = res.data;
 
   return (
     <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -51,14 +55,25 @@ export const EqReportScreen: React.FC<EqReportScreenProps> = ({
 
       {!child ? (
         <StateView variant="empty" title="Chưa có hồ sơ bé" description="Thêm hồ sơ bé (menu Thêm → Bé nhà mình) để xem báo cáo EQ." />
-      ) : !report ? (
+      ) : res.status === 'loading' ? (
+        <StateView variant="loading" title="Đang tải báo cáo EQ..." />
+      ) : res.status === 'error' ? (
         <StateView
-          variant="unsupported"
-          title="Báo cáo EQ chưa được kết nối"
-          description="Mức EQ và gợi ý chuyện mẫu sẽ lấy từ dữ liệu đọc truyện thật của bé khi ứng dụng kết nối đầy đủ với máy chủ. Hiện chưa có số liệu nào để hiển thị."
+          variant="empty"
+          title="Chưa tải được báo cáo EQ"
+          description={res.error ?? ''}
+          actionLabel="Thử lại"
+          onAction={() => void res.reload()}
         />
-      ) : (
+      ) : !report ? null : (
         <>
+          {report.competencies.every((c) => c.level == null) && (
+            <StateView
+              variant="empty"
+              title="Chưa có dữ liệu EQ"
+              description={`${child?.name ?? 'Bé'} cần đọc thêm truyện có điểm dừng để có mức phát triển.`}
+            />
+          )}
           {report.competencies.map((c) => {
             const meta = CASEL[c.caselCode];
             return (

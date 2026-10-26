@@ -1,6 +1,6 @@
 // apps/mobile/src/screens/parent/SettingsScreen.tsx
-// B11 – Cài đặt (Web: SettingsPage). Thông tin tài khoản chỉ xem (BE chưa có API cập nhật hồ sơ – U8),
-// đặt/đổi mã PIN Kid Mode qua BE, địa chỉ máy chủ, đăng xuất.
+// B11/C3/C4 – Cài đặt (Web: SettingsPage). Thông tin tài khoản chỉ xem (BE chưa có API cập nhật hồ sơ – U8),
+// đổi mật khẩu, đặt/đổi mã PIN Kid Mode qua BE, địa chỉ máy chủ, đăng xuất.
 import React, { useRef, useState } from 'react';
 import { View, Text, ScrollView, StyleSheet } from 'react-native';
 import { HeyCard } from '../../components/ui/HeyCard';
@@ -50,18 +50,52 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ currentUser, onU
   const [saving, setSaving] = useState(false);
   const savingRef = useRef(false);
 
+  const [curPw, setCurPw] = useState('');
+  const [newPw, setNewPw] = useState('');
+  const [pwError, setPwError] = useState<string | null>(null);
+  const [pwNotice, setPwNotice] = useState<string | null>(null);
+  const [pwSaving, setPwSaving] = useState(false);
+  const pwSavingRef = useRef(false);
+
+  const savePassword = async () => {
+    if (pwSavingRef.current) return;
+    setPwError(null);
+    setPwNotice(null);
+    if (!curPw) {
+      setPwError('Ba mẹ nhập mật khẩu hiện tại nhé.');
+      return;
+    }
+    if (newPw.length < 8 || newPw.length > 100) {
+      setPwError('Mật khẩu mới có từ 8 đến 100 ký tự.');
+      return;
+    }
+    pwSavingRef.current = true;
+    setPwSaving(true);
+    try {
+      await authService.changePassword(curPw, newPw);
+      setCurPw('');
+      setNewPw('');
+      setPwNotice('Đã đổi mật khẩu.');
+    } catch (err: any) {
+      setPwError(err?.message || 'Không thể đổi mật khẩu. Vui lòng thử lại.');
+    } finally {
+      pwSavingRef.current = false;
+      setPwSaving(false);
+    }
+  };
+
   const [apiBaseUrl, setApiBaseUrlState] = useState<string | null>(getApiBaseUrl());
   const [customUrl, setCustomUrl] = useState('');
   const [urlError, setUrlError] = useState<string | null>(null);
 
   // PIN do BE xác minh/lưu; client KHÔNG lưu PIN, chỉ giữ cờ "đã có PIN" ('****').
-  // Chỉ nhận 4 số vì bàn phím PIN của Kid Mode hiện cố định 4 số (BE chấp nhận 4–6 → T3.3).
+  // BE chấp nhận PIN 4–6 số; bàn phím Kid Mode nhập tối đa 6 số rồi xác nhận.
   const savePin = async () => {
     if (savingRef.current) return;
     setPinError(null);
     setPinNotice(null);
-    if (!/^\d{4}$/.test(newPin)) {
-      setPinError('Mã PIN gồm đúng 4 chữ số.');
+    if (!/^\d{4,6}$/.test(newPin)) {
+      setPinError('Mã PIN gồm 4 đến 6 chữ số.');
       return;
     }
     if (hasKidPin && !/^\d{4,6}$/.test(currentPin)) {
@@ -107,12 +141,21 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ currentUser, onU
       </HeyCard>
 
       <HeyCard style={styles.card}>
+        <Text style={styles.cardTitle}>Đổi mật khẩu</Text>
+        <HeyInput label="Mật khẩu hiện tại" value={curPw} onChangeText={setCurPw} secureTextEntry revealable autoCapitalize="none" autoCorrect={false} />
+        <HeyInput label="Mật khẩu mới (ít nhất 8 ký tự)" value={newPw} onChangeText={setNewPw} secureTextEntry revealable autoCapitalize="none" autoCorrect={false} />
+        {!!pwError && <Text style={styles.error}>⚠️ {pwError}</Text>}
+        {!!pwNotice && <Text style={styles.success}>✓ {pwNotice}</Text>}
+        <HeyButton title={pwSaving ? '⏳ Đang lưu...' : '🔑 Đổi mật khẩu'} variant="secondary" onPress={savePassword} disabled={pwSaving} />
+      </HeyCard>
+
+      <HeyCard style={styles.card}>
         <View style={styles.titleRow}>
           <Text style={styles.cardTitle}>Mã PIN Chế độ Trẻ Em</Text>
           <Badge label={hasKidPin ? 'Đã đặt' : 'Chưa đặt'} tone={hasKidPin ? 'success' : 'warning'} />
         </View>
         <Text style={styles.hint}>
-          Mã PIN 4 số giúp bé không tự thoát khỏi Chế độ Trẻ Em. Máy chủ lưu và kiểm tra mã PIN; ứng dụng không lưu mã PIN.
+          Mã PIN 4–6 số giúp bé không tự thoát khỏi Chế độ Trẻ Em. Máy chủ lưu và kiểm tra mã PIN; ứng dụng không lưu mã PIN.
         </Text>
         {hasKidPin && (
           <HeyInput
@@ -126,7 +169,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ currentUser, onU
           />
         )}
         <HeyInput
-          label={hasKidPin ? 'Mã PIN mới (4 số)' : 'Mã PIN (4 số)'}
+          label={hasKidPin ? 'Mã PIN mới (4–6 số)' : 'Mã PIN (4–6 số)'}
           value={newPin}
           onChangeText={setNewPin}
           keyboardType="numeric"

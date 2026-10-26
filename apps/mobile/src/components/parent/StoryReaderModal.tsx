@@ -96,16 +96,17 @@ export const StoryReaderModal: React.FC<StoryReaderModalProps> = ({
           >
             {/* Page Illustration */}
             <View style={styles.imageContainer}>
-              <Image
-                source={{
-                  uri:
-                    page?.illustrationUrl ||
-                    story.coverImageUrl ||
-                    'https://images.unsplash.com/photo-1512820790803-83ca734da794?w=600',
-                }}
-                style={styles.illustration}
-                resizeMode="cover"
-              />
+              {page?.illustrationUrl || story.coverImageUrl ? (
+                <Image
+                  source={{ uri: page?.illustrationUrl || story.coverImageUrl }}
+                  style={styles.illustration}
+                  resizeMode="cover"
+                />
+              ) : (
+                <View style={[styles.illustration, { alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFF9E0' }]}>
+                  <Text style={{ fontSize: 44 }}>📖</Text>
+                </View>
+              )}
               <View style={styles.pageBadge}>
                 <Text style={styles.pageBadgeText}>
                   Trang {currentPage + 1}/{story.pages.length}

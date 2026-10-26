@@ -1,13 +1,14 @@
 // apps/mobile/src/screens/parent/LibraryScreen.tsx
 // B7 – Thư viện / tủ sách (Web: LibraryPage). Danh sách truyện của phụ huynh từ BE, lọc theo trạng thái + tìm theo tên.
-// "Thêm vào tủ sách bé" chờ API (C9): hiện thông báo chưa hỗ trợ, không thay đổi dữ liệu.
+// "Thêm vào tủ sách bé" gọi POST /bookshelf (C9); 422 = truyện chưa sẵn sàng, BE nêu lý do.
 import React, { useMemo, useState } from 'react';
-import { View, Text, FlatList, Image, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, StyleSheet } from 'react-native';
 import { ChildProfile, Story } from '../../../../../packages/shared-types';
 import { HeyInput } from '../../components/ui/HeyInput';
 import { HeyChip } from '../../components/ui/HeyChip';
 import { HeyButton } from '../../components/ui/HeyButton';
 import { Badge } from '../../components/ui/Badge';
+import { StoryCover } from '../../components/ui/StoryCover';
 import { StateView } from '../../components/ui/StateView';
 import { ScreenHeader } from '../../components/ui/ScreenHeader';
 import { ChildSwitcher } from '../../components/parent/ChildSwitcher';
@@ -100,7 +101,7 @@ export const LibraryScreen: React.FC<LibraryScreenProps> = ({
       renderItem={({ item }) => (
         <View style={styles.card}>
           <TouchableOpacity activeOpacity={0.85} onPress={() => onOpenStory(item)}>
-            <Image source={{ uri: item.coverImageUrl }} style={styles.cover} />
+            <StoryCover uri={item.coverImageUrl} style={styles.cover} />
             <Text style={styles.title} numberOfLines={2}>
               {item.title}
             </Text>

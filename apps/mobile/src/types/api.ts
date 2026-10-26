@@ -62,6 +62,8 @@ export interface CharacterDto {
   portraitImageUrl?: string | null;
   portraitStatus?: string | null;
   portraitFailure?: string | null;
+  /** Có giá trị = nhân vật đại diện của một bé (không xóa/đổi tên ở đây) */
+  childId?: string | null;
 }
 
 export interface ChildDto {
@@ -97,23 +99,90 @@ export interface CharacterResponseDto {
 export interface StoryPageDto {
   id: string;
   pageOrder: number;
+  sceneId?: string | null;
   contentText?: string | null;
   audioUrl?: string | null;
   audioStatus?: string | null;
 }
 
+export type StoryStatusDto = 'draft' | 'generating' | 'ready';
+export type StoryLengthDto = 'short' | 'medium' | 'long' | 'custom';
+export type CheckpointTypeDto = 'emotion_self' | 'emotion_other' | 'perspective' | 'problem_solving' | 'reflection';
+
+export interface StoryCharacterRefDto {
+  token: string;
+  characterId: string | null;
+  name: string | null;
+  isMain: boolean;
+}
+
+export interface StoryCheckpointOptionDto {
+  id: string;
+  optionOrder: number;
+  text: string;
+  role?: string | null;
+  isCorrect?: boolean | null;
+  feedback?: string | null;
+}
+
+export interface StoryCheckpointDto {
+  id: string;
+  afterPageId: string;
+  afterPageOrder: number | null;
+  type: CheckpointTypeDto;
+  question: string | null;
+  hint?: string | null;
+  locked: boolean;
+  options: StoryCheckpointOptionDto[];
+}
+
+/** GET /stories (tóm tắt) và GET /stories/:id (chi tiết: thêm pages, checkpoints, readiness, narration) */
 export interface StoryDto {
   id: string;
   title: string;
-  status?: string;
-  cover?: { imageUrl?: string | null } | null;
+  status: StoryStatusDto;
+  length?: StoryLengthDto;
+  entry?: string;
+  situation?: string | null;
+  momentSummary?: string | null;
+  topic?: { id: string; title: string; competency: string | null } | null;
+  characters?: StoryCharacterRefDto[];
+  cover?: { imageUrl?: string | null; competency?: string | null } | null;
+  reviewedAt?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+  pageCount?: number;
+  checkpointCount?: number;
   readiness?: { ready: boolean; reason?: string | null };
   pages?: StoryPageDto[];
+  scenes?: { id: string; imageUrl?: string | null }[];
+  checkpoints?: StoryCheckpointDto[];
 }
 
-/** GET /stories/:id, POST /stories */
+/** GET /stories/:id, POST /stories, POST /stories/:id/review ... */
 export interface StoryResponseDto {
   story: StoryDto;
+}
+
+/** POST /stories/analyze */
+export interface AnalyzeStoryResultDto {
+  momentSummary: string;
+  seedEvent: string;
+  subSkills: { id: string; nameVi: string }[];
+  analysisToken: string;
+  expiresAt: string;
+}
+
+/** GET /stories/:id/generation → data.generation (null = chưa từng sinh) */
+export interface GenerationDto {
+  status: 'queued' | 'processing' | 'succeeded' | 'failed' | 'blocked';
+  errorCode?: string | null;
+  errorMessage?: string | null;
+}
+
+/** GET /stories/ai-pricing */
+export interface AiPricingDto {
+  lengths: { length: 'short' | 'medium' | 'long'; pages: number; checkpoints: number; credits: number }[];
 }
 
 /** GET /topics (phía phụ huynh) */
@@ -154,4 +223,129 @@ export interface EqReportDto {
   childName: string;
   competencies: EqCompetencyDto[];
   recommendations: EqRecommendationDto[];
+}
+
+// ---- Children: overview / usage ----
+export interface ChildUsageDto {
+  childId: string;
+  date: string;
+  usedMinutes: number;
+  usedSeconds: number;
+  sessionsCount: number;
+  completedCount: number;
+}
+
+/** GET /children/:id/overview */
+export interface ChildOverviewDto {
+  profile: ChildDto;
+  todayUsage: ChildUsageDto;
+  readingStats: {
+    booksInBookshelf: number;
+    completedStories: number;
+    lastReadStory: { id: string; title: string; cover?: { imageUrl?: string | null } | null } | null;
+    lastReadAt: string | null;
+  };
+  eqReport: EqReportDto;
+}
+
+// ---- Bookshelf / Kid ----
+export interface ReadingProgressDto {
+  isCompleted: boolean;
+  currentPageOrder: number;
+  progressPercentage: number;
+  lastActivityAt: string;
+}
+
+/** GET /kid/bookshelf → items[] (không có pages) */
+export interface KidShelfItemDto {
+  storyId: string;
+  title: string;
+  cover?: { imageUrl?: string | null; competency?: string | null };
+  coverImageUrl?: string | null;
+  totalPages: number;
+  addedAt?: string;
+  readingProgress?: ReadingProgressDto | null;
+}
+
+export interface KidSessionDto {
+  id: string;
+  storyId: string;
+  isFirstPlay: boolean;
+  status: 'in_progress' | 'completed' | string;
+  currentPageId: string | null;
+  startedAt: string;
+  completedAt: string | null;
+}
+
+export type KidEmotion = 'happy' | 'sad' | 'angry' | 'scared' | 'neutral';
+
+export interface KidAnswerResultDto {
+  checkpointId: string;
+  attempts: number;
+  skipped: boolean;
+  done: boolean;
+  correct: boolean | null;
+  hint?: string | null;
+  hintAudioUrl?: string | null;
+  answer?: { emotion?: KidEmotion; optionId?: string };
+  feedback?: string | null;
+  feedbackAudioUrl?: string | null;
+}
+
+export interface KidCheckpointDto {
+  id: string;
+  afterPageId: string;
+  afterPageOrder: number | null;
+  type: CheckpointTypeDto;
+  question: string | null;
+  questionAudioUrl?: string | null;
+  options: { id: string; text: string | null; textAudioUrl?: string | null }[];
+  result: KidAnswerResultDto | null;
+}
+
+/** POST /kid/sessions → { session, story } */
+export interface KidPlayDto {
+  session: KidSessionDto;
+  story: {
+    id: string;
+    title: string;
+    useTts: boolean;
+    topic: { title: string; competency: string | null } | null;
+    pages: { id: string; pageOrder: number; text: string | null; audioUrl?: string | null; imageUrl?: string | null }[];
+    checkpoints: KidCheckpointDto[];
+  };
+}
+
+// ---- Plans / Subscription / Credit ----
+export interface PlanDto {
+  code: string;
+  name: string;
+  durationMonths?: number | null;
+  priceVnd: string | number; // BE serialize BigInt thành chuỗi
+  creditsPerMonth: number;
+  maxChildren: number;
+  maxCharacters: number;
+  canSell?: boolean;
+}
+
+export interface SubscriptionMeDto {
+  isFallback: boolean;
+  plan: PlanDto;
+  status: string;
+  periodStart: string | null;
+  periodEnd: string | null;
+  nextCreditGrantAt: string | null;
+  usage: { childrenCount: number; charactersCount: number };
+}
+
+export interface CreditEntryDto {
+  id: string;
+  createdAt: string;
+  entryType: string;
+  amount: number;
+  balanceAfter: number;
+  context:
+    | { kind: 'ai'; requestType: string; storyTitle: string | null; characterName: string | null }
+    | { kind: 'plan'; planName: string }
+    | null;
 }

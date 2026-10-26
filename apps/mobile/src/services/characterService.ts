@@ -1,7 +1,7 @@
 // apps/mobile/src/services/characterService.ts
 import { apiFetch, invalidResponseError } from './apiClient';
 import { CharacterView } from '../types/viewModels';
-import type { CharactersListDto, CharacterResponseDto } from '../types/api';
+import type { CharacterDto, CharactersListDto, CharacterResponseDto } from '../types/api';
 
 // Mọi hàm ở đây throw ApiError khi BE lỗi/từ chối/trả sai hình dạng.
 // Không được trả dữ liệu mẫu hoặc "thành công" giả (ADR-008).
@@ -40,17 +40,13 @@ export const characterService = {
     return true;
   },
 
-  formatCharacter: (raw: any): CharacterView => {
-    return {
-      portraitStatus: raw.portraitStatus ?? null,
-      childId: raw.childId ?? null,
-      id: raw.id,
-      parentId: raw.parentId || '',
-      name: raw.name,
-      relationRole: (raw.role?.toUpperCase() as any) || raw.relationRole || 'HERO',
-      appearanceDescription: raw.appearance || raw.appearanceDescription || '',
-      photoReferenceUrl: raw.portraitImageKey,
-      personalityTraits: raw.personalityTraits || ['Tốt bụng'],
-    };
-  },
+  /** Chỉ ánh xạ trường BE thực sự trả (không `role`/tính cách bịa) */
+  formatCharacter: (raw: Partial<CharacterDto> & { childId?: string | null }): CharacterView => ({
+    id: raw.id as string,
+    name: raw.name as string,
+    appearanceDescription: raw.appearance ?? '',
+    photoReferenceUrl: raw.portraitImageUrl ?? undefined,
+    portraitStatus: raw.portraitStatus ?? null,
+    childId: raw.childId ?? null,
+  }),
 };

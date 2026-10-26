@@ -1,7 +1,7 @@
 // apps/mobile/src/services/childService.ts
 import { apiFetch, invalidResponseError } from './apiClient';
 import { ChildProfile } from '../../../../packages/shared-types';
-import type { ChildrenListDto, ChildResponseDto } from '../types/api';
+import type { ChildDto, ChildOverviewDto, ChildrenListDto, ChildResponseDto, EqReportDto } from '../types/api';
 
 export interface CreateChildPayload {
   name: string;
@@ -59,46 +59,30 @@ export const childService = {
   },
 
   /**
-   * Tổng quan hồ sơ & chỉ số EQ: GET /children/:id/overview
+   * Tổng quan: GET /children/:id/overview → { profile, todayUsage, readingStats, eqReport }
    */
-  getChildOverview: async (childId: string): Promise<any> => {
-    return apiFetch(`/children/${childId}/overview`);
+  getChildOverview: async (childId: string): Promise<ChildOverviewDto> => {
+    const data = await apiFetch<Partial<ChildOverviewDto>>(`/children/${childId}/overview`);
+    if (!data?.profile?.id || !data.todayUsage || !data.readingStats) throw invalidResponseError('tổng quan của bé');
+    return data as ChildOverviewDto;
   },
 
   /**
-   * Hành trình phát triển EQ: GET /children/:id/eq-journey?weeks=8
+   * Báo cáo EQ theo năng lực CASEL: GET /children/:id/eq-report
    */
-  getChildEqJourney: async (childId: string, weeks = 8): Promise<any> => {
-    return apiFetch(`/children/${childId}/eq-journey?weeks=${weeks}`);
+  getChildEqReport: async (childId: string): Promise<EqReportDto> => {
+    const data = await apiFetch<Partial<EqReportDto>>(`/children/${childId}/eq-report`);
+    if (!data?.childId || !Array.isArray(data.competencies)) throw invalidResponseError('báo cáo EQ');
+    return { ...data, recommendations: data.recommendations ?? [] } as EqReportDto;
   },
 
-  /**
-   * Kệ sách của bé: GET /children/:id/bookshelf
-   */
-  getChildBookshelf: async (childId: string, page = 1, limit = 10): Promise<any> => {
-    return apiFetch(`/children/${childId}/bookshelf?page=${page}&limit=${limit}`);
-  },
-
-  formatChild: (raw: any): ChildProfile => {
-    let calcAge = raw.age;
-    if (!calcAge && raw.birthDate) {
-      const birth = new Date(raw.birthDate);
-      const diff = Date.now() - birth.getTime();
-      calcAge = Math.max(1, Math.floor(diff / (365.25 * 24 * 3600 * 1000)));
-    }
-
-    return {
-      id: raw.id,
-      parentId: raw.parentId || '',
-      name: raw.name,
-      nickname: raw.nickname || raw.name,
-      birthDate: raw.birthDate,
-      age: calcAge || 4,
-      gender: raw.gender || 'MALE',
-      readingLevel: raw.readingLevel || 'BEGINNER',
-      favoriteThemes: raw.favoriteThemes || ['Gia đình', 'Động vật'],
-      favoriteTopics: raw.favoriteTopics || [],
-      avatarUrl: raw.avatarUrl || raw.character?.portraitImageKey,
-    };
-  },
+  /** Chỉ ánh xạ trường BE trả. `age` do BE tính từ ngày sinh; không có ngày sinh → 0 (UI dùng `ageLabel`, không hiện số). */
+  formatChild: (raw: Partial<ChildDto> & { parentId?: string }): ChildProfile => ({
+    id: raw.id as string,
+    parentId: raw.parentId ?? '',
+    name: raw.name as string,
+    birthDate: raw.birthDate ?? undefined,
+    age: typeof raw.age === 'number' ? raw.age : 0,
+    avatarUrl: raw.character?.portraitImageUrl ?? undefined,
+  }),
 };

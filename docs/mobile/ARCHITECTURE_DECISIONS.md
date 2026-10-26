@@ -187,3 +187,14 @@ dev/demo/     dữ liệu demo tạm thời (ADR-016) – chỉ import qua demoG
 - **Kid shelf thật:** để trống tới khi nối API kệ sách Kid (C9); không dùng danh sách truyện của phụ huynh làm tủ sách của bé.
 - **Quy tắc ghi dữ liệu trong Phase B:** chỉ các lời gọi ghi đã có và đúng contract (đăng nhập/đăng ký, tạo bé, tạo nhân vật, đặt/đổi PIN); mọi thao tác ghi khác hiện "Chưa hỗ trợ".
 - `AuthModal` đã DEPRECATED (không mount), chờ duyệt xóa.
+
+## Ghi chú hiện thực hóa Phase C (2026-10-26)
+- **Nguồn contract:** đọc trực tiếp source BE (`routes` + zod `*.validation.js` + `*.controller.js` + `*.service.js`/`lib/*format*.js`). Khi lệch tài liệu cũ, BE thắng (danh sách ở PHASE_C_PROGRESS).
+- **ADR-008 (service throw):** mọi service mới (`billingService`, `kidService`, `storyService`, ...) throw `ApiError` khi lỗi/sai hình dạng (502 cho response 2xx sai contract); không `catch` trả giả.
+- **API client:** thêm timeout 20 s và tùy chọn `raw` (nguyên envelope) để đọc `pagination`; `ApiError.errors` giữ trường phụ (`attemptsLeft`, `retryAfterSeconds`, `narration`).
+- **Kid Mode dùng nguồn dữ liệu tiêm vào (`KidDataSource`):** `KidModeScreen` nhận `source`; thật = `kidService`, UI Preview = fixture trong `src/dev/preview`. Kiểu `KidDataSource` nằm ở `types/` để `src/dev` không import service (G11). Một đường UI duy nhất cho cả hai.
+- **Logic đọc truyện** tách khỏi giao diện: `screens/kid/useKidReader.ts` (shelf, session, checkpoint, chống bấm đúp, phát hiện 401 = phiên Kid mất).
+- **Tài nguyên theo màn:** hook `utils/useAsyncResource` (loading/ready/error + reload, bỏ kết quả cũ khi đổi bé) cho Trang chủ, EQ, Credit. Không thêm thư viện cache.
+- **Story view model:** `StoryView = Story & {...}`; danh sách là bản tóm tắt (`detailLoaded=false`), chi tiết nạp theo yêu cầu ở `StoryDetailScreen`. Ảnh trang lấy từ `scenes[].imageUrl`; không có ảnh → khung giữ chỗ.
+- **Generation:** `GenerationRunner` poll `GET /stories/:id/generation` mỗi 3 s, hiển thị đúng trạng thái BE (không tiến độ giả); dừng khi unmount, job tiếp tục ở BE.
+- **Còn chờ duyệt:** `expo-secure-store` (C2), thư viện phát audio (C11); lối "Tự viết" và trình sửa trang/điểm dừng (C8) chưa làm.

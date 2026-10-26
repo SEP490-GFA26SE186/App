@@ -2,8 +2,8 @@
 // Dữ liệu Parent của phiên hiện tại (do BE trả). Rỗng = chưa có/không có dữ liệu; lỗi = dataStatus 'error'.
 // KHÔNG bao giờ thay bằng dữ liệu mẫu khi API lỗi (ADR-008, ADR-016).
 import { MutableRefObject, useCallback, useState } from 'react';
-import { ChildProfile, PedagogicalTemplate, Story } from '../../../../packages/shared-types';
-import { CharacterView } from '../types/viewModels';
+import { ChildProfile, PedagogicalTemplate } from '../../../../packages/shared-types';
+import { CharacterView, StoryView } from '../types/viewModels';
 import { SessionUser } from '../types/sessionUser';
 import { authService, childService, characterService, storyService } from '../services';
 
@@ -20,7 +20,7 @@ export const useParentDataState = (sessionRef: MutableRefObject<number>) => {
   const [childrenProfiles, setChildrenProfiles] = useState<ChildProfile[]>([]);
   const [characters, setCharacters] = useState<CharacterView[]>([]);
   const [templates, setTemplates] = useState<PedagogicalTemplate[]>([]);
-  const [stories, setStories] = useState<Story[]>([]);
+  const [stories, setStories] = useState<StoryView[]>([]);
   // Bé đang chọn (Web: parentStore.selectedChildId); mặc định/không còn hợp lệ → bé đầu tiên
   const [selectedChildId, setSelectedChildId] = useState<string | null>(null);
   const [dataStatus, setDataStatus] = useState<DataStatus>('idle');
@@ -74,11 +74,30 @@ export const useParentDataState = (sessionRef: MutableRefObject<number>) => {
     [sessionRef]
   );
 
-  // Chỉ nhận hồ sơ bé đã được BE tạo (AuthModal gọi POST /children rồi báo lại đây).
+  // Chỉ nhận bản ghi đã được BE tạo/cập nhật/xóa thành công (không cập nhật lạc quan)
   const addChild = useCallback((child: Partial<ChildProfile>) => {
     if (!child.id) return;
     const created = child as ChildProfile;
     setChildrenProfiles((prev) => (prev.some((c) => c.id === created.id) ? prev : [...prev, created]));
+  }, []);
+  const replaceChild = useCallback((child: ChildProfile) => {
+    setChildrenProfiles((prev) => prev.map((c) => (c.id === child.id ? child : c)));
+  }, []);
+  const removeChild = useCallback((id: string) => {
+    setChildrenProfiles((prev) => prev.filter((c) => c.id !== id));
+  }, []);
+  const addCharacter = useCallback((character: CharacterView) => {
+    setCharacters((prev) => (prev.some((c) => c.id === character.id) ? prev : [...prev, character]));
+  }, []);
+  const replaceCharacter = useCallback((character: CharacterView) => {
+    setCharacters((prev) => prev.map((c) => (c.id === character.id ? character : c)));
+  }, []);
+  const removeCharacter = useCallback((id: string) => {
+    setCharacters((prev) => prev.filter((c) => c.id !== id));
+  }, []);
+  /** Thêm hoặc thay truyện (kể cả bản chi tiết có trang) bằng bản BE vừa trả */
+  const upsertStory = useCallback((story: StoryView) => {
+    setStories((prev) => (prev.some((s) => s.id === story.id) ? prev.map((s) => (s.id === story.id ? story : s)) : [story, ...prev]));
   }, []);
 
   const selectedChild: ChildProfile | undefined =
@@ -93,8 +112,13 @@ export const useParentDataState = (sessionRef: MutableRefObject<number>) => {
     stories,
     dataStatus,
     dataError,
-    setCharacters,
     addChild,
+    replaceChild,
+    removeChild,
+    addCharacter,
+    replaceCharacter,
+    removeCharacter,
+    upsertStory,
     loadAll,
     reset,
   };
