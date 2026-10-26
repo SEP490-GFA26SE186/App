@@ -9,10 +9,8 @@ import {
 } from 'react-native';
 import { HeyCard } from '../components/ui/HeyCard';
 import { HeyChip } from '../components/ui/HeyChip';
-import { HeyProgressBar } from '../components/ui/HeyProgressBar';
-import { ChildProfile, EqReport } from '../../../../packages/shared-types';
+import { ChildProfile } from '../../../../packages/shared-types';
 import { Colors } from '../theme/colors';
-import { childService } from '../services';
 
 interface EqReportScreenProps {
   childrenProfiles: ChildProfile[];
@@ -22,35 +20,14 @@ export const EqReportScreen: React.FC<EqReportScreenProps> = ({
   childrenProfiles,
 }) => {
   const [selectedChildId, setSelectedChildId] = useState<string>(
-    childrenProfiles[0]?.id || 'ch_01'
+    childrenProfiles[0]?.id ?? ''
   );
-  const [stats, setStats] = useState<{ completedBooksCount?: number; totalMinutes?: number }>({
-    completedBooksCount: 8,
-    totalMinutes: 65,
-  });
 
   const currentChild =
-    childrenProfiles.find((c) => c.id === selectedChildId) ||
-    childrenProfiles[0] || { name: 'Bé Bin', age: 6 };
+    childrenProfiles.find((c) => c.id === selectedChildId) || childrenProfiles[0];
 
-  React.useEffect(() => {
-    if (selectedChildId) {
-      childService.getChildOverview(selectedChildId).then((data) => {
-        if (data?.readingStats) {
-          setStats(data.readingStats);
-        }
-      }).catch(() => {});
-    }
-  }, [selectedChildId]);
-
-  const eqScores = [
-    { label: 'Thấu cảm & Yêu thương (Empathy)', score: 88, color: Colors.primary },
-    { label: 'Tự lập & Trách nhiệm (Independence)', score: 82, color: Colors.secondary },
-    { label: 'Kiên nhẫn & Cảm xúc (Patience)', score: 92, color: Colors.teal },
-    { label: 'Sáng tạo & Tư duy (Creativity)', score: 85, color: Colors.yellow },
-    { label: 'Giao tiếp & Ứng xử (Communication)', score: 90, color: Colors.green },
-  ];
-
+  // Báo cáo EQ thật (GET /children/:id/overview, /eq-report) chưa được nối: T4.3.
+  // Không hiển thị điểm EQ, số sách/phút hay lời khuyên dựng sẵn như thể là phân tích thật.
   return (
     <ScrollView
       style={styles.container}
@@ -62,7 +39,9 @@ export const EqReportScreen: React.FC<EqReportScreenProps> = ({
         <Text style={styles.bannerTag}>📊 Phân Tích Tâm Lý & EQ</Text>
         <Text style={styles.bannerTitle}>Báo Cáo Tiến Bộ Của Bé</Text>
         <Text style={styles.bannerSubtitle}>
-          Dựa trên 14 lựa chọn tương tác rẽ nhánh và thói quen đọc truyện của {currentChild.name}.
+          {currentChild
+            ? `Báo cáo EQ của ${currentChild.name} sẽ hiển thị tại đây khi kết nối với máy chủ.`
+            : 'Thêm hồ sơ bé để xem báo cáo EQ.'}
         </Text>
       </View>
 
@@ -78,35 +57,14 @@ export const EqReportScreen: React.FC<EqReportScreenProps> = ({
         ))}
       </View>
 
-      {/* EQ Radar Score Bars */}
-      <Text style={styles.sectionTitle}>Chỉ số 5 trụ cột EQ của {currentChild.name}</Text>
-
-      {eqScores.map((item, idx) => (
-        <View key={idx} style={styles.scoreRow}>
-          <View style={styles.scoreHeader}>
-            <Text style={styles.scoreLabel}>{item.label}</Text>
-            <Text style={[styles.scoreValue, { color: item.color }]}>
-              {item.score}/100
-            </Text>
-          </View>
-          <HeyProgressBar progress={item.score} color={item.color} height={10} />
-        </View>
-      ))}
-
-      {/* Pedagogical Insights */}
-      <Text style={[styles.sectionTitle, styles.mt]}>Lời khuyên chuyên gia sư phạm</Text>
-
       <HeyCard variant="yellow" style={styles.insightCard}>
-        <Text style={styles.insightHeader}>🌟 Điểm mạnh nổi bật:</Text>
-        <Text style={styles.insightText}>
-          Bé có chỉ số Kiên nhẫn & Thấu cảm rất cao (90/100). Trong các tình huống truyện gặp bạn bè khó khăn, bé luôn chọn chia sẻ đồ chơi và lắng nghe trước khi phản ứng.
+        <Text style={styles.insightHeader}>
+          {currentChild ? 'Báo cáo EQ chưa được kết nối' : 'Chưa có hồ sơ bé'}
         </Text>
-      </HeyCard>
-
-      <HeyCard variant="purple" style={styles.insightCard}>
-        <Text style={styles.insightHeader}>💡 Gợi ý cho ba mẹ:</Text>
         <Text style={styles.insightText}>
-          Ba mẹ có thể tạo thêm các câu chuyện chủ đề "Tự lập dọn dẹp phòng ngủ" hoặc "Dũng cảm nói lời xin lỗi" để giúp bé củng cố khả năng tự lập khi ở trường mẫu giáo.
+          {currentChild
+            ? 'Chỉ số EQ và lời khuyên sẽ được lấy từ dữ liệu đọc truyện thật của bé. Hiện chưa có số liệu nào để hiển thị.'
+            : 'Chưa có dữ liệu để phân tích.'}
         </Text>
       </HeyCard>
     </ScrollView>

@@ -1,6 +1,6 @@
 // apps/mobile/src/screens/StoryWizard.tsx — v3.0 Comprehensive Magical Story Creator
 // Detailed 5-Step Story Studio with Character Cast, World Setting, EQ Lessons, Family Memory, AI Generation & TTS Voice Preview
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -13,21 +13,17 @@ import {
 } from 'react-native';
 import { HeyButton } from '../components/ui/HeyButton';
 import { HeyProgressBar } from '../components/ui/HeyProgressBar';
-import {
-  FamilyCharacter,
-  PedagogicalTemplate,
-  Story,
-  UserAccount,
-} from '../../../../packages/shared-types';
+import { FamilyCharacter, PedagogicalTemplate, Story } from '../../../../packages/shared-types';
+import { SessionUser } from '../types/sessionUser';
 import { Colors } from '../theme/colors';
 import { speechTTS } from '../../../../src/utils/speech-tts';
 import { soundFX } from '../../../../src/utils/sound-fx';
-import { characterService, storyService, apiFetch } from '../services';
+import { characterService } from '../services';
 
 interface StoryWizardProps {
   characters: FamilyCharacter[];
   templates: PedagogicalTemplate[];
-  currentUser: UserAccount;
+  currentUser: SessionUser;
   onStoryCreated: (story: Story) => void;
   onCancel: () => void;
   onUpdateCharacters: (chars: FamilyCharacter[]) => void;
@@ -107,9 +103,9 @@ export const StoryWizard: React.FC<StoryWizardProps> = ({
   const [step, setStep] = useState<1 | 2 | 3 | 4 | 5>(1);
 
   // Step 1: Characters
-  const [selectedCharIds, setSelectedCharIds] = useState<string[]>([
-    characters[0]?.id || 'char_01',
-  ]);
+  const [selectedCharIds, setSelectedCharIds] = useState<string[]>(
+    characters[0]?.id ? [characters[0].id] : []
+  );
   const [showAddCharModal, setShowAddCharModal] = useState(false);
   const [newCharName, setNewCharName] = useState('');
   const [newCharRole, setNewCharRole] = useState<'HERO' | 'FATHER' | 'MOTHER' | 'PET'>('HERO');
@@ -120,7 +116,7 @@ export const StoryWizard: React.FC<StoryWizardProps> = ({
 
   // Step 3: EQ Template
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>(
-    templates[0]?.id || 'tpl_01'
+    templates[0]?.id || ''
   );
 
   // Step 4: Story Idea & Tone
@@ -129,6 +125,11 @@ export const StoryWizard: React.FC<StoryWizardProps> = ({
 
   // Step 5: Generation state & Preview
   const [isGenerating, setIsGenerating] = useState(false);
+  // Luồng tạo truyện thật (POST /stories → generate → poll) chưa được nối: T5.1/T5.2
+  const [generationError, setGenerationError] = useState<string | null>(null);
+  const [charError, setCharError] = useState<string | null>(null);
+  const [isCreatingChar, setIsCreatingChar] = useState(false);
+  const creatingCharRef = useRef(false);
   const [generationProgress, setGenerationProgress] = useState(0);
   const [generationStageText, setGenerationStageText] = useState('');
   const [createdStory, setCreatedStory] = useState<Story | null>(null);
@@ -147,138 +148,38 @@ export const StoryWizard: React.FC<StoryWizardProps> = ({
   };
 
   const handleAddNewCharacter = async () => {
-    if (!newCharName.trim()) return;
+    if (!newCharName.trim() || creatingCharRef.current) return;
     soundFX.playPuppy();
+    creatingCharRef.current = true;
+    setIsCreatingChar(true);
+    setCharError(null);
     try {
       const created = await characterService.createCharacter({
         name: newCharName.trim(),
         appearance: newCharTrait || 'Nụ cười tươi tắn, trang phục đáng yêu',
         role: newCharRole,
       });
-      const updated = [...characters, created];
-      onUpdateCharacters(updated);
+      onUpdateCharacters([...characters, created]);
       setSelectedCharIds([...selectedCharIds, created.id]);
-    } catch {
-      const created: FamilyCharacter = {
-        id: `char_${Date.now()}`,
-        parentId: currentUser.id,
-        name: newCharName.trim(),
-        relationRole: newCharRole,
-        appearanceDescription: newCharTrait || 'Nụ cười tươi tắn, trang phục đáng yêu',
-        personalityTraits: ['Thân thiện', 'Tốt bụng'],
-        avatarPlaceholder: newCharRole === 'HERO' ? '👦' : newCharRole === 'PET' ? '🐶' : '👨‍👩‍👧',
-      };
-      const updated = [...characters, created];
-      onUpdateCharacters(updated);
-      setSelectedCharIds([...selectedCharIds, created.id]);
+      setNewCharName('');
+      setNewCharTrait('');
+      setShowAddCharModal(false);
+    } catch (err: any) {
+      // Không tạo nhân vật cục bộ khi BE lỗi: giữ form và hiện lỗi thật
+      setCharError(err?.message || 'Không thể thêm nhân vật. Vui lòng thử lại.');
+    } finally {
+      creatingCharRef.current = false;
+      setIsCreatingChar(false);
     }
-    setNewCharName('');
-    setNewCharTrait('');
-    setShowAddCharModal(false);
   };
 
-  const handleStartGeneration = async () => {
-    soundFX.playSparkle();
+  const handleStartGeneration = () => {
+    // Chưa có luồng tạo truyện thật: không gọi endpoint sai, không sinh truyện cục bộ,
+    // không tiến độ giả, không trừ credit. Hiển thị trạng thái "chưa hỗ trợ".
+    setGenerationError(
+      'Tạo truyện bằng AI chưa được kết nối với máy chủ nên chưa có truyện nào được tạo và không có credit nào bị trừ.'
+    );
     setStep(5);
-    setIsGenerating(true);
-    setGenerationProgress(15);
-    setGenerationStageText('🔒 Đang bảo mật danh tính & mã hoá nhân vật...');
-
-    try {
-      setTimeout(() => {
-        setGenerationProgress(45);
-        setGenerationStageText('🧠 Gemini AI đang sáng tạo cốt truyện & tình huống...');
-      }, 1000);
-
-      setTimeout(() => {
-        setGenerationProgress(75);
-        setGenerationStageText('🎨 Đang phác thảo tranh minh họa từng trang sách...');
-      }, 2200);
-
-      let finalStory: Story;
-
-      try {
-        const data = await apiFetch<any>('/stories/ai-generate', {
-          method: 'POST',
-          body: JSON.stringify({
-            userPrompt: `${userPrompt}. Thế giới: ${selectedWorldId}. Phong cách: ${storyTone}`,
-            templateId: selectedTemplateId,
-            characterIds: selectedCharIds,
-          }),
-        });
-        finalStory = data?.story || data;
-      } catch {
-        // Fallback local pedagogical generation
-        const selectedTemplate = templates.find((t) => t.id === selectedTemplateId) || templates[0];
-        const selectedChars = characters.filter((c) => selectedCharIds.includes(c.id));
-        const hero = selectedChars[0] || { name: 'Bé Bo' };
-        const world = STORY_WORLDS.find((w) => w.id === selectedWorldId) || STORY_WORLDS[0];
-
-        finalStory = {
-          id: `story_${Date.now()}`,
-          creatorId: currentUser.id,
-          title: `Chuyến Phiêu Lưu Đến ${world.title} Của ${hero.name}`,
-          theme: selectedTemplate?.title || 'Lòng dũng cảm',
-          targetAgeGroup: selectedTemplate?.targetAgeGroup || '3-6',
-          coverImageUrl: world.cover,
-          status: 'PUBLISHED',
-          isAnonymized: true,
-          priceCredits: 0,
-          priceVnd: 49000,
-          sellerCommissionRate: 0.7,
-          platformCommissionRate: 0.3,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-          ratingsAvg: 5.0,
-          reviewsCount: 1,
-          charactersUsed: selectedChars.map(c => ({
-            characterId: c.id,
-            realName: c.name,
-            placeholderTag: `[${c.relationRole}_1]`,
-            role: c.relationRole,
-          })),
-          pages: [
-            {
-              id: 'p_1',
-              pageNumber: 1,
-              text: `Một buổi sáng trong lành, ${hero.name} cùng các bạn bước vào ${world.title} rộn rã tiếng chim ca.`,
-              illustrationUrl: world.cover,
-              moderatorApproved: true,
-            },
-            {
-              id: 'p_2',
-              pageNumber: 2,
-              text: `${hero.name} gặp một bạn nhỏ đang lo lắng tìm lối về. Bé mỉm cười thân thiện và đưa tay giúp đỡ bạn.`,
-              illustrationUrl: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=800',
-              moderatorApproved: true,
-              choices: [
-                {
-                  id: 'c_1',
-                  label: `Cùng bạn vượt qua thử thách và chia sẻ đồ ăn nhẹ`,
-                  targetNextPageNumber: 3,
-                  eqSignal: 'EMPATHY',
-                },
-              ],
-            },
-            {
-              id: 'p_3',
-              pageNumber: 3,
-              text: `Nhờ lòng tốt và sự dũng cảm, ${hero.name} đã làm được một việc thật ý nghĩa và nhận lại những nụ cười rạng rỡ!`,
-              illustrationUrl: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=800',
-              moderatorApproved: true,
-            },
-          ],
-        };
-      }
-
-      setGenerationProgress(100);
-      setGenerationStageText('✨ Tác phẩm hoàn thành xuất sắc!');
-      soundFX.playSuccess();
-      setCreatedStory(finalStory);
-      setIsGenerating(false);
-    } catch {
-      setIsGenerating(false);
-    }
   };
 
   const handlePlayVoice = (text: string) => {
@@ -314,7 +215,7 @@ export const StoryWizard: React.FC<StoryWizardProps> = ({
             {step === 2 && 'Bối Cảnh Thế Giới'}
             {step === 3 && 'Bài Học & EQ'}
             {step === 4 && 'Ý Tưởng & Kỷ Niệm'}
-            {step === 5 && (isGenerating ? 'AI Đang Sáng Tác...' : 'Duyệt Tác Phẩm')}
+            {step === 5 && (generationError ? 'Chưa hỗ trợ' : isGenerating ? 'AI Đang Sáng Tác...' : 'Duyệt Tác Phẩm')}
           </Text>
           <TouchableOpacity onPress={onCancel} style={styles.closeBtn}>
             <Text style={styles.closeBtnText}>✕</Text>
@@ -410,12 +311,15 @@ export const StoryWizard: React.FC<StoryWizardProps> = ({
                     </TouchableOpacity>
                   ))}
                 </View>
+                {charError && (
+                  <Text style={{ color: '#B91C1C', fontSize: 12, marginBottom: 8 }}>⚠️ {charError}</Text>
+                )}
                 <View style={styles.addCharActionRow}>
                   <TouchableOpacity onPress={() => setShowAddCharModal(false)} style={styles.cancelSmallBtn}>
                     <Text style={{ fontSize: 12, fontWeight: '700', color: '#64748B' }}>Hủy</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity onPress={handleAddNewCharacter} style={styles.saveSmallBtn}>
-                    <Text style={{ fontSize: 12, fontWeight: '900', color: '#FFFFFF' }}>Lưu nhân vật</Text>
+                  <TouchableOpacity onPress={handleAddNewCharacter} disabled={isCreatingChar} style={[styles.saveSmallBtn, isCreatingChar && { opacity: 0.6 }]}>
+                    <Text style={{ fontSize: 12, fontWeight: '900', color: '#FFFFFF' }}>{isCreatingChar ? 'Đang lưu...' : 'Lưu nhân vật'}</Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -650,7 +554,21 @@ export const StoryWizard: React.FC<StoryWizardProps> = ({
             ═══════════════════════════════════════════════════════ */}
         {step === 5 && (
           <View>
-            {isGenerating ? (
+            {generationError ? (
+              <View style={styles.generatingCard}>
+                <Text style={styles.genTitle}>⚠️ Chưa hỗ trợ tạo truyện</Text>
+                <Text style={styles.genSubtitle}>{generationError}</Text>
+                <HeyButton
+                  title="← Quay lại chỉnh sửa"
+                  variant="outline"
+                  onPress={() => {
+                    setGenerationError(null);
+                    setStep(4);
+                  }}
+                  style={{ marginTop: 16 }}
+                />
+              </View>
+            ) : isGenerating ? (
               <View style={styles.generatingCard}>
                 <ActivityIndicator size="large" color="#2E7D32" style={{ marginBottom: 16 }} />
                 <Text style={styles.genTitle}>Gemini AI đang sáng tác tác phẩm...</Text>

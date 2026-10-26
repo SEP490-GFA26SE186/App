@@ -11,12 +11,8 @@ import {
   Animated as RNAnimated,
 } from 'react-native';
 import { CuteMascot } from '../components/CuteMascot';
-import {
-  UserAccount,
-  ChildProfile,
-  Story,
-  PedagogicalTemplate,
-} from '../../../../packages/shared-types';
+import { ChildProfile, FamilyCharacter, Story, PedagogicalTemplate } from '../../../../packages/shared-types';
+import { SessionUser } from '../types/sessionUser';
 import { soundFX } from '../../../../src/utils/sound-fx';
 
 const { width: W } = Dimensions.get('window');
@@ -24,8 +20,9 @@ const CARD_W = Math.min(W * 0.52, 195);
 const HERO_H = 220;
 
 interface ParentHomeScreenProps {
-  currentUser: UserAccount;
+  currentUser: SessionUser;
   childrenProfiles: ChildProfile[];
+  characters: FamilyCharacter[];
   stories: Story[];
   templates: PedagogicalTemplate[];
   onStartStoryWizard: () => void;
@@ -34,6 +31,7 @@ interface ParentHomeScreenProps {
   onSelectStoryToRead: (story: Story) => void;
 }
 
+// TEMP-DEMO(D4): fixture cho UI Preview sau này; KHÔNG dùng trong màn thật (truyện rỗng → trạng thái rỗng)
 const CURATED_DEMO_STORIES = [
   {
     id: 'd1',
@@ -88,6 +86,7 @@ const EQ_TOPICS = [
 
 export const ParentHomeScreen: React.FC<ParentHomeScreenProps> = ({
   childrenProfiles,
+  characters,
   stories,
   onStartStoryWizard,
   onOpenKidMode,
@@ -104,7 +103,8 @@ export const ParentHomeScreen: React.FC<ParentHomeScreenProps> = ({
     ]).start();
   }, []);
 
-  const allDisplayStories = stories.length > 0 ? stories : CURATED_DEMO_STORIES as any[];
+  // Chỉ hiển thị truyện do BE trả; rỗng thì hiển thị trạng thái rỗng
+  const allDisplayStories: any[] = stories;
 
   return (
     <ScrollView
@@ -176,14 +176,11 @@ export const ParentHomeScreen: React.FC<ParentHomeScreenProps> = ({
             />
             <View style={styles.continueInfo}>
               <View style={styles.continuePill}>
-                <Text style={styles.continuePillText}>📖 Đang đọc</Text>
+                <Text style={styles.continuePillText}>📖 Truyện gần đây</Text>
               </View>
               <Text style={styles.continueTitle} numberOfLines={1}>
                 {allDisplayStories[0].title}
               </Text>
-              <View style={styles.progressBarBg}>
-                <View style={[styles.progressBarFill, { width: '55%' }]} />
-              </View>
             </View>
 
             <View style={styles.continuePlayBtn}>
@@ -214,6 +211,11 @@ export const ParentHomeScreen: React.FC<ParentHomeScreenProps> = ({
         snapToInterval={CARD_W + 14}
         snapToAlignment="start"
       >
+        {allDisplayStories.length === 0 && (
+          <View style={styles.addNewCard}>
+            <Text style={styles.addNewTitle}>Chưa có truyện nào</Text>
+          </View>
+        )}
         {allDisplayStories.map((story, idx) => (
           <TouchableOpacity
             key={story.id || idx}
@@ -237,9 +239,11 @@ export const ParentHomeScreen: React.FC<ParentHomeScreenProps> = ({
                   {story.theme || 'Cổ tích'}
                 </Text>
               </View>
-              <View style={styles.ratingBadge}>
-                <Text style={styles.ratingBadgeText}>⭐ {story.ratingsAvg || '5.0'}</Text>
-              </View>
+              {!!story.ratingsAvg && (
+                <View style={styles.ratingBadge}>
+                  <Text style={styles.ratingBadgeText}>⭐ {story.ratingsAvg}</Text>
+                </View>
+              )}
             </View>
 
             {/* Bottom info */}
@@ -249,7 +253,7 @@ export const ParentHomeScreen: React.FC<ParentHomeScreenProps> = ({
               </Text>
               <View style={styles.storyCardMetaRow}>
                 <Text style={styles.storyCardPages}>
-                  📄 {story.pages?.length || story.pages || 5} trang
+                  📄 {Array.isArray(story.pages) ? story.pages.length : 0} trang
                 </Text>
               </View>
             </View>
@@ -305,28 +309,6 @@ export const ParentHomeScreen: React.FC<ParentHomeScreenProps> = ({
       </View>
 
       {/* ═══════════════════════════════════════════════════════
-          6. DAILY READING QUEST
-          ═══════════════════════════════════════════════════════ */}
-      <View style={styles.sectionWrap}>
-        <View style={styles.questCard}>
-          <View style={styles.questTop}>
-            <View style={styles.questIconBox}>
-              <Text style={styles.questIcon}>🏆</Text>
-            </View>
-            <View style={styles.questTextWrap}>
-              <Text style={styles.questTitle}>Đọc truyện cùng bé hôm nay</Text>
-              <Text style={styles.questRewardText}>Thưởng: +10 Xu 💎</Text>
-            </View>
-            <Text style={styles.questProgressPercent}>1/2</Text>
-          </View>
-
-          <View style={styles.questBarBg}>
-            <View style={[styles.questBarFill, { width: '50%' }]} />
-          </View>
-        </View>
-      </View>
-
-      {/* ═══════════════════════════════════════════════════════
           7. FAMILY CHARACTERS
           ═══════════════════════════════════════════════════════ */}
       <View style={styles.sectionHeaderRow}>
@@ -344,14 +326,12 @@ export const ParentHomeScreen: React.FC<ParentHomeScreenProps> = ({
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.familyRow}
       >
-        {[
-          { name: 'Bé Bo', icon: '👦', bg: '#E8F5E9' },
-          { name: 'Bố Tuấn', icon: '👨‍💼', bg: '#E3F2FD' },
-          { name: 'Mẹ Lan', icon: '👩‍🍳', bg: '#FFF8E1' },
-          { name: 'Chó Lu', icon: '🐶', bg: '#FCE4EC' },
-        ].map((char, index) => (
+        {characters.length === 0 && (
+          <Text style={styles.charName}>Chưa có nhân vật nào</Text>
+        )}
+        {characters.map((char) => (
           <TouchableOpacity
-            key={index}
+            key={char.id}
             onPress={() => {
               soundFX.playPuppy();
               onStartStoryWizard();
@@ -359,8 +339,10 @@ export const ParentHomeScreen: React.FC<ParentHomeScreenProps> = ({
             activeOpacity={0.85}
             style={styles.charItem}
           >
-            <View style={[styles.charAvatar, { backgroundColor: char.bg }]}>
-              <Text style={styles.charEmoji}>{char.icon}</Text>
+            <View style={[styles.charAvatar, { backgroundColor: '#E8F5E9' }]}>
+              <Text style={styles.charEmoji}>
+                {char.relationRole === 'PET' ? '🐶' : char.relationRole === 'FATHER' ? '👨' : char.relationRole === 'MOTHER' ? '👩' : char.relationRole === 'HERO' ? '👦' : '🙂'}
+              </Text>
             </View>
             <Text style={styles.charName}>{char.name}</Text>
           </TouchableOpacity>

@@ -19,22 +19,25 @@ import {
   getApiBaseUrl,
   ApiEnvironment,
 } from '../services';
-import { UserAccount } from '../../../../packages/shared-types';
+import { SessionUser } from '../types/sessionUser';
 
 interface LoginScreenProps {
-  onLoginSuccess: (user: UserAccount) => void;
+  onLoginSuccess: (user: SessionUser) => void;
   onGoRegister: () => void;
+  // Thông báo hiển thị khi vào màn (vd phiên hết hạn)
+  initialMessage?: string | null;
 }
 
 export const LoginScreen: React.FC<LoginScreenProps> = ({
   onLoginSuccess,
   onGoRegister,
+  initialMessage,
 }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const submittingRef = useRef(false);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(initialMessage ?? null);
   const [currentEnv, setCurrentEnv] = useState<ApiEnvironment>(getApiEnvironment());
   const [showEnvOptions, setShowEnvOptions] = useState(false);
 
@@ -105,6 +108,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
           value={email}
           onChangeText={setEmail}
           keyboardType="email-address"
+          autoCapitalize="none"
+          autoCorrect={false}
         />
 
         <HeyInput
@@ -113,6 +118,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
           value={password}
           onChangeText={setPassword}
           secureTextEntry
+          autoCapitalize="none"
+          autoCorrect={false}
         />
 
         <HeyButton

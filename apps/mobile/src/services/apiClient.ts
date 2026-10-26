@@ -22,6 +22,10 @@ export const extractErrorMessage = (errorData: any, fallback = 'Có lỗi xảy 
   return errorData.message || fallback;
 };
 
+/** Response 2xx nhưng sai hình dạng so với contract BE: không được coi là thành công */
+export const invalidResponseError = (what: string): ApiError =>
+  new ApiError(`Phản hồi ${what} từ máy chủ không hợp lệ. Vui lòng thử lại.`, 502);
+
 // Refresh token handler
 let isRefreshing = false;
 let refreshPromise: Promise<string> | null = null;
@@ -35,24 +39,44 @@ const refreshAccessToken = async (): Promise<string> => {
   refreshPromise = (async () => {
     try {
       const refreshToken = safeStorage.getItem(STORAGE_KEYS.REFRESH_TOKEN);
-      if (!refreshToken) throw new Error('Không có refresh token');
+      if (!refreshToken) throw new ApiError('Không có refresh token', 401);
 
       const url = `${getApiBaseUrl()}/auth/refresh-tokens`;
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ refreshToken }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        safeStorage.removeItem(STORAGE_KEYS.ACCESS_TOKEN);
-        safeStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
-        throw new Error(extractErrorMessage(data, 'Phiên đăng nhập đã hết hạn'));
+      let res: Response;
+      try {
+        res = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ refreshToken }),
+        });
+      } catch {
+        // Mất mạng tạm thời: KHÔNG xóa phiên
+        throw new ApiError('Không thể kết nối đến máy chủ. Vui lòng kiểm tra mạng.', 0);
       }
 
-      const newAccessToken = data.data.tokens.accessToken;
-      const newRefreshToken = data.data.tokens.refreshToken;
+      let data: any = null;
+      try {
+        data = await res.json();
+      } catch {
+        data = null;
+      }
+
+      if (!res.ok) {
+        if (res.status >= 500) {
+          // Lỗi máy chủ tạm thời: KHÔNG xóa phiên
+          throw new ApiError(extractErrorMessage(data, `Lỗi máy chủ (${res.status})`), res.status);
+        }
+        // 4xx: refresh token bị BE từ chối → phiên thực sự không còn hợp lệ
+        safeStorage.removeItem(STORAGE_KEYS.ACCESS_TOKEN);
+        safeStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
+        throw new ApiError(extractErrorMessage(data, 'Phiên đăng nhập đã hết hạn'), 401);
+      }
+
+      const newAccessToken = data?.data?.tokens?.accessToken;
+      const newRefreshToken = data?.data?.tokens?.refreshToken;
+      if (!newAccessToken) {
+        throw new ApiError('Phản hồi làm mới phiên từ máy chủ không hợp lệ.', 502);
+      }
       safeStorage.setItem(STORAGE_KEYS.ACCESS_TOKEN, newAccessToken);
       if (newRefreshToken) {
         safeStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, newRefreshToken);
@@ -102,7 +126,11 @@ export const apiFetch = async <T = any>(endpoint: string, options: RequestOption
       const newToken = await refreshAccessToken();
       headers['Authorization'] = `Bearer ${newToken}`;
       res = await fetch(url, { ...options, headers });
-    } catch {
+    } catch (refreshError) {
+      // Lỗi mạng/5xx khi refresh: giữ phiên, báo lỗi thật để người dùng thử lại
+      if (refreshError instanceof ApiError && refreshError.status !== 401) {
+        throw refreshError;
+      }
       safeStorage.removeItem(STORAGE_KEYS.ACCESS_TOKEN);
       throw new ApiError('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.', 401);
     }

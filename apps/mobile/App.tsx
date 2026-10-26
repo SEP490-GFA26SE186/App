@@ -7,9 +7,11 @@ import {
   StatusBar,
   Platform,
   Alert,
+  Text,
+  ActivityIndicator,
+  TouchableOpacity,
 } from 'react-native';
 import {
-  UserAccount,
   ChildProfile,
   FamilyCharacter,
   PedagogicalTemplate,
@@ -17,8 +19,10 @@ import {
   WalletTransaction,
   Role,
 } from '../../packages/shared-types';
+import { SessionUser } from './src/types/sessionUser';
 
 import { Colors } from './src/theme/colors';
+import { HeyButton } from './src/components/ui/HeyButton';
 import { HeyTopBar } from './src/components/HeyTopBar';
 import { HeyTabBar } from './src/components/HeyTabBar';
 import { AuthModal } from './src/components/AuthModal';
@@ -42,17 +46,41 @@ import {
   childService,
   characterService,
   storyService,
-  DEMO_PARENT_USER,
-  DEMO_CHILDREN,
-  DEMO_CHARACTERS,
-  DEMO_TEMPLATES,
-  DEMO_STORIES,
+  ApiError,
 } from './src/services';
 
+type AppPhase = 'BOOTING' | 'BOOT_ERROR' | 'LOGIN' | 'REGISTER' | 'APP';
+type DataStatus = 'idle' | 'loading' | 'ready' | 'error';
+
+// Không để màn BOOTING treo vô thời hạn khi máy chủ không phản hồi
+const BOOT_TIMEOUT_MS = 15000;
+
+const withTimeout = <T,>(promise: Promise<T>, ms: number, message: string): Promise<T> =>
+  new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new ApiError(message, 0)), ms);
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (error) => {
+        clearTimeout(timer);
+        reject(error);
+      }
+    );
+  });
+
+const SESSION_EXPIRED_NOTICE = 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.';
+
 export default function App() {
-  const [appPhase, setAppPhase] = useState<'LOGIN' | 'REGISTER' | 'APP'>(() =>
-    authService.isLoggedIn() ? 'APP' : 'LOGIN'
+  // Có token → phải xác minh với BE (BOOTING) trước khi vào APP; không có token → Login
+  const [appPhase, setAppPhase] = useState<AppPhase>(() =>
+    authService.isLoggedIn() ? 'BOOTING' : 'LOGIN'
   );
+  const [bootError, setBootError] = useState<string | null>(null);
+  const [loginNotice, setLoginNotice] = useState<string | null>(null);
+  // Tăng mỗi khi phiên đổi (đăng nhập/đăng xuất/hết hạn): kết quả request cũ bị bỏ qua
+  const sessionRef = useRef(0);
   const [activeRole, setActiveRole] = useState<Role>('PARENT');
   const [isKidMode, setIsKidMode] = useState<boolean>(false);
   // Bé đã được BE xác nhận khi vào Kid Mode
@@ -63,61 +91,116 @@ export default function App() {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
   const [selectedStoryToRead, setSelectedStoryToRead] = useState<Story | null>(null);
 
-  // User State
-  const [currentUser, setCurrentUser] = useState<UserAccount>(DEMO_PARENT_USER);
-  const [childrenProfiles, setChildrenProfiles] = useState<ChildProfile[]>(DEMO_CHILDREN);
-  const [characters, setCharacters] = useState<FamilyCharacter[]>(DEMO_CHARACTERS);
-  const [templates, setTemplates] = useState<PedagogicalTemplate[]>(DEMO_TEMPLATES);
-  const [stories, setStories] = useState<Story[]>(DEMO_STORIES);
+  // Dữ liệu của phiên hiện tại: chỉ chứa dữ liệu do BE trả (rỗng khi chưa có/chưa tải được)
+  const [currentUser, setCurrentUser] = useState<SessionUser | null>(null);
+  const [childrenProfiles, setChildrenProfiles] = useState<ChildProfile[]>([]);
+  const [characters, setCharacters] = useState<FamilyCharacter[]>([]);
+  const [templates, setTemplates] = useState<PedagogicalTemplate[]>([]);
+  const [stories, setStories] = useState<Story[]>([]);
+  const [dataStatus, setDataStatus] = useState<DataStatus>('idle');
+  const [dataError, setDataError] = useState<string | null>(null);
 
-  const [transactions, setTransactions] = useState<WalletTransaction[]>([
-    {
-      id: 'tx_01',
-      userId: currentUser.id,
-      type: 'CREDIT_PURCHASE',
-      amountCredits: 50,
-      amountVnd: 50000,
-      description: 'Nạp Credits qua PayOS QR',
-      createdAt: new Date().toISOString(),
-      status: 'COMPLETED',
-    },
-    {
-      id: 'tx_02',
-      userId: currentUser.id,
-      type: 'STORY_PURCHASE',
-      amountCredits: -3,
-      description: 'Sáng tác AI câu chuyện "Bé Bin & Chiếc Ô"',
-      createdAt: new Date().toISOString(),
-      status: 'COMPLETED',
-    },
-  ]);
+  // Xóa mọi state thuộc phiên trước (tránh lộ dữ liệu tài khoản A sang tài khoản B)
+  const resetSessionState = () => {
+    setCurrentUser(null);
+    setChildrenProfiles([]);
+    setCharacters([]);
+    setTemplates([]);
+    setStories([]);
+    setDataStatus('idle');
+    setDataError(null);
+    setActiveRole('PARENT');
+    setCurrentTab('HOME');
+    setSelectedStoryToRead(null);
+    setIsAuthModalOpen(false);
+    setIsKidMode(false);
+    setKidChild(null);
+  };
 
-  // Load live data from API on start
-  useEffect(() => {
-    loadAllData();
-  }, []);
+  // Kết thúc phiên cục bộ (hết hạn / không phục hồi được) và về Login
+  const endSession = (notice?: string) => {
+    sessionRef.current += 1;
+    authService.clearLocalSession();
+    resetSessionState();
+    setLoginNotice(notice ?? null);
+    setAppPhase('LOGIN');
+  };
 
-  const loadAllData = async () => {
-    try {
-      const me = await authService.getMe();
-      if (me) setCurrentUser(me);
-    } catch {}
+  const loadAllData = async (sid: number = sessionRef.current) => {
+    setDataStatus('loading');
+    setDataError(null);
+    const results = await Promise.allSettled([
+      authService.getMe(),
+      childService.getChildren(),
+      characterService.getCharacters(),
+      storyService.getStories(),
+      storyService.getTemplates(),
+    ]);
+    // Phiên đã đổi (đăng xuất/đổi tài khoản) trong lúc chờ: bỏ kết quả cũ
+    if (sid !== sessionRef.current) return;
 
-    try {
-      const [chList, charsList, stList, tplList] = await Promise.all([
-        childService.getChildren(),
-        characterService.getCharacters(),
-        storyService.getStories(),
-        storyService.getTemplates(),
-      ]);
-      if (chList && chList.length > 0) setChildrenProfiles(chList);
-      if (charsList && charsList.length > 0) setCharacters(charsList);
-      if (stList && stList.length > 0) setStories(stList);
-      if (tplList && tplList.length > 0) setTemplates(tplList);
-    } catch (e) {
-      console.log('Error loading initial API data:', e);
+    if (results.some((r) => r.status === 'rejected' && authService.isAuthError(r.reason))) {
+      endSession(SESSION_EXPIRED_NOTICE);
+      return;
+    }
+
+    const [meR, childrenR, charactersR, storiesR, templatesR] = results;
+    // Thành công (kể cả danh sách rỗng) → dùng đúng dữ liệu BE; thất bại → KHÔNG thay bằng dữ liệu mẫu
+    if (meR.status === 'fulfilled') setCurrentUser(meR.value);
+    if (childrenR.status === 'fulfilled') setChildrenProfiles(childrenR.value);
+    if (charactersR.status === 'fulfilled') setCharacters(charactersR.value);
+    if (storiesR.status === 'fulfilled') setStories(storiesR.value);
+    if (templatesR.status === 'fulfilled') setTemplates(templatesR.value);
+
+    const failed = results.find((r) => r.status === 'rejected') as PromiseRejectedResult | undefined;
+    if (failed) {
+      setDataStatus('error');
+      setDataError(failed.reason?.message || 'Không tải được dữ liệu từ máy chủ.');
+    } else {
+      setDataStatus('ready');
     }
   };
+
+  // Bắt đầu phiên sau khi đăng nhập/đăng ký thành công (user do BE xác nhận)
+  const startSession = (user: SessionUser) => {
+    const sid = ++sessionRef.current;
+    resetSessionState();
+    setCurrentUser(user);
+    setLoginNotice(null);
+    setAppPhase('APP');
+    loadAllData(sid);
+  };
+
+  // Xác minh token hiện có với BE trước khi coi là đã đăng nhập
+  const bootstrapSession = async () => {
+    const sid = ++sessionRef.current;
+    setBootError(null);
+    setAppPhase('BOOTING');
+    try {
+      const me = await withTimeout(
+        authService.getMe(),
+        BOOT_TIMEOUT_MS,
+        'Máy chủ phản hồi quá lâu. Vui lòng kiểm tra mạng và thử lại.'
+      );
+      if (sid !== sessionRef.current) return;
+      setCurrentUser(me);
+      setAppPhase('APP');
+      loadAllData(sid);
+    } catch (err: any) {
+      if (sid !== sessionRef.current) return;
+      if (authService.isAuthError(err)) {
+        endSession(SESSION_EXPIRED_NOTICE);
+        return;
+      }
+      // Mất mạng/5xx/timeout: không vào APP, không xóa phiên, cho phép thử lại
+      setBootError(err?.message || 'Không thể xác minh phiên đăng nhập.');
+      setAppPhase('BOOT_ERROR');
+    }
+  };
+
+  useEffect(() => {
+    if (appPhase === 'BOOTING') bootstrapSession();
+  }, []);
 
   const handleOpenKidMode = async (child?: ChildProfile) => {
     if (enteringKidRef.current || isKidMode) return;
@@ -154,63 +237,68 @@ export default function App() {
     return attempt;
   };
 
-  const handleStoryCreated = async (newStory: Story) => {
-    try {
-      const created = await storyService.createStory({
-        title: newStory.title,
-        situation: newStory.summary || newStory.pages?.[0]?.text,
-      });
-      setStories([created || newStory, ...stories]);
-    } catch {
-      setStories([newStory, ...stories]);
-    }
-    setCurrentUser((prev) => ({
-      ...prev,
-      creditBalance: Math.max(0, (prev.creditBalance || 0) - 3),
-    }));
-    setSelectedStoryToRead(newStory);
+  // Kid session mất/hết hạn: không thể thoát bằng PIN → bắt buộc đăng nhập lại bằng mật khẩu thật
+  const handleKidSessionLost = () => {
+    endSession('Phiên Chế độ Bé không còn hợp lệ. Vui lòng đăng nhập lại bằng mật khẩu tài khoản.');
+  };
+
+  // Chỉ nhận truyện đã được BE xác nhận (luồng tạo truyện thật: T5.1/T5.2).
+  // Không trừ credit cục bộ: số dư lấy lại từ BE.
+  const handleStoryCreated = (story: Story) => {
+    setSelectedStoryToRead(story);
     setCurrentTab('HOME');
+    loadAllData();
   };
 
-  const handleAddChild = async (child: Partial<ChildProfile>) => {
-    try {
-      const newChild = await childService.createChild({
-        name: child.name || 'Bé Mới',
-        birthDate: child.birthDate || '2020-05-01',
-      });
-      setChildrenProfiles((prev) => [...prev, newChild]);
-    } catch {
-      const fallbackChild: ChildProfile = {
-        id: `ch_${Date.now()}`,
-        parentId: currentUser.id,
-        name: child.name || 'Bé Mới',
-        age: child.age || 4,
-        gender: 'MALE',
-        readingLevel: child.readingLevel || 'BEGINNER',
-        favoriteThemes: ['Cổ tích', 'Thiên nhiên'],
-      };
-      setChildrenProfiles((prev) => [...prev, fallbackChild]);
-    }
+  // Chỉ nhận hồ sơ bé đã được BE tạo (AuthModal gọi POST /children rồi báo lại đây).
+  const handleChildCreated = (child: Partial<ChildProfile>) => {
+    if (!child.id) return;
+    const created = child as ChildProfile;
+    setChildrenProfiles((prev) => (prev.some((c) => c.id === created.id) ? prev : [...prev, created]));
   };
 
-  const handleLogout = async () => {
-    try {
-      await authService.logout();
-    } catch {}
-    setIsAuthModalOpen(false);
+  const handleLogout = () => {
+    sessionRef.current += 1;
+    // logout() xóa phiên cục bộ ngay (đồng bộ) rồi mới báo BE; không chờ mạng để chuyển màn
+    void authService.logout();
+    resetSessionState();
+    setLoginNotice(null);
     setAppPhase('LOGIN');
   };
+
+  if (appPhase === 'BOOTING') {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+        <View style={styles.centerBox}>
+          <ActivityIndicator size="large" color={Colors.primary} />
+          <Text style={styles.centerText}>Đang kiểm tra phiên đăng nhập...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (appPhase === 'BOOT_ERROR') {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+        <View style={styles.centerBox}>
+          <Text style={styles.centerTitle}>Không thể xác minh phiên đăng nhập</Text>
+          <Text style={styles.centerText}>{bootError}</Text>
+          <HeyButton title="Thử lại" onPress={bootstrapSession} style={styles.centerBtn} />
+          <HeyButton title="Đăng xuất" variant="outline" onPress={handleLogout} style={styles.centerBtn} />
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   if (appPhase === 'LOGIN') {
     return (
       <SafeAreaView style={styles.safeArea}>
         <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
         <LoginScreen
-          onLoginSuccess={(user) => {
-            setCurrentUser(user);
-            setAppPhase('APP');
-            loadAllData();
-          }}
+          initialMessage={loginNotice}
+          onLoginSuccess={startSession}
           onGoRegister={() => setAppPhase('REGISTER')}
         />
       </SafeAreaView>
@@ -222,13 +310,21 @@ export default function App() {
       <SafeAreaView style={styles.safeArea}>
         <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
         <RegisterScreen
-          onRegisterSuccess={(user) => {
-            setCurrentUser(user);
-            setAppPhase('APP');
-            loadAllData();
-          }}
+          onRegisterSuccess={startSession}
           onGoLogin={() => setAppPhase('LOGIN')}
         />
+      </SafeAreaView>
+    );
+  }
+
+  // Không bao giờ vào giao diện Parent khi chưa có user do BE xác nhận
+  if (!currentUser) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+        <View style={styles.centerBox}>
+          <ActivityIndicator size="large" color={Colors.primary} />
+        </View>
       </SafeAreaView>
     );
   }
@@ -243,6 +339,7 @@ export default function App() {
           child={kidChild}
           stories={stories}
           onExitKidMode={handleExitKidMode}
+          onKidSessionLost={handleKidSessionLost}
           onRecordEqSignal={(signal, skill) => {
             console.log('Record EQ signal:', signal, skill);
           }}
@@ -260,6 +357,21 @@ export default function App() {
             onOpenKidMode={() => handleOpenKidMode()}
           />
 
+          {dataStatus === 'loading' && (
+            <View style={styles.dataBanner}>
+              <ActivityIndicator size="small" color={Colors.primary} />
+              <Text style={styles.dataBannerText}>Đang tải dữ liệu...</Text>
+            </View>
+          )}
+          {dataStatus === 'error' && (
+            <View style={[styles.dataBanner, styles.dataBannerError]}>
+              <Text style={[styles.dataBannerText, styles.dataBannerErrorText]}>⚠️ {dataError}</Text>
+              <TouchableOpacity onPress={() => loadAllData()}>
+                <Text style={styles.dataBannerRetry}>Thử lại</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
           {/* Body Content by Role & Tab */}
           <View style={styles.main}>
             {activeRole === 'SELLER' ? (
@@ -268,7 +380,7 @@ export default function App() {
                 stories={stories}
                 onOpenStoryWizard={() => setCurrentTab('CREATE')}
                 onOpenWallet={() => setCurrentTab('WALLET')}
-                onSubmitForReview={(id) => alert(`Đã gửi duyệt truyện ${id}`)}
+                onSubmitForReview={() => alert('Gửi duyệt truyện chưa được hỗ trợ (chưa kết nối máy chủ).')}
               />
             ) : activeRole === 'MODERATOR' || activeRole === 'ADMIN' ? (
               <ModeratorAdminScreen />
@@ -278,6 +390,7 @@ export default function App() {
                   <ParentHomeScreen
                     currentUser={currentUser}
                     childrenProfiles={childrenProfiles}
+                    characters={characters}
                     stories={stories}
                     templates={templates}
                     onStartStoryWizard={() => setCurrentTab('CREATE')}
@@ -314,8 +427,7 @@ export default function App() {
                 {currentTab === 'WALLET' && (
                   <WalletScreen
                     currentUser={currentUser}
-                    transactions={transactions}
-                    onUserUpdate={setCurrentUser}
+                    transactions={[]}
                     onRefreshWallet={() => loadAllData()}
                   />
                 )}
@@ -346,7 +458,7 @@ export default function App() {
             }}
             onLogout={handleLogout}
             childrenProfiles={childrenProfiles}
-            onAddChild={handleAddChild}
+            onAddChild={handleChildCreated}
             onRefreshData={loadAllData}
           />
 
@@ -373,5 +485,54 @@ const styles = StyleSheet.create({
   },
   main: {
     flex: 1,
+  },
+  centerBox: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+  },
+  centerTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: Colors.textDark,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  centerText: {
+    fontSize: 14,
+    color: Colors.textDark,
+    marginTop: 12,
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  centerBtn: {
+    alignSelf: 'stretch',
+    marginTop: 8,
+  },
+  dataBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    backgroundColor: '#EFF6FF',
+  },
+  dataBannerError: {
+    backgroundColor: '#FEE2E2',
+  },
+  dataBannerText: {
+    flex: 1,
+    fontSize: 12,
+    color: '#1E3A8A',
+  },
+  dataBannerErrorText: {
+    color: '#B91C1C',
+  },
+  dataBannerRetry: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#B91C1C',
   },
 });

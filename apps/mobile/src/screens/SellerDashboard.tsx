@@ -10,11 +10,12 @@ import {
 } from 'react-native';
 import { HeyButton } from '../components/ui/HeyButton';
 import { HeyCard } from '../components/ui/HeyCard';
-import { Story, UserAccount } from '../../../../packages/shared-types';
+import { Story } from '../../../../packages/shared-types';
+import { SessionUser } from '../types/sessionUser';
 import { Colors } from '../theme/colors';
 
 interface SellerDashboardProps {
-  currentUser: UserAccount;
+  currentUser: SessionUser;
   stories: Story[];
   onOpenStoryWizard: () => void;
   onOpenWallet: () => void;

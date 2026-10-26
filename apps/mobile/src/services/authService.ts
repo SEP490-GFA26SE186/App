@@ -1,8 +1,7 @@
 // apps/mobile/src/services/authService.ts
 import { apiFetch, ApiError } from './apiClient';
 import { safeStorage, STORAGE_KEYS } from './storage';
-import { DEMO_PARENT_USER } from './demoData';
-import { UserAccount } from '../../../../packages/shared-types';
+import { SessionUser } from '../types/sessionUser';
 
 export interface LoginResponse {
   user: any;
@@ -31,7 +30,7 @@ export const authService = {
   /**
    * Đăng nhập: POST /auth/login
    */
-  login: async (emailOrUsername: string, password: string): Promise<UserAccount> => {
+  login: async (emailOrUsername: string, password: string): Promise<SessionUser> => {
     let data: LoginResponse | null;
     try {
       data = await apiFetch<LoginResponse>('/auth/login', {
@@ -57,6 +56,7 @@ export const authService = {
       throw new ApiError('Phản hồi đăng nhập từ máy chủ không hợp lệ. Vui lòng thử lại.', 502);
     }
 
+    // formatUser throw nếu user không hợp lệ → không ghi token
     const user = authService.formatUser(data.user);
     safeStorage.setItem(STORAGE_KEYS.ACCESS_TOKEN, tokens.accessToken);
     safeStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, tokens.refreshToken);
@@ -67,58 +67,53 @@ export const authService = {
   /**
    * Đăng ký: POST /auth/register
    */
-  register: async (payload: RegisterPayload): Promise<UserAccount> => {
+  register: async (payload: RegisterPayload): Promise<SessionUser> => {
     const data = await apiFetch<LoginResponse>('/auth/register', {
       method: 'POST',
       skipAuth: true,
       body: JSON.stringify(payload),
     });
 
-    if (data?.tokens) {
-      safeStorage.setItem(STORAGE_KEYS.ACCESS_TOKEN, data.tokens.accessToken);
-      safeStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, data.tokens.refreshToken);
+    // Chỉ coi là đăng ký thành công khi BE trả đủ user + tokens
+    const tokens = data?.tokens;
+    if (!data?.user || !tokens?.accessToken || !tokens?.refreshToken) {
+      throw new ApiError('Phản hồi đăng ký từ máy chủ không hợp lệ. Vui lòng thử lại.', 502);
     }
 
-    const rawUser = data?.user || data;
-    const user = authService.formatUser(rawUser);
+    const user = authService.formatUser(data.user);
+    safeStorage.setItem(STORAGE_KEYS.ACCESS_TOKEN, tokens.accessToken);
+    safeStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, tokens.refreshToken);
     safeStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(user));
     return user;
   },
 
   /**
    * Lấy thông tin user hiện tại: GET /auth/me
+   * Chỉ trả user do BE xác nhận; lỗi (401/403/mạng/5xx/response sai) đều throw.
+   * Không dùng cache hay user mặc định thay thế. Dùng `isAuthError` để phân biệt
+   * phiên không hợp lệ (401/403) với lỗi tạm thời (mạng/5xx).
    */
-  getMe: async (): Promise<UserAccount> => {
-    try {
-      const data = await apiFetch<{ user: any }>('/auth/me');
-      const rawUser = data?.user || data;
-      const user = authService.formatUser(rawUser);
-      safeStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(user));
-      return user;
-    } catch (error) {
-      const saved = safeStorage.getItem(STORAGE_KEYS.USER_DATA);
-      if (saved) {
-        try {
-          return JSON.parse(saved);
-        } catch {}
-      }
-      return DEMO_PARENT_USER;
-    }
+  getMe: async (): Promise<SessionUser> => {
+    const data = await apiFetch<{ user?: any }>('/auth/me');
+    return authService.formatUser(data?.user);
   },
 
+  /** 401/403 = phiên không hợp lệ; mạng (status 0) và 5xx KHÔNG phải lỗi xác thực */
+  isAuthError: (error: unknown): boolean =>
+    error instanceof ApiError && (error.status === 401 || error.status === 403),
+
   /**
-   * Đăng xuất: POST /auth/logout
+   * Kid session không còn hợp lệ (mất/hết hạn/bị thu hồi) khi thoát Kid Mode:
+   * 401 mà KHÔNG có `attemptsLeft` (PIN sai luôn kèm `attemptsLeft`, xem BE auth.service exitKidMode).
    */
-  logout: async (): Promise<void> => {
-    const refreshToken = safeStorage.getItem(STORAGE_KEYS.REFRESH_TOKEN);
-    try {
-      if (refreshToken) {
-        await apiFetch('/auth/logout', {
-          method: 'POST',
-          body: JSON.stringify({ refreshToken }),
-        });
-      }
-    } catch {}
+  isKidSessionLost: (error: unknown): boolean => {
+    if (!(error instanceof ApiError) || error.status !== 401) return false;
+    const first = error.errors?.[0] as { attemptsLeft?: number } | undefined;
+    return typeof first?.attemptsLeft !== 'number';
+  },
+
+  /** Xóa toàn bộ phiên cục bộ (đồng bộ, không gọi mạng) */
+  clearLocalSession: (): void => {
     safeStorage.removeItem(STORAGE_KEYS.ACCESS_TOKEN);
     safeStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
     safeStorage.removeItem(STORAGE_KEYS.USER_DATA);
@@ -126,11 +121,30 @@ export const authService = {
     safeStorage.removeItem(STORAGE_KEYS.CURRENT_CHILD_ID);
   },
 
+  /**
+   * Đăng xuất: xóa phiên cục bộ NGAY (đồng bộ) rồi mới báo BE thu hồi refresh token.
+   * Nhờ vậy lời gọi mạng chậm không thể xóa nhầm phiên đăng nhập mới.
+   */
+  logout: async (): Promise<void> => {
+    const refreshToken = safeStorage.getItem(STORAGE_KEYS.REFRESH_TOKEN);
+    authService.clearLocalSession();
+    if (!refreshToken) return;
+    try {
+      await apiFetch('/auth/logout', {
+        method: 'POST',
+        skipAuth: true,
+        body: JSON.stringify({ refreshToken }),
+      });
+    } catch {
+      // Best-effort: phiên cục bộ đã xóa; refresh token trên BE sẽ tự hết hạn
+    }
+  },
+
   isLoggedIn: (): boolean => {
     return !!safeStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN);
   },
 
-  getSavedUser: (): UserAccount | null => {
+  getSavedUser: (): SessionUser | null => {
     const raw = safeStorage.getItem(STORAGE_KEYS.USER_DATA);
     if (!raw) return null;
     try {
@@ -144,31 +158,23 @@ export const authService = {
    * Thiết lập mã PIN Kid Mode: POST /auth/kid-pin/set
    */
   setKidPin: async (pin: string): Promise<boolean> => {
-    try {
-      await apiFetch('/auth/kid-pin/set', {
-        method: 'POST',
-        body: JSON.stringify({ pin }),
-      });
-      return true;
-    } catch (error) {
-      // Local fallback
-      return true;
-    }
+    // PIN chỉ được gửi cho BE; lỗi → throw (không báo đã lưu khi BE chưa lưu)
+    await apiFetch('/auth/kid-pin/set', {
+      method: 'POST',
+      body: JSON.stringify({ pin }),
+    });
+    return true;
   },
 
   /**
    * Đổi mã PIN Kid Mode: PUT /auth/kid-pin/change
    */
   changeKidPin: async (payload: { newPin: string; currentPin?: string; password?: string }): Promise<boolean> => {
-    try {
-      await apiFetch('/auth/kid-pin/change', {
-        method: 'PUT',
-        body: JSON.stringify(payload),
-      });
-      return true;
-    } catch (error) {
-      return true;
-    }
+    await apiFetch('/auth/kid-pin/change', {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    });
+    return true;
   },
 
   /**
@@ -196,6 +202,10 @@ export const authService = {
 
     safeStorage.setItem(STORAGE_KEYS.KID_SESSION_TOKEN, token);
     safeStorage.setItem(STORAGE_KEYS.CURRENT_CHILD_ID, childId);
+    // Cô lập quyền Parent: trong Kid Mode không còn Parent token để gắn nhầm vào request.
+    // Thoát bằng PIN, BE cấp tokens Parent mới; mất kid session → phải đăng nhập lại bằng mật khẩu.
+    safeStorage.removeItem(STORAGE_KEYS.ACCESS_TOKEN);
+    safeStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
     return { child: data.child, kidSessionToken: token };
   },
 
@@ -228,10 +238,15 @@ export const authService = {
     return true;
   },
 
-  formatUser: (raw: any): UserAccount => {
+  formatUser: (raw: any): SessionUser => {
+    // Không tạo user khi BE trả dữ liệu thiếu/sai
+    if (!raw || typeof raw !== 'object' || typeof raw.id !== 'string' || !raw.id || typeof raw.email !== 'string' || !raw.email) {
+      throw new ApiError('Dữ liệu tài khoản từ máy chủ không hợp lệ.', 502);
+    }
+    const numberOrNull = (v: unknown): number | null => (typeof v === 'number' && Number.isFinite(v) ? v : null);
     return {
-      id: raw.id || 'usr_parent',
-      email: raw.email || '',
+      id: raw.id,
+      email: raw.email,
       fullName: raw.fullName || raw.username || 'Phụ huynh',
       avatarUrl: raw.avatarUrl || 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&auto=format&fit=crop&q=80',
       phone: raw.phone || '',
@@ -239,9 +254,10 @@ export const authService = {
       kidModePinHash: raw.hasKidPin ? '****' : '',
       createdAt: raw.createdAt || new Date().toISOString(),
       updatedAt: raw.updatedAt || new Date().toISOString(),
-      creditBalance: raw.wallet?.creditBalance ?? raw.creditBalance ?? 50,
-      sellerAvailableBalance: raw.wallet?.sellerAvailableBalance ?? raw.sellerAvailableBalance ?? 0,
-      sellerPendingBalance: raw.wallet?.sellerPendingBalance ?? raw.sellerPendingBalance ?? 0,
+      // null = BE chưa trả ví (login không có wallet); UI hiển thị "—"
+      creditBalance: numberOrNull(raw.wallet?.creditBalance ?? raw.creditBalance),
+      sellerAvailableBalance: numberOrNull(raw.wallet?.sellerAvailableBalance ?? raw.sellerAvailableBalance) ?? undefined,
+      sellerPendingBalance: numberOrNull(raw.wallet?.sellerPendingBalance ?? raw.sellerPendingBalance) ?? undefined,
       bankAccount: raw.bankAccount,
     };
   },

@@ -11,20 +11,19 @@ import {
 import { HeyButton } from '../components/ui/HeyButton';
 import { HeyCard } from '../components/ui/HeyCard';
 import { HeyInput } from '../components/ui/HeyInput';
-import { UserAccount, WalletTransaction } from '../../../../packages/shared-types';
+import { WalletTransaction } from '../../../../packages/shared-types';
+import { SessionUser } from '../types/sessionUser';
 import { Colors } from '../theme/colors';
 
 interface WalletScreenProps {
-  currentUser: UserAccount;
+  currentUser: SessionUser;
   transactions: WalletTransaction[];
-  onUserUpdate: (user: UserAccount) => void;
   onRefreshWallet: () => void;
 }
 
 export const WalletScreen: React.FC<WalletScreenProps> = ({
   currentUser,
   transactions,
-  onUserUpdate,
   onRefreshWallet,
 }) => {
   const [showTopupModal, setShowTopupModal] = useState(false);
@@ -33,32 +32,10 @@ export const WalletScreen: React.FC<WalletScreenProps> = ({
   const [withdrawAmount, setWithdrawAmount] = useState('200000');
   const [notice, setNotice] = useState<string | null>(null);
 
-  const handleTopup = () => {
-    const updated = {
-      ...currentUser,
-      creditBalance: (currentUser.creditBalance || 0) + selectedTopupGems,
-    };
-    onUserUpdate(updated);
-    setShowTopupModal(false);
-    setNotice(`Đã nạp thành công +${selectedTopupGems} 💎 Credits!`);
-    setTimeout(() => setNotice(null), 2500);
-  };
-
-  const handleWithdraw = () => {
-    const amt = parseInt(withdrawAmount, 10);
-    if (!amt || amt > (currentUser.sellerAvailableBalance || 0)) {
-      alert('Số dư khả dụng không đủ để rút!');
-      return;
-    }
-    const updated = {
-      ...currentUser,
-      sellerAvailableBalance: (currentUser.sellerAvailableBalance || 0) - amt,
-    };
-    onUserUpdate(updated);
-    setShowWithdrawModal(false);
-    setNotice(`Đã gửi yêu cầu rút ${amt.toLocaleString('vi-VN')} đ về Vietcombank!`);
-    setTimeout(() => setNotice(null), 2500);
-  };
+  // Nạp credit / rút tiền CHƯA có API thật (BE không có endpoint nạp credit; rút tiền thuộc SCOPE PENDING).
+  // Không cộng/trừ số dư cục bộ và không báo thành công: các nút xác nhận bị vô hiệu hóa.
+  const UNSUPPORTED_TOPUP = 'Nạp credit chưa được hỗ trợ: máy chủ chưa cung cấp chức năng này.';
+  const UNSUPPORTED_WITHDRAW = 'Rút tiền chưa được hỗ trợ (chưa kết nối máy chủ).';
 
   return (
     <ScrollView
@@ -74,7 +51,7 @@ export const WalletScreen: React.FC<WalletScreenProps> = ({
           <View>
             <Text style={styles.balanceLabel}>Số dư Credits sáng tác</Text>
             <Text style={styles.balanceValue}>
-              💎 {currentUser?.creditBalance || 0}
+              💎 {currentUser?.creditBalance ?? '—'}
             </Text>
           </View>
           <HeyButton
@@ -91,7 +68,9 @@ export const WalletScreen: React.FC<WalletScreenProps> = ({
           <View>
             <Text style={styles.balanceLabel}>Doanh thu khả dụng (Tác giả)</Text>
             <Text style={styles.sellerBalanceValue}>
-              {currentUser?.sellerAvailableBalance?.toLocaleString('vi-VN') || 0} đ
+              {currentUser?.sellerAvailableBalance != null
+                ? `${currentUser.sellerAvailableBalance.toLocaleString('vi-VN')} đ`
+                : '—'}
             </Text>
           </View>
           <TouchableOpacity
@@ -114,7 +93,7 @@ export const WalletScreen: React.FC<WalletScreenProps> = ({
 
       {transactions.length === 0 ? (
         <HeyCard style={styles.emptyCard}>
-          <Text style={styles.emptyText}>Chưa có giao dịch phát sinh</Text>
+          <Text style={styles.emptyText}>Lịch sử giao dịch chưa được kết nối với máy chủ</Text>
         </HeyCard>
       ) : (
         transactions.map((tx) => (
@@ -148,9 +127,7 @@ export const WalletScreen: React.FC<WalletScreenProps> = ({
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
             <Text style={styles.modalTitle}>Nạp Credits Sáng Tác</Text>
-            <Text style={styles.modalSubtitle}>
-              Mỗi câu chuyện AI tiêu hao 3 💎 Credits
-            </Text>
+            <Text style={styles.modalSubtitle}>{UNSUPPORTED_TOPUP}</Text>
 
             <View style={styles.packageGrid}>
               {[
@@ -180,8 +157,9 @@ export const WalletScreen: React.FC<WalletScreenProps> = ({
                 style={styles.modalCancelBtn}
               />
               <HeyButton
-                title="⚡ Thanh toán PayOS"
-                onPress={handleTopup}
+                title="Chưa hỗ trợ"
+                onPress={() => {}}
+                disabled
                 style={styles.modalActionBtn}
               />
             </View>
@@ -194,9 +172,7 @@ export const WalletScreen: React.FC<WalletScreenProps> = ({
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
             <Text style={styles.modalTitle}>Rút Doanh Thu Tác Giả</Text>
-            <Text style={styles.modalSubtitle}>
-              Chuyển về tài khoản ngân hàng liên kết trong 24h
-            </Text>
+            <Text style={styles.modalSubtitle}>{UNSUPPORTED_WITHDRAW}</Text>
 
             <HeyInput
               label="Số tiền rút (VND)"
@@ -213,9 +189,10 @@ export const WalletScreen: React.FC<WalletScreenProps> = ({
                 style={styles.modalCancelBtn}
               />
               <HeyButton
-                title="Xác nhận rút"
+                title="Chưa hỗ trợ"
                 variant="teal"
-                onPress={handleWithdraw}
+                onPress={() => {}}
+                disabled
                 style={styles.modalActionBtn}
               />
             </View>

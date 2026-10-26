@@ -12,11 +12,12 @@ import Animated, {
   useAnimatedStyle,
   withSpring,
 } from 'react-native-reanimated';
-import { UserAccount, Role } from '../../../../packages/shared-types';
+import { Role } from '../../../../packages/shared-types';
+import { SessionUser } from '../types/sessionUser';
 import { Colors } from '../theme/colors';
 
 interface HeyTopBarProps {
-  currentUser: UserAccount;
+  currentUser: SessionUser;
   activeRole?: Role;
   onRoleChange?: (role: Role) => void;
   onOpenAuth: (defaultTab?: 'LOGIN' | 'REGISTER' | 'PROFILE') => void;
@@ -77,7 +78,7 @@ export const HeyTopBar: React.FC<HeyTopBarProps> = ({
             style={styles.creditPill}
           >
             <Text style={styles.creditIcon}>💎</Text>
-            <Text style={styles.creditCount}>{currentUser?.creditBalance || 0}</Text>
+            <Text style={styles.creditCount}>{currentUser?.creditBalance ?? '—'}</Text>
             <View style={styles.plusBadge}>
               <Text style={styles.plusText}>+</Text>
             </View>

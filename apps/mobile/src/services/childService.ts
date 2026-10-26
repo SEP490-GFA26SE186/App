@@ -1,6 +1,5 @@
 // apps/mobile/src/services/childService.ts
-import { apiFetch } from './apiClient';
-import { DEMO_CHILDREN } from './demoData';
+import { apiFetch, invalidResponseError } from './apiClient';
 import { ChildProfile } from '../../../../packages/shared-types';
 
 export interface CreateChildPayload {
@@ -10,125 +9,73 @@ export interface CreateChildPayload {
   appearance?: string;
 }
 
+// Mọi hàm ở đây throw ApiError khi BE lỗi/từ chối/trả sai hình dạng.
+// Không được trả dữ liệu mẫu hoặc "thành công" giả (ADR-008).
 export const childService = {
   /**
-   * Danh sách hồ sơ bé: GET /children
+   * Danh sách hồ sơ bé: GET /children → data { children: [] }
+   * Danh sách rỗng là kết quả hợp lệ.
    */
   getChildren: async (): Promise<ChildProfile[]> => {
-    try {
-      const data = await apiFetch<{ children: any[] }>('/children');
-      const list = data?.children || (Array.isArray(data) ? data : []);
-      return list.map(childService.formatChild);
-    } catch (error) {
-      return DEMO_CHILDREN;
-    }
+    const data = await apiFetch<{ children?: any[] }>('/children');
+    const list = Array.isArray(data?.children) ? data.children : Array.isArray(data) ? (data as any[]) : null;
+    if (!list) throw invalidResponseError('danh sách hồ sơ bé');
+    return list.map(childService.formatChild);
   },
 
   /**
-   * Tạo hồ sơ bé mới: POST /children
+   * Tạo hồ sơ bé mới: POST /children → data { child }
    */
   createChild: async (payload: CreateChildPayload): Promise<ChildProfile> => {
-    try {
-      const data = await apiFetch<{ child: any }>('/children', {
-        method: 'POST',
-        body: JSON.stringify(payload),
-      });
-      return childService.formatChild(data?.child || data);
-    } catch (error) {
-      // Fallback
-      const newChild: ChildProfile = {
-        id: `ch_local_${Date.now()}`,
-        parentId: 'usr_parent',
-        name: payload.name,
-        age: 4,
-        birthDate: payload.birthDate,
-        gender: 'MALE',
-        readingLevel: 'BEGINNER',
-        favoriteThemes: ['Động vật', 'Vũ trụ'],
-      };
-      return newChild;
-    }
+    const data = await apiFetch<{ child?: any }>('/children', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+    if (!data?.child?.id) throw invalidResponseError('tạo hồ sơ bé');
+    return childService.formatChild(data.child);
   },
 
   /**
-   * Cập nhật hồ sơ bé: PUT /children/:id
+   * Cập nhật hồ sơ bé: PUT /children/:id → data { child }
    */
   updateChild: async (childId: string, payload: Partial<CreateChildPayload>): Promise<ChildProfile> => {
-    try {
-      const data = await apiFetch<{ child: any }>(`/children/${childId}`, {
-        method: 'PUT',
-        body: JSON.stringify(payload),
-      });
-      return childService.formatChild(data?.child || data);
-    } catch (error) {
-      return {
-        id: childId,
-        parentId: 'usr_parent',
-        name: payload.name || 'Bé Yêu',
-        age: 4,
-        gender: 'MALE',
-      };
-    }
+    const data = await apiFetch<{ child?: any }>(`/children/${childId}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    });
+    if (!data?.child?.id) throw invalidResponseError('cập nhật hồ sơ bé');
+    return childService.formatChild(data.child);
   },
 
   /**
    * Xóa hồ sơ bé: DELETE /children/:id
    */
   deleteChild: async (childId: string): Promise<boolean> => {
-    try {
-      await apiFetch(`/children/${childId}`, {
-        method: 'DELETE',
-      });
-      return true;
-    } catch (error) {
-      return true;
-    }
+    await apiFetch(`/children/${childId}`, {
+      method: 'DELETE',
+    });
+    return true;
   },
 
   /**
    * Tổng quan hồ sơ & chỉ số EQ: GET /children/:id/overview
    */
   getChildOverview: async (childId: string): Promise<any> => {
-    try {
-      return await apiFetch(`/children/${childId}/overview`);
-    } catch (error) {
-      return {
-        profile: { id: childId, name: 'Bé' },
-        readingStats: { completedBooksCount: 2, totalMinutes: 24 },
-        eqReport: {
-          competencies: [
-            { caselCode: 'self_awareness', nameVi: 'Tự nhận thức', level: 'developing' },
-            { caselCode: 'social_awareness', nameVi: 'Nhận thức xã hội', level: 'secure' },
-            { caselCode: 'relationship_skills', nameVi: 'Kỹ năng quan hệ', level: 'developing' },
-          ],
-        },
-      };
-    }
+    return apiFetch(`/children/${childId}/overview`);
   },
 
   /**
    * Hành trình phát triển EQ: GET /children/:id/eq-journey?weeks=8
    */
   getChildEqJourney: async (childId: string, weeks = 8): Promise<any> => {
-    try {
-      return await apiFetch(`/children/${childId}/eq-journey?weeks=${weeks}`);
-    } catch (error) {
-      return {
-        evidence: [],
-        trend: [],
-      };
-    }
+    return apiFetch(`/children/${childId}/eq-journey?weeks=${weeks}`);
   },
 
   /**
    * Kệ sách của bé: GET /children/:id/bookshelf
    */
   getChildBookshelf: async (childId: string, page = 1, limit = 10): Promise<any> => {
-    try {
-      return await apiFetch(`/children/${childId}/bookshelf?page=${page}&limit=${limit}`);
-    } catch (error) {
-      return { items: [], pagination: { total: 0 } };
-    }
+    return apiFetch(`/children/${childId}/bookshelf?page=${page}&limit=${limit}`);
   },
 
   formatChild: (raw: any): ChildProfile => {
@@ -141,7 +88,7 @@ export const childService = {
 
     return {
       id: raw.id,
-      parentId: raw.parentId || 'usr_parent',
+      parentId: raw.parentId || '',
       name: raw.name,
       nickname: raw.nickname || raw.name,
       birthDate: raw.birthDate,

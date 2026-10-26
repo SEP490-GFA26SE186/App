@@ -16,6 +16,10 @@ interface HeyInputProps {
   style?: ViewStyle;
   inputStyle?: TextStyle;
   keyboardType?: 'default' | 'email-address' | 'numeric' | 'phone-pad';
+  // Tùy chọn có kiểm soát (không đặt = giữ mặc định của TextInput, không ảnh hưởng form khác)
+  autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters';
+  autoCorrect?: boolean;
+  editable?: boolean;
 }
 
 export const HeyInput: React.FC<HeyInputProps> = ({
@@ -31,6 +35,9 @@ export const HeyInput: React.FC<HeyInputProps> = ({
   style,
   inputStyle,
   keyboardType = 'default',
+  autoCapitalize,
+  autoCorrect,
+  editable,
 }) => {
   return (
     <View style={[styles.container, style]}>
@@ -44,9 +51,13 @@ export const HeyInput: React.FC<HeyInputProps> = ({
         multiline={multiline}
         numberOfLines={numberOfLines}
         keyboardType={keyboardType}
+        autoCapitalize={autoCapitalize}
+        autoCorrect={autoCorrect}
+        editable={editable}
         style={[
           styles.input,
           multiline && { height: 24 * numberOfLines + 20, textAlignVertical: 'top' },
+          editable === false ? { opacity: 0.6 } : null,
           error ? styles.inputError : null,
           inputStyle,
         ]}

@@ -12,10 +12,10 @@ import { HeyButton } from '../components/ui/HeyButton';
 import { HeyInput } from '../components/ui/HeyInput';
 import { Colors } from '../theme/colors';
 import { authService } from '../services';
-import { UserAccount } from '../../../../packages/shared-types';
+import { SessionUser } from '../types/sessionUser';
 
 interface RegisterScreenProps {
-  onRegisterSuccess: (user: UserAccount) => void;
+  onRegisterSuccess: (user: SessionUser) => void;
   onGoLogin: () => void;
 }
 
@@ -116,6 +116,8 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
           value={email}
           onChangeText={setEmail}
           keyboardType="email-address"
+          autoCapitalize="none"
+          autoCorrect={false}
         />
 
         <HeyInput
@@ -132,6 +134,8 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
           value={password}
           onChangeText={setPassword}
           secureTextEntry
+          autoCapitalize="none"
+          autoCorrect={false}
         />
 
         <HeyInput
@@ -140,6 +144,8 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
           value={confirmPassword}
           onChangeText={setConfirmPassword}
           secureTextEntry
+          autoCapitalize="none"
+          autoCorrect={false}
         />
 
         <HeyButton

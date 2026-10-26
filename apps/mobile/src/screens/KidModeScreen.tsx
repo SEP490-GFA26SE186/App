@@ -22,7 +22,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { Story, StoryPage, ChildProfile } from '../../../../packages/shared-types';
 import { Colors } from '../theme/colors';
-import { kidService } from '../services';
+import { kidService, authService } from '../services';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -31,6 +31,8 @@ interface KidModeScreenProps {
   stories: Story[];
   // Reject khi BE từ chối/lỗi; resolve khi BE đã xác minh PIN (màn này sẽ được gỡ)
   onExitKidMode: (pin: string) => Promise<void>;
+  // Kid session mất/hết hạn: không thể thoát bằng PIN → App xóa phiên và buộc đăng nhập lại bằng mật khẩu
+  onKidSessionLost: () => void;
   onRecordEqSignal: (signal: string, skill: string) => void;
 }
 
@@ -99,6 +101,7 @@ export const KidModeScreen: React.FC<KidModeScreenProps> = ({
   child,
   stories,
   onExitKidMode,
+  onKidSessionLost,
   onRecordEqSignal,
 }) => {
   const [activeStory, setActiveStory] = useState<Story | null>(null);
@@ -110,6 +113,7 @@ export const KidModeScreen: React.FC<KidModeScreenProps> = ({
   const [enteredPin, setEnteredPin] = useState('');
   const [pinError, setPinError] = useState(false);
   const verifyingPinRef = useRef(false);
+  const [sessionLost, setSessionLost] = useState(false);
 
   // Timer — 20 phút
   const [remainingSeconds, setRemainingSeconds] = useState(20 * 60);
@@ -141,8 +145,14 @@ export const KidModeScreen: React.FC<KidModeScreenProps> = ({
     verifyingPinRef.current = true;
     try {
       await onExitKidMode(pin);
-    } catch {
+    } catch (err) {
       // BE từ chối hoặc lỗi: không coi PIN là hợp lệ, giữ nguyên Kid Mode
+      if (authService.isKidSessionLost(err)) {
+        // Không phải PIN sai: kid session không còn hợp lệ → chỉ còn cách đăng nhập lại
+        setSessionLost(true);
+        setEnteredPin('');
+        return;
+      }
       setPinError(true);
       setTimeout(() => {
         setEnteredPin('');
@@ -154,6 +164,7 @@ export const KidModeScreen: React.FC<KidModeScreenProps> = ({
   };
 
   const handlePressPinKey = (num: string) => {
+    if (sessionLost) return;
     if (enteredPin.length < 4) {
       const nextPin = enteredPin + num;
       setEnteredPin(nextPin);
@@ -186,9 +197,6 @@ export const KidModeScreen: React.FC<KidModeScreenProps> = ({
             <Text style={styles.kidGreeting}>
               Chào {child?.name || 'Bé yêu'}! 🌸
             </Text>
-            <View style={styles.starRow}>
-              <Text style={styles.starText}>⭐ 12 Ngôi Sao</Text>
-            </View>
           </View>
         </View>
 
@@ -387,6 +395,23 @@ export const KidModeScreen: React.FC<KidModeScreenProps> = ({
             <Text style={styles.pinSubtitle}>
               Nhập mã PIN 4 số của ba mẹ để thoát
             </Text>
+
+            {sessionLost && (
+              <View style={{ alignItems: 'center', marginBottom: 12 }}>
+                <Text style={[styles.pinSubtitle, { color: '#B91C1C', marginBottom: 8 }]}>
+                  Phiên Chế độ Bé không còn hợp lệ nên không thể xác nhận bằng mã PIN.
+                </Text>
+                <TouchableOpacity
+                  onPress={onKidSessionLost}
+                  activeOpacity={0.8}
+                  style={{ paddingHorizontal: 16, paddingVertical: 10, borderRadius: 12, backgroundColor: '#2563EB' }}
+                >
+                  <Text style={{ color: '#FFFFFF', fontWeight: '800', fontSize: 13 }}>
+                    Đăng nhập lại bằng mật khẩu
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            )}
 
             {/* PIN dots */}
             <View style={styles.dotsRow}>

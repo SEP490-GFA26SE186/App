@@ -11,7 +11,8 @@ import {
 } from 'react-native';
 import { HeyButton } from './ui/HeyButton';
 import { HeyInput } from './ui/HeyInput';
-import { UserAccount, ChildProfile } from '../../../../packages/shared-types';
+import { ChildProfile } from '../../../../packages/shared-types';
+import { SessionUser } from '../types/sessionUser';
 import { Colors } from '../theme/colors';
 import {
   authService,
@@ -25,8 +26,8 @@ import {
 interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
-  currentUser: UserAccount | null;
-  onUserUpdate: (user: UserAccount | null) => void;
+  currentUser: SessionUser | null;
+  onUserUpdate: (user: SessionUser | null) => void;
   childrenProfiles: ChildProfile[];
   onAddChild: (child: Partial<ChildProfile>) => void;
   initialTab?: 'LOGIN' | 'REGISTER' | 'PROFILE' | 'CHILDREN' | 'KID_PIN' | 'SERVER';
@@ -34,6 +35,14 @@ interface AuthModalProps {
   onRefreshData?: () => void;
   onReplayIntro?: () => void;
 }
+
+// BE trả message tiếng Anh → dịch lỗi PIN hay gặp (đối chiếu auth.service.js / Web VI_MESSAGES)
+const PIN_VI_MESSAGES: Record<string, string> = {
+  'Current PIN is incorrect': 'Mã PIN hiện tại chưa đúng',
+  'Account password is incorrect': 'Mật khẩu tài khoản chưa đúng',
+  'Kid Exit PIN is already set. Use change-pin endpoint to change it.':
+    'Tài khoản đã có mã PIN, vui lòng dùng chức năng đổi PIN',
+};
 
 export const AuthModal: React.FC<AuthModalProps> = ({
   isOpen,
@@ -56,46 +65,59 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [fullName, setFullName] = useState(currentUser?.fullName || '');
   const [phone, setPhone] = useState(currentUser?.phone || '');
   const [kidPin, setKidPin] = useState('');
+  const [currentPin, setCurrentPin] = useState('');
   const [newChildName, setNewChildName] = useState('');
-  const [newChildAge, setNewChildAge] = useState('4');
+  const [newChildBirthDate, setNewChildBirthDate] = useState('');
   const [notice, setNotice] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const submittingRef = useRef(false);
+  const writingRef = useRef(false);
+  const [isWriting, setIsWriting] = useState(false);
 
   // Server Environment State
   const [currentEnv, setCurrentEnv] = useState<ApiEnvironment>(getApiEnvironment());
   const [customUrl, setCustomUrl] = useState('');
 
-  const handleSaveProfile = async () => {
-    if (currentUser) {
-      try {
-        if (kidPin) {
-          await authService.setKidPin(kidPin);
-        }
-      } catch {}
+  // PIN do BE xác minh/lưu (POST /auth/kid-pin/set, PUT /auth/kid-pin/change).
+  // Client KHÔNG lưu PIN; chỉ giữ cờ "đã có PIN" ('****') để UI biết dùng set hay change.
+  // Chỉ nhận 4 số vì bàn phím PIN của Kid Mode hiện cố định 4 số (BE chấp nhận 4–6 → T3.3).
+  const hasKidPin = !!currentUser?.kidModePinHash;
 
-      const updated: UserAccount = {
-        ...currentUser,
-        fullName,
-        phone,
-        // Không lưu PIN thô ở client; xử lý đầy đủ ở T1.11
-        kidModePinHash: currentUser.kidModePinHash,
-      };
+  const handleSavePin = async () => {
+    if (!currentUser || writingRef.current) return;
+    setErrorMsg(null);
+    if (!/^\d{4}$/.test(kidPin)) {
+      setErrorMsg('Mã PIN gồm đúng 4 chữ số.');
+      return;
+    }
+    if (hasKidPin && !/^\d{4,6}$/.test(currentPin)) {
+      setErrorMsg('Vui lòng nhập mã PIN hiện tại (4–6 chữ số).');
+      return;
+    }
+    writingRef.current = true;
+    setIsWriting(true);
+    try {
+      if (hasKidPin) {
+        await authService.changeKidPin({ newPin: kidPin, currentPin });
+      } else {
+        await authService.setKidPin(kidPin);
+      }
+      onUserUpdate({ ...currentUser, kidModePinHash: '****' });
       setKidPin('');
-      onUserUpdate(updated);
-      setNotice('Đã cập nhật thông tin thành công!');
-      setTimeout(() => {
-        setNotice(null);
-        onClose();
-      }, 1000);
+      setCurrentPin('');
+      setNotice(hasKidPin ? 'Đã đổi mã PIN.' : 'Đã đặt mã PIN.');
+      setTimeout(() => setNotice(null), 1500);
+    } catch (err: any) {
+      setErrorMsg(PIN_VI_MESSAGES[err?.message] ?? err?.message ?? 'Không thể lưu mã PIN. Vui lòng thử lại.');
+    } finally {
+      writingRef.current = false;
+      setIsWriting(false);
     }
   };
 
-  const handleLogoutAction = async () => {
-    try {
-      await authService.logout();
-    } catch {}
+  const handleLogoutAction = () => {
+    // App.handleLogout xóa phiên cục bộ ngay và báo BE; không chờ mạng
     onUserUpdate(null);
     if (onLogout) onLogout();
     setTab('LOGIN');
@@ -169,25 +191,35 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   };
 
   const handleAddNewChild = async () => {
-    if (!newChildName.trim()) return;
+    if (writingRef.current) return;
+    setErrorMsg(null);
+    const name = newChildName.trim();
+    const birthDate = newChildBirthDate.trim();
+    if (!name) {
+      setErrorMsg('Vui lòng nhập tên bé.');
+      return;
+    }
+    // BE: birthDate dạng YYYY-MM-DD; gửi đúng giá trị người dùng nhập
+    const parsed = new Date(birthDate);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(birthDate) || Number.isNaN(parsed.getTime()) || parsed.getTime() > Date.now()) {
+      setErrorMsg('Ngày sinh cần đúng dạng YYYY-MM-DD (ví dụ 2020-05-01) và không ở tương lai.');
+      return;
+    }
+    writingRef.current = true;
+    setIsWriting(true);
     try {
-      const created = await childService.createChild({
-        name: newChildName.trim(),
-        birthDate: '2020-05-01',
-      });
+      const created = await childService.createChild({ name, birthDate });
       onAddChild(created);
       setNewChildName('');
-      setNotice(`Đã thêm bé ${newChildName} thành công!`);
+      setNewChildBirthDate('');
+      setNotice(`Đã thêm bé ${created.name}.`);
       setTimeout(() => setNotice(null), 1500);
-    } catch {
-      onAddChild({
-        name: newChildName,
-        age: parseInt(newChildAge, 10) || 4,
-        readingLevel: 'BEGINNER',
-      });
-      setNewChildName('');
-      setNotice(`Đã thêm bé ${newChildName}!`);
-      setTimeout(() => setNotice(null), 1500);
+    } catch (err: any) {
+      // Không tạo bé giả: hiển thị lỗi thật từ BE (vd vượt giới hạn hồ sơ bé)
+      setErrorMsg(err?.message || 'Không thể thêm hồ sơ bé. Vui lòng thử lại.');
+    } finally {
+      writingRef.current = false;
+      setIsWriting(false);
     }
   };
 
@@ -309,10 +341,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.body}>
             {tab === 'PROFILE' && (
               <View>
-                <HeyInput label="Họ và tên" value={fullName} onChangeText={setFullName} />
-                <HeyInput label="Email" value={email} onChangeText={setEmail} keyboardType="email-address" />
-                <HeyInput label="Số điện thoại" value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
-                <HeyButton title="💾 Lưu thay đổi" onPress={handleSaveProfile} style={styles.mt} />
+                {/* BE chưa có API cập nhật hồ sơ phụ huynh (BLOCKED U8) → chỉ xem, không "lưu" giả */}
+                <HeyInput label="Họ và tên" value={currentUser?.fullName ?? ''} onChangeText={() => {}} editable={false} />
+                <HeyInput label="Email" value={currentUser?.email ?? ''} onChangeText={() => {}} editable={false} autoCapitalize="none" autoCorrect={false} />
+                <HeyInput label="Số điện thoại" value={currentUser?.phone ?? ''} onChangeText={() => {}} keyboardType="phone-pad" editable={false} />
+                <Text style={styles.descText}>
+                  Chỉnh sửa hồ sơ chưa được hỗ trợ (máy chủ chưa cung cấp chức năng cập nhật).
+                </Text>
                 {onReplayIntro && (
                   <HeyButton
                     title="🎬 Xem lại Video Intro"
@@ -344,7 +379,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     <View style={styles.childInfo}>
                       <Text style={styles.childName}>{ch.name}</Text>
                       <Text style={styles.childMeta}>
-                        {ch.age} tuổi • {ch.readingLevel || 'Cơ bản'} • {ch.birthDate || '2020-05-01'}
+                        {ch.age} tuổi{ch.birthDate ? ` • ${ch.birthDate}` : ''}
                       </Text>
                     </View>
                   </View>
@@ -352,8 +387,21 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
                 <Text style={[styles.sectionTitle, styles.mt]}>Thêm hồ sơ bé mới:</Text>
                 <HeyInput label="Tên bé" placeholder="vd: Bé Bin" value={newChildName} onChangeText={setNewChildName} />
-                <HeyInput label="Tuổi của bé" placeholder="vd: 6" value={newChildAge} onChangeText={setNewChildAge} keyboardType="numeric" />
-                <HeyButton title="➕ Thêm hồ sơ bé" variant="teal" onPress={handleAddNewChild} style={styles.mtSm} />
+                <HeyInput
+                  label="Ngày sinh (YYYY-MM-DD)"
+                  placeholder="vd: 2020-05-01"
+                  value={newChildBirthDate}
+                  onChangeText={setNewChildBirthDate}
+                  keyboardType="numeric"
+                  autoCorrect={false}
+                />
+                <HeyButton
+                  title={isWriting ? '⏳ Đang thêm...' : '➕ Thêm hồ sơ bé'}
+                  variant="teal"
+                  onPress={handleAddNewChild}
+                  style={styles.mtSm}
+                  disabled={isWriting}
+                />
               </View>
             )}
 
@@ -361,22 +409,42 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               <View>
                 <Text style={styles.descText}>
                   Mã PIN 4 số giúp ngăn bé vô tình thoát khỏi giao diện Chế độ Trẻ Em (Kid Mode).
+                  Mã PIN được máy chủ lưu và kiểm tra; ứng dụng không lưu mã PIN.
                 </Text>
+                {hasKidPin && (
+                  <HeyInput
+                    label="Mã PIN hiện tại"
+                    value={currentPin}
+                    onChangeText={setCurrentPin}
+                    keyboardType="numeric"
+                    secureTextEntry
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                  />
+                )}
                 <HeyInput
-                  label="Mã PIN Kid Mode (4 số)"
+                  label={hasKidPin ? 'Mã PIN mới (4 số)' : 'Mã PIN Kid Mode (4 số)'}
                   value={kidPin}
                   onChangeText={setKidPin}
                   keyboardType="numeric"
-                  placeholder="••••"
+                  secureTextEntry
+                  autoCapitalize="none"
+                  autoCorrect={false}
                 />
-                <HeyButton title="🔒 Lưu mã PIN" variant="secondary" onPress={handleSaveProfile} style={styles.mt} />
+                <HeyButton
+                  title={isWriting ? '⏳ Đang lưu...' : hasKidPin ? '🔒 Đổi mã PIN' : '🔒 Đặt mã PIN'}
+                  variant="secondary"
+                  onPress={handleSavePin}
+                  style={styles.mt}
+                  disabled={isWriting}
+                />
               </View>
             )}
 
             {tab === 'LOGIN' && (
               <View>
-                <HeyInput label="Email / Tên đăng nhập" value={email} onChangeText={setEmail} keyboardType="email-address" />
-                <HeyInput label="Mật khẩu" value={password} onChangeText={setPassword} secureTextEntry />
+                <HeyInput label="Email / Tên đăng nhập" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" autoCorrect={false} />
+                <HeyInput label="Mật khẩu" value={password} onChangeText={setPassword} secureTextEntry autoCapitalize="none" autoCorrect={false} />
 
                 <HeyButton
                   title={loading ? '⏳ Đang đăng nhập...' : '🚀 Đăng nhập ngay'}
@@ -390,9 +458,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             {tab === 'REGISTER' && (
               <View>
                 <HeyInput label="Họ tên phụ huynh" value={fullName} onChangeText={setFullName} />
-                <HeyInput label="Email" value={email} onChangeText={setEmail} keyboardType="email-address" />
+                <HeyInput label="Email" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" autoCorrect={false} />
                 <HeyInput label="Số điện thoại (tùy chọn)" value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
-                <HeyInput label="Mật khẩu (tối thiểu 8 ký tự)" value={password} onChangeText={setPassword} secureTextEntry />
+                <HeyInput label="Mật khẩu (tối thiểu 8 ký tự)" value={password} onChangeText={setPassword} secureTextEntry autoCapitalize="none" autoCorrect={false} />
                 <HeyButton
                   title={loading ? '⏳ Đang tạo tài khoản...' : '✨ Hoàn tất đăng ký'}
                   variant="teal"
