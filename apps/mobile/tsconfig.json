@@ -17,8 +17,7 @@
     "skipLibCheck": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"],
-      "../../../packages/shared-types": ["../../packages/shared-types/index.ts"]
+      "@/*": ["./src/*"]
     }
   },
   "include": [

@@ -1,6 +1,6 @@
 // apps/mobile/src/components/ui/HeyInput.tsx
-import React from 'react';
-import { View, TextInput, Text, StyleSheet, ViewStyle, TextStyle } from 'react-native';
+import React, { useState } from 'react';
+import { View, TextInput, Text, TouchableOpacity, StyleSheet, ViewStyle, TextStyle } from 'react-native';
 import { Colors } from '../../theme/colors';
 
 interface HeyInputProps {
@@ -16,6 +16,12 @@ interface HeyInputProps {
   style?: ViewStyle;
   inputStyle?: TextStyle;
   keyboardType?: 'default' | 'email-address' | 'numeric' | 'phone-pad';
+  // Tùy chọn có kiểm soát (không đặt = giữ mặc định của TextInput, không ảnh hưởng form khác)
+  autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters';
+  autoCorrect?: boolean;
+  editable?: boolean;
+  /** Hiện nút hiện/ẩn cho ô mật khẩu (secureTextEntry) */
+  revealable?: boolean;
 }
 
 export const HeyInput: React.FC<HeyInputProps> = ({
@@ -31,26 +37,49 @@ export const HeyInput: React.FC<HeyInputProps> = ({
   style,
   inputStyle,
   keyboardType = 'default',
+  autoCapitalize,
+  autoCorrect,
+  editable,
+  revealable = false,
 }) => {
+  const [revealed, setRevealed] = useState(false);
+  const canReveal = revealable && secureTextEntry;
   return (
     <View style={[styles.container, style]}>
       {label && <Text style={styles.label}>{label}</Text>}
+      <View>
       <TextInput
         value={value}
         onChangeText={onChangeText}
         placeholder={placeholder}
         placeholderTextColor="#A099B0"
-        secureTextEntry={secureTextEntry}
+        secureTextEntry={secureTextEntry && !revealed}
         multiline={multiline}
         numberOfLines={numberOfLines}
         keyboardType={keyboardType}
+        autoCapitalize={autoCapitalize}
+        autoCorrect={autoCorrect}
+        editable={editable}
         style={[
           styles.input,
           multiline && { height: 24 * numberOfLines + 20, textAlignVertical: 'top' },
+          editable === false ? { opacity: 0.6 } : null,
           error ? styles.inputError : null,
+          canReveal ? { paddingRight: 48 } : null,
           inputStyle,
         ]}
       />
+      {canReveal && (
+        <TouchableOpacity
+          onPress={() => setRevealed((v) => !v)}
+          accessibilityLabel={revealed ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+          style={styles.reveal}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <Text style={styles.revealText}>{revealed ? '🙈' : '👁️'}</Text>
+        </TouchableOpacity>
+      )}
+      </View>
       {error ? (
         <Text style={styles.errorText}>{error}</Text>
       ) : hint ? (
@@ -61,6 +90,8 @@ export const HeyInput: React.FC<HeyInputProps> = ({
 };
 
 const styles = StyleSheet.create({
+  reveal: { position: 'absolute', right: 14, top: 0, bottom: 0, justifyContent: 'center' },
+  revealText: { fontSize: 18 },
   container: {
     marginBottom: 14,
   },
