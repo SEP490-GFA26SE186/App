@@ -20,9 +20,9 @@ import Animated, {
   withSequence,
   Easing,
 } from 'react-native-reanimated';
-import { Story, StoryPage, ChildProfile } from '../../../../packages/shared-types';
-import { Colors } from '../theme/colors';
-import { kidService, authService } from '../services';
+import { Story, StoryPage, ChildProfile } from '../../../../../packages/shared-types';
+import { Colors } from '../../theme/colors';
+import { kidService, authService } from '../../services';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 

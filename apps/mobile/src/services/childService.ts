@@ -1,6 +1,7 @@
 // apps/mobile/src/services/childService.ts
 import { apiFetch, invalidResponseError } from './apiClient';
 import { ChildProfile } from '../../../../packages/shared-types';
+import type { ChildrenListDto, ChildResponseDto } from '../types/api';
 
 export interface CreateChildPayload {
   name: string;
@@ -17,7 +18,7 @@ export const childService = {
    * Danh sách rỗng là kết quả hợp lệ.
    */
   getChildren: async (): Promise<ChildProfile[]> => {
-    const data = await apiFetch<{ children?: any[] }>('/children');
+    const data = await apiFetch<Partial<ChildrenListDto>>('/children');
     const list = Array.isArray(data?.children) ? data.children : Array.isArray(data) ? (data as any[]) : null;
     if (!list) throw invalidResponseError('danh sách hồ sơ bé');
     return list.map(childService.formatChild);
@@ -27,7 +28,7 @@ export const childService = {
    * Tạo hồ sơ bé mới: POST /children → data { child }
    */
   createChild: async (payload: CreateChildPayload): Promise<ChildProfile> => {
-    const data = await apiFetch<{ child?: any }>('/children', {
+    const data = await apiFetch<Partial<ChildResponseDto>>('/children', {
       method: 'POST',
       body: JSON.stringify(payload),
     });
@@ -39,7 +40,7 @@ export const childService = {
    * Cập nhật hồ sơ bé: PUT /children/:id → data { child }
    */
   updateChild: async (childId: string, payload: Partial<CreateChildPayload>): Promise<ChildProfile> => {
-    const data = await apiFetch<{ child?: any }>(`/children/${childId}`, {
+    const data = await apiFetch<Partial<ChildResponseDto>>(`/children/${childId}`, {
       method: 'PUT',
       body: JSON.stringify(payload),
     });

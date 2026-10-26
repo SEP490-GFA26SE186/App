@@ -10,10 +10,10 @@ import {
   StyleSheet,
   Dimensions,
 } from 'react-native';
-import { Story, StoryPageBranchChoice } from '../../../../packages/shared-types';
-import { Colors } from '../theme/colors';
-import { speechTTS } from '../../../../src/utils/speech-tts';
-import { soundFX } from '../../../../src/utils/sound-fx';
+import { Story, StoryPageBranchChoice } from '../../../../../packages/shared-types';
+import { Colors } from '../../theme/colors';
+import { speechTTS } from '../../utils/speech-tts';
+import { soundFX } from '../../utils/sound-fx';
 
 interface StoryReaderModalProps {
   story: Story | null;

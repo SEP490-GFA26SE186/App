@@ -16,7 +16,7 @@ import Animated, {
   withSequence,
 } from 'react-native-reanimated';
 import { Colors } from '../../theme/colors';
-import { soundFX } from '../../../../../src/utils/sound-fx';
+import { soundFX } from '../../utils/sound-fx';
 
 interface HeyButtonProps {
   title?: string;

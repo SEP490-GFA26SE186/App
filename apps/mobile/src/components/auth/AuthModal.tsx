@@ -9,19 +9,18 @@ import {
   StyleSheet,
   Dimensions,
 } from 'react-native';
-import { HeyButton } from './ui/HeyButton';
-import { HeyInput } from './ui/HeyInput';
-import { ChildProfile } from '../../../../packages/shared-types';
-import { SessionUser } from '../types/sessionUser';
-import { Colors } from '../theme/colors';
+import { HeyButton } from '../ui/HeyButton';
+import { HeyInput } from '../ui/HeyInput';
+import { ChildProfile } from '../../../../../packages/shared-types';
+import { SessionUser } from '../../types/sessionUser';
+import { Colors } from '../../theme/colors';
 import {
   authService,
   childService,
-  getApiEnvironment,
-  setApiEnvironment,
   getApiBaseUrl,
-  ApiEnvironment,
-} from '../services';
+  setDevApiBaseUrl,
+  API_NOT_CONFIGURED_MESSAGE,
+} from '../../services';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -76,7 +75,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [isWriting, setIsWriting] = useState(false);
 
   // Server Environment State
-  const [currentEnv, setCurrentEnv] = useState<ApiEnvironment>(getApiEnvironment());
+  const [apiBaseUrl, setApiBaseUrlState] = useState<string | null>(getApiBaseUrl());
   const [customUrl, setCustomUrl] = useState('');
 
   // PIN do BE xác minh/lưu (POST /auth/kid-pin/set, PUT /auth/kid-pin/change).
@@ -223,10 +222,15 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     }
   };
 
-  const handleApplyEnv = (env: ApiEnvironment, url?: string) => {
-    setApiEnvironment(env, url);
-    setCurrentEnv(env);
-    setNotice(`Đã chuyển sang môi trường: ${env.toUpperCase()} (${getApiBaseUrl()})`);
+  // Chỉ __DEV__: nhập địa chỉ máy chủ (vd IP LAN) lúc chạy thử; production dùng EXPO_PUBLIC_API_URL
+  const handleApplyUrl = (value: string | null) => {
+    if (!setDevApiBaseUrl(value)) {
+      setErrorMsg('Địa chỉ máy chủ không hợp lệ (cần dạng http://host:port).');
+      return;
+    }
+    setErrorMsg(null);
+    setApiBaseUrlState(getApiBaseUrl());
+    setNotice(value ? 'Đã áp dụng địa chỉ máy chủ tạm thời.' : 'Đã quay lại địa chỉ máy chủ trong cấu hình.');
     setTimeout(() => setNotice(null), 2000);
   };
 
@@ -247,11 +251,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   : tab === 'REGISTER'
                   ? 'Tạo tài khoản mới'
                   : tab === 'SERVER'
-                  ? 'Cấu hình Máy chủ (Dev/Prod)'
+                  ? 'Máy chủ API'
                   : 'Đăng nhập StoryWeaver'}
               </Text>
               <Text style={styles.envSubText}>
-                API: <Text style={{ fontWeight: '700', color: Colors.primary }}>{currentEnv.toUpperCase()}</Text> ({getApiBaseUrl()})
+                API: <Text style={{ fontWeight: '700', color: Colors.primary }}>{apiBaseUrl ?? 'Chưa cấu hình'}</Text>
               </Text>
             </View>
             <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
@@ -474,38 +478,39 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             {tab === 'SERVER' && (
               <View>
                 <Text style={styles.descText}>
-                  Chọn môi trường kết nối API. Người hướng dẫn khuyến nghị kiểm tra ở môi trường Dev trước để tránh giới hạn quota API trên Prod.
+                  {apiBaseUrl
+                    ? `Địa chỉ máy chủ hiện tại: ${apiBaseUrl}. Địa chỉ được đặt bằng biến môi trường EXPO_PUBLIC_API_URL khi chạy ứng dụng.`
+                    : API_NOT_CONFIGURED_MESSAGE}
                 </Text>
 
-                <TouchableOpacity
-                  style={[styles.envOption, currentEnv === 'dev' && styles.envOptionActive]}
-                  onPress={() => handleApplyEnv('dev')}
-                >
-                  <Text style={styles.envOptionTitle}>🖥️ Môi trường Dev (Local)</Text>
-                  <Text style={styles.envOptionDesc}>http://localhost:3000/api/v1 (hoặc 10.0.2.2 cho Android)</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[styles.envOption, currentEnv === 'prod' && styles.envOptionActive]}
-                  onPress={() => handleApplyEnv('prod')}
-                >
-                  <Text style={styles.envOptionTitle}>🌐 Môi trường Prod (Đã deploy)</Text>
-                  <Text style={styles.envOptionDesc}>https://api.storyweaver.id.vn/api/v1</Text>
-                </TouchableOpacity>
-
-                <Text style={[styles.sectionTitle, styles.mt]}>Hoặc URL tuỳ chỉnh:</Text>
-                <HeyInput
-                  label="Custom Base URL"
-                  placeholder="http://192.168.1.11:3000/api/v1"
-                  value={customUrl}
-                  onChangeText={setCustomUrl}
-                />
-                <HeyButton
-                  title="Áp dụng URL tuỳ chỉnh"
-                  variant="secondary"
-                  onPress={() => handleApplyEnv('dev', customUrl)}
-                  style={styles.mtSm}
-                />
+                {__DEV__ && (
+                  <>
+                    <Text style={[styles.sectionTitle, styles.mt]}>Địa chỉ tạm thời (chỉ khi phát triển):</Text>
+                    <HeyInput
+                      label="Base URL"
+                      placeholder="http://<địa-chỉ-máy-chủ>:<cổng>"
+                      value={customUrl}
+                      onChangeText={setCustomUrl}
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                    />
+                    <HeyButton
+                      title="Áp dụng địa chỉ"
+                      variant="secondary"
+                      onPress={() => handleApplyUrl(customUrl)}
+                      style={styles.mtSm}
+                    />
+                    <HeyButton
+                      title="Dùng lại địa chỉ trong cấu hình"
+                      variant="outline"
+                      onPress={() => {
+                        setCustomUrl('');
+                        handleApplyUrl(null);
+                      }}
+                      style={styles.mtSm}
+                    />
+                  </>
+                )}
               </View>
             )}
           </ScrollView>

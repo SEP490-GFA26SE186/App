@@ -1,6 +1,7 @@
 // apps/mobile/src/services/storyService.ts
 import { apiFetch, invalidResponseError } from './apiClient';
 import { Story, PedagogicalTemplate } from '../../../../packages/shared-types';
+import type { StoryResponseDto, TopicDto } from '../types/api';
 
 // Mọi hàm ở đây throw ApiError khi BE lỗi/từ chối/trả sai hình dạng.
 // Không được trả dữ liệu mẫu, truyện cục bộ hoặc "thành công" giả (ADR-008).
@@ -26,7 +27,7 @@ export const storyService = {
    * Lấy chi tiết truyện: GET /stories/:id → data { story }
    */
   getStory: async (id: string): Promise<Story> => {
-    const data = await apiFetch<{ story?: any }>(`/stories/${id}`);
+    const data = await apiFetch<Partial<StoryResponseDto>>(`/stories/${id}`);
     if (!data?.story?.id) throw invalidResponseError('chi tiết truyện');
     return storyService.formatStory(data.story);
   },
@@ -46,7 +47,7 @@ export const storyService = {
     useAiImage?: boolean;
     useTts?: boolean;
   }): Promise<Story> => {
-    const data = await apiFetch<{ story?: any }>('/stories', {
+    const data = await apiFetch<Partial<StoryResponseDto>>('/stories', {
       method: 'POST',
       body: JSON.stringify(payload),
     });
@@ -80,7 +81,7 @@ export const storyService = {
    * Danh sách rỗng là kết quả hợp lệ.
    */
   getTemplates: async (): Promise<PedagogicalTemplate[]> => {
-    const data = await apiFetch<any[]>('/topics');
+    const data = await apiFetch<TopicDto[]>('/topics');
     if (!Array.isArray(data)) throw invalidResponseError('danh sách chủ đề');
     return data.map((t) => ({
       id: t.id,

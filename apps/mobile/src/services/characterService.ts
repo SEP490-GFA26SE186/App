@@ -1,6 +1,7 @@
 // apps/mobile/src/services/characterService.ts
 import { apiFetch, invalidResponseError } from './apiClient';
 import { FamilyCharacter } from '../../../../packages/shared-types';
+import type { CharactersListDto, CharacterResponseDto } from '../types/api';
 
 // Mọi hàm ở đây throw ApiError khi BE lỗi/từ chối/trả sai hình dạng.
 // Không được trả dữ liệu mẫu hoặc "thành công" giả (ADR-008).
@@ -10,14 +11,14 @@ export const characterService = {
    * Danh sách rỗng là kết quả hợp lệ.
    */
   getCharacters: async (): Promise<FamilyCharacter[]> => {
-    const data = await apiFetch<{ characters?: any[] }>('/characters');
+    const data = await apiFetch<Partial<CharactersListDto>>('/characters');
     const list = Array.isArray(data?.characters) ? data.characters : Array.isArray(data) ? (data as any[]) : null;
     if (!list) throw invalidResponseError('danh sách nhân vật');
     return list.map(characterService.formatCharacter);
   },
 
   createCharacter: async (payload: { name: string; appearance: string; role?: string }): Promise<FamilyCharacter> => {
-    const data = await apiFetch<{ character?: any }>('/characters', {
+    const data = await apiFetch<Partial<CharacterResponseDto>>('/characters', {
       method: 'POST',
       body: JSON.stringify(payload),
     });
@@ -26,7 +27,7 @@ export const characterService = {
   },
 
   updateCharacter: async (id: string, payload: { name?: string; appearance?: string }): Promise<FamilyCharacter> => {
-    const data = await apiFetch<{ character?: any }>(`/characters/${id}`, {
+    const data = await apiFetch<Partial<CharacterResponseDto>>(`/characters/${id}`, {
       method: 'PUT',
       body: JSON.stringify(payload),
     });

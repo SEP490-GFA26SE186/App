@@ -1,5 +1,5 @@
 // apps/mobile/src/services/apiClient.ts
-import { getApiBaseUrl } from './config';
+import { getApiBaseUrl, API_NOT_CONFIGURED_MESSAGE } from './config';
 import { safeStorage, STORAGE_KEYS } from './storage';
 
 export class ApiError extends Error {
@@ -22,6 +22,13 @@ export const extractErrorMessage = (errorData: any, fallback = 'Có lỗi xảy 
   return errorData.message || fallback;
 };
 
+/** Thiếu cấu hình API → lỗi rõ ràng (status 0: không phải lỗi xác thực), không gửi request tới URL đoán */
+const resolveBaseUrl = (): string => {
+  const url = getApiBaseUrl();
+  if (!url) throw new ApiError(API_NOT_CONFIGURED_MESSAGE, 0);
+  return url;
+};
+
 /** Response 2xx nhưng sai hình dạng so với contract BE: không được coi là thành công */
 export const invalidResponseError = (what: string): ApiError =>
   new ApiError(`Phản hồi ${what} từ máy chủ không hợp lệ. Vui lòng thử lại.`, 502);
@@ -41,7 +48,7 @@ const refreshAccessToken = async (): Promise<string> => {
       const refreshToken = safeStorage.getItem(STORAGE_KEYS.REFRESH_TOKEN);
       if (!refreshToken) throw new ApiError('Không có refresh token', 401);
 
-      const url = `${getApiBaseUrl()}/auth/refresh-tokens`;
+      const url = `${resolveBaseUrl()}/auth/refresh-tokens`;
       let res: Response;
       try {
         res = await fetch(url, {
@@ -96,7 +103,7 @@ export interface RequestOptions extends RequestInit {
 }
 
 export const apiFetch = async <T = any>(endpoint: string, options: RequestOptions = {}): Promise<T> => {
-  const baseUrl = getApiBaseUrl();
+  const baseUrl = resolveBaseUrl();
   const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
   const url = `${baseUrl}${cleanEndpoint}`;
 
@@ -153,7 +160,7 @@ export const apiFetch = async <T = any>(endpoint: string, options: RequestOption
 
 // Client for Kid Mode with kidSessionToken
 export const kidFetch = async <T = any>(endpoint: string, options: RequestInit = {}): Promise<T> => {
-  const baseUrl = getApiBaseUrl();
+  const baseUrl = resolveBaseUrl();
   const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
   const url = `${baseUrl}${cleanEndpoint}`;
 

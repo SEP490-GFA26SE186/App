@@ -12,9 +12,9 @@ import Animated, {
   useAnimatedStyle,
   withSpring,
 } from 'react-native-reanimated';
-import { Role } from '../../../../packages/shared-types';
-import { SessionUser } from '../types/sessionUser';
-import { Colors } from '../theme/colors';
+import { Role } from '../../../../../packages/shared-types';
+import { SessionUser } from '../../types/sessionUser';
+import { Colors } from '../../theme/colors';
 
 interface HeyTopBarProps {
   currentUser: SessionUser;

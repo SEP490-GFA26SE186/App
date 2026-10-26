@@ -9,17 +9,15 @@ import {
   ActivityIndicator,
   Image,
 } from 'react-native';
-import { HeyButton } from '../components/ui/HeyButton';
-import { HeyInput } from '../components/ui/HeyInput';
-import { Colors } from '../theme/colors';
+import { HeyButton } from '../../components/ui/HeyButton';
+import { HeyInput } from '../../components/ui/HeyInput';
+import { Colors } from '../../theme/colors';
 import {
   authService,
-  getApiEnvironment,
-  setApiEnvironment,
   getApiBaseUrl,
-  ApiEnvironment,
-} from '../services';
-import { SessionUser } from '../types/sessionUser';
+  API_NOT_CONFIGURED_MESSAGE,
+} from '../../services';
+import { SessionUser } from '../../types/sessionUser';
 
 interface LoginScreenProps {
   onLoginSuccess: (user: SessionUser) => void;
@@ -38,8 +36,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
   const [loading, setLoading] = useState(false);
   const submittingRef = useRef(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(initialMessage ?? null);
-  const [currentEnv, setCurrentEnv] = useState<ApiEnvironment>(getApiEnvironment());
-  const [showEnvOptions, setShowEnvOptions] = useState(false);
+  const apiBaseUrl = getApiBaseUrl();
 
   const handleLogin = async () => {
     if (submittingRef.current) return;
@@ -60,12 +57,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
       submittingRef.current = false;
       setLoading(false);
     }
-  };
-
-  const handleSelectEnv = (env: ApiEnvironment) => {
-    setApiEnvironment(env);
-    setCurrentEnv(env);
-    setShowEnvOptions(false);
   };
 
   return (
@@ -138,34 +129,13 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
           </TouchableOpacity>
         </View>
 
-        {/* Server Environment Bar */}
+        {/* Địa chỉ máy chủ lấy từ cấu hình (EXPO_PUBLIC_API_URL), chỉ hiển thị */}
         <View style={styles.envBar}>
-          <TouchableOpacity
-            style={styles.envTrigger}
-            onPress={() => setShowEnvOptions(!showEnvOptions)}
-          >
-            <Text style={styles.envTriggerText}>
-              ⚙️ Máy chủ: <Text style={{ fontWeight: '800', color: Colors.primary }}>{currentEnv.toUpperCase()}</Text> ({getApiBaseUrl()})
-            </Text>
-            <Text style={styles.envTriggerArrow}>{showEnvOptions ? '▲' : '▼'}</Text>
-          </TouchableOpacity>
-
-          {showEnvOptions && (
-            <View style={styles.envDropdown}>
-              <TouchableOpacity
-                style={[styles.envChoice, currentEnv === 'dev' && styles.envChoiceActive]}
-                onPress={() => handleSelectEnv('dev')}
-              >
-                <Text style={styles.envChoiceText}>🖥️ Dev (Local: localhost:3000)</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.envChoice, currentEnv === 'prod' && styles.envChoiceActive]}
-                onPress={() => handleSelectEnv('prod')}
-              >
-                <Text style={styles.envChoiceText}>🌐 Prod (api.storyweaver.id.vn)</Text>
-              </TouchableOpacity>
-            </View>
-          )}
+          <Text style={styles.envTriggerText}>
+            {apiBaseUrl
+              ? `⚙️ Máy chủ: ${apiBaseUrl}`
+              : `⚠️ ${API_NOT_CONFIGURED_MESSAGE}`}
+          </Text>
         </View>
       </View>
     </ScrollView>

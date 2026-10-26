@@ -8,7 +8,7 @@ import {
   TouchableOpacity,
   StyleSheet,
 } from 'react-native';
-import { soundFX } from '../../../../src/utils/sound-fx';
+import { soundFX } from '../utils/sound-fx';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,

@@ -12,23 +12,24 @@ import Animated, {
   useAnimatedStyle,
   withSpring,
 } from 'react-native-reanimated';
-import { Colors } from '../theme/colors';
-import { soundFX } from '../../../../src/utils/sound-fx';
+import { Colors } from '../../theme/colors';
+import { soundFX } from '../../utils/sound-fx';
+import { ROUTES, RouteKey } from '../../navigation/routes';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 interface HeyTabBarProps {
-  currentTab: string;
-  onSelectTab: (tab: string) => void;
+  currentTab: RouteKey;
+  onSelectTab: (tab: RouteKey) => void;
   onOpenKidMode: () => void;
 }
 
 const tabs = [
-  { id: 'HOME',   label: 'Trang chủ', icon: '🌱' },
-  { id: 'MARKET', label: 'Tủ truyện', icon: '📚' },
-  { id: 'CREATE', label: 'Sáng tác',  icon: '🪄', highlight: true },
-  { id: 'EQ',     label: 'Tiến độ',   icon: '⭐' },
-  { id: 'WALLET', label: 'Ví Sao',    icon: '💎' },
+  { id: ROUTES.HOME,   label: 'Trang chủ', icon: '🌱' },
+  { id: ROUTES.MARKET, label: 'Tủ truyện', icon: '📚' },
+  { id: ROUTES.CREATE, label: 'Sáng tác',  icon: '🪄', highlight: true },
+  { id: ROUTES.EQ,     label: 'Tiến độ',   icon: '⭐' },
+  { id: ROUTES.WALLET, label: 'Ví Sao',    icon: '💎' },
 ];
 
 const AnimatedTabItem: React.FC<{

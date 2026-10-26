@@ -7,10 +7,10 @@ import {
   TouchableOpacity,
   StyleSheet,
 } from 'react-native';
-import { HeyCard } from '../components/ui/HeyCard';
-import { HeyChip } from '../components/ui/HeyChip';
-import { ChildProfile } from '../../../../packages/shared-types';
-import { Colors } from '../theme/colors';
+import { HeyCard } from '../../components/ui/HeyCard';
+import { HeyChip } from '../../components/ui/HeyChip';
+import { ChildProfile } from '../../../../../packages/shared-types';
+import { Colors } from '../../theme/colors';
 
 interface EqReportScreenProps {
   childrenProfiles: ChildProfile[];

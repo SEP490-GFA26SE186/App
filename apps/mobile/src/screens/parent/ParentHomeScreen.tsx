@@ -10,10 +10,11 @@ import {
   Dimensions,
   Animated as RNAnimated,
 } from 'react-native';
-import { CuteMascot } from '../components/CuteMascot';
-import { ChildProfile, FamilyCharacter, Story, PedagogicalTemplate } from '../../../../packages/shared-types';
-import { SessionUser } from '../types/sessionUser';
-import { soundFX } from '../../../../src/utils/sound-fx';
+import { CuteMascot } from '../../components/CuteMascot';
+import { ChildProfile, FamilyCharacter, Story, PedagogicalTemplate } from '../../../../../packages/shared-types';
+import { SessionUser } from '../../types/sessionUser';
+import { ROUTES, RouteKey } from '../../navigation/routes';
+import { soundFX } from '../../utils/sound-fx';
 
 const { width: W } = Dimensions.get('window');
 const CARD_W = Math.min(W * 0.52, 195);
@@ -27,53 +28,10 @@ interface ParentHomeScreenProps {
   templates: PedagogicalTemplate[];
   onStartStoryWizard: () => void;
   onOpenKidMode: () => void;
-  onNavigateTab: (tab: string) => void;
+  onNavigateTab: (tab: RouteKey) => void;
   onSelectStoryToRead: (story: Story) => void;
 }
 
-// TEMP-DEMO(D4): fixture cho UI Preview sau này; KHÔNG dùng trong màn thật (truyện rỗng → trạng thái rỗng)
-const CURATED_DEMO_STORIES = [
-  {
-    id: 'd1',
-    title: 'Bé Gái Và Cây Đũa Thần Nở Hoa',
-    cover: '/s1.jpg',
-    pages: 6,
-    theme: 'Lòng trắc ẩn',
-    time: '5p',
-    rating: '5.0',
-    emoji: '🌸',
-  },
-  {
-    id: 'd2',
-    title: 'Chú Rồng Con Và Giấc Mơ Bay Cao',
-    cover: '/s2.jpg',
-    pages: 8,
-    theme: 'Kiên trì',
-    time: '6p',
-    rating: '4.9',
-    emoji: '🐉',
-  },
-  {
-    id: 'd3',
-    title: 'Nàng Tiên Cá Dưới Đại Dương',
-    cover: '/s3.jpg',
-    pages: 7,
-    theme: 'Bảo vệ biển',
-    time: '5p',
-    rating: '5.0',
-    emoji: '🧜‍♀️',
-  },
-  {
-    id: 'd4',
-    title: 'Lâu Đài Cát Của Hai Bạn Sóc',
-    cover: 'https://images.unsplash.com/photo-1516627145497-ae6968895b74?w=600&auto=format&fit=crop&q=80',
-    pages: 6,
-    theme: 'Chia sẻ',
-    time: '5p',
-    rating: '5.0',
-    emoji: '🐿️',
-  },
-];
 
 const EQ_TOPICS = [
   { id: 'eq_1', title: 'Dũng cảm', icon: '🛡️', bg: '#FFF8D6', border: '#FFE57F' },
@@ -197,7 +155,7 @@ export const ParentHomeScreen: React.FC<ParentHomeScreenProps> = ({
         <Text style={styles.sectionTitle}>📚 Tủ truyện của bé</Text>
         <TouchableOpacity onPress={() => {
           soundFX.playPop();
-          onNavigateTab('MARKET');
+          onNavigateTab(ROUTES.MARKET);
         }}>
           <Text style={styles.seeAllText}>Xem tất cả →</Text>
         </TouchableOpacity>

@@ -8,11 +8,11 @@ import {
   StyleSheet,
   Image,
 } from 'react-native';
-import { HeyButton } from '../components/ui/HeyButton';
-import { HeyCard } from '../components/ui/HeyCard';
-import { HeyChip } from '../components/ui/HeyChip';
-import { Story } from '../../../../packages/shared-types';
-import { Colors } from '../theme/colors';
+import { HeyButton } from '../../components/ui/HeyButton';
+import { HeyCard } from '../../components/ui/HeyCard';
+import { HeyChip } from '../../components/ui/HeyChip';
+import { Story } from '../../../../../packages/shared-types';
+import { Colors } from '../../theme/colors';
 
 export const ModeratorAdminScreen: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'MODERATION' | 'WITHDRAWALS'>('MODERATION');

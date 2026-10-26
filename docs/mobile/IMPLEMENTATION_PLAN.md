@@ -5,7 +5,7 @@
 - **M0, T1.0: HOÀN TẤT** (người dùng xác nhận). Kết quả T1.0 ở [AUDIT_REPORT §5](./AUDIT_REPORT.md) (M01–M90).
 - **T1.3: đã commit `3379fed` – DONE-STATIC (tsc, `git diff --check`, grep đạt) – RUNTIME CHƯA PASS** (chưa chạy app/BE, U1). Còn lại: T1.3a (HeyInput `autoCapitalize`), T3.1b (validate response `register`).
 - **Safety Gate (S0.1–S0.7, G-DEMO): DONE-STATIC** (chi tiết và giới hạn: [SAFETY_GATE_PROGRESS.md](./SAFETY_GATE_PROGRESS.md)); **RUNTIME CHƯA KIỂM THỬ**. Các task còn lại: NOT STARTED – chỉ chạy khi có lệnh của người dùng.
-- **Roadmap v2: ĐÃ PHÊ DUYỆT CÓ ĐIỀU KIỆN (2026-10-26)** – điều kiện ở "§0". Safety Gate đã hoàn tất mức tĩnh; **chưa bắt đầu Phase A**, chờ người dùng review.
+- **Roadmap v2: ĐÃ PHÊ DUYỆT CÓ ĐIỀU KIỆN (2026-10-26)** – điều kiện ở "§0". Safety Gate và **Phase A (A0.2–A9) đã hoàn tất mức tĩnh** (chi tiết: [PHASE_A_PROGRESS.md](./PHASE_A_PROGRESS.md); A2 PARTIAL); **chưa bắt đầu Phase B**, chờ người dùng review.
 **Quyết định đã duyệt:** giữ Expo SDK 52 (A) · App là repo chính · Parent + Kid = P0 · Seller/Specialist/Admin/Marketplace/Payment = SCOPE PENDING · không xóa tính năng hiện có · không bắt buộc Expo Router / nâng SDK chỉ vì App_v2 dùng công nghệ khác.
 
 ## Quy tắc chung
@@ -202,8 +202,8 @@ Mục tiêu: quét sạch phần còn lại và **chứng minh bằng grep**. Vi
 |---|---|---|---|
 | M0 | — | **HOÀN TẤT** | Người dùng xác nhận |
 | T1.0 | — | **HOÀN TẤT** | 90 phát hiện; người dùng xác nhận |
-| T1.1 | A0.1 | NOT STARTED | cần duyệt |
-| T1.2 | A0.2 | NOT STARTED | |
+| T1.1 | A0.1 | **DONE-STATIC** (commit `3c01bba`) · runtime chưa chạy | |
+| T1.2 | A0.2 | **DONE-STATIC** (chưa commit) | `EXPO_PUBLIC_API_URL`; xem ENVIRONMENT.md |
 | **T1.3** | S (đã làm) | **ĐÃ COMMIT `3379fed` · DONE-STATIC · RUNTIME CHƯA PASS** | Còn lại: T1.3a (S0.7), T3.1b; xem §8 |
 | T1.4 | S0.1 (chặn) → C5 (hoàn tất cùng T3.3) | **S0.1 DONE-STATIC** (commit `8a258b7`) · runtime chưa chạy | phần còn lại: T3.3 |
 | T1.5 | S0.3 (core) → D1 (còn lại) | **S0.3 DONE-STATIC** (chưa commit) · runtime chưa chạy | S0.3 làm sớm hơn kế hoạch theo yêu cầu người dùng; còn lại: D1 |
@@ -213,7 +213,7 @@ Mục tiêu: quét sạch phần còn lại và **chứng minh bằng grep**. Vi
 | T1.9 | S0.5b → C8 | **S0.5b DONE-STATIC** (chưa commit) | tạo truyện thật: C8 |
 | T1.10 | S0.6 (EQ P0) → D2 | **S0.6 DONE-STATIC** (chưa commit); còn số liệu P1 (timer Kid, v.v.) → D2 | |
 | T1.11 | S0.5c → C4/C6 | **S0.5c DONE-STATIC** (chưa commit); hồ sơ phụ huynh BLOCKED (BE không có API) | |
-| T1.12 | A7 | NOT STARTED | cần duyệt |
+| T1.12 | A7 | **DONE-STATIC** (chưa commit) | utils sao chép vào `apps/mobile/src/utils` |
 | T8.0 | D5 | NOT STARTED | |
 | T2.1 / T2.2 / T2.3 | C1 / C2 / A6 | NOT STARTED | T2.2 cần duyệt |
 | T3.1 / T3.2 / T3.3 | C3 / C4 / C5 | NOT STARTED | **T3.1b (mới)** validate register |

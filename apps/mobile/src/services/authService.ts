@@ -2,15 +2,15 @@
 import { apiFetch, ApiError } from './apiClient';
 import { safeStorage, STORAGE_KEYS } from './storage';
 import { SessionUser } from '../types/sessionUser';
+import type {
+  AuthUserDto,
+  EnterKidModeResponseDto,
+  ExitKidModeResponseDto,
+  LoginResponseDto,
+  MeResponseDto,
+} from '../types/api';
 
-export interface LoginResponse {
-  user: any;
-  tokens: {
-    accessToken: string;
-    refreshToken: string;
-    expiresIn: string;
-  };
-}
+export type LoginResponse = LoginResponseDto;
 
 export interface RegisterPayload {
   username: string;
@@ -31,7 +31,7 @@ export const authService = {
    * Đăng nhập: POST /auth/login
    */
   login: async (emailOrUsername: string, password: string): Promise<SessionUser> => {
-    let data: LoginResponse | null;
+    let data: LoginResponseDto | null;
     try {
       data = await apiFetch<LoginResponse>('/auth/login', {
         method: 'POST',
@@ -94,7 +94,7 @@ export const authService = {
    * phiên không hợp lệ (401/403) với lỗi tạm thời (mạng/5xx).
    */
   getMe: async (): Promise<SessionUser> => {
-    const data = await apiFetch<{ user?: any }>('/auth/me');
+    const data = await apiFetch<Partial<MeResponseDto>>('/auth/me');
     return authService.formatUser(data?.user);
   },
 
@@ -181,9 +181,9 @@ export const authService = {
    * Vào Chế độ Trẻ Em: POST /auth/kid-mode/enter { childId }
    */
   enterKidMode: async (childId: string): Promise<{ child: any; kidSessionToken: string }> => {
-    let data: { child?: any; session?: { kidSessionToken?: string } } | null;
+    let data: Partial<EnterKidModeResponseDto> | null;
     try {
-      data = await apiFetch<{ child?: any; session?: { kidSessionToken?: string } }>('/auth/kid-mode/enter', {
+      data = await apiFetch<Partial<EnterKidModeResponseDto>>('/auth/kid-mode/enter', {
         method: 'POST',
         body: JSON.stringify({ childId }),
       });
@@ -220,7 +220,7 @@ export const authService = {
       throw new ApiError('Không tìm thấy phiên Chế độ Bé. Vui lòng thử lại hoặc khởi động lại ứng dụng.', 401);
     }
 
-    const data = await apiFetch<{ tokens?: { accessToken?: string; refreshToken?: string } }>('/auth/kid-mode/exit', {
+    const data = await apiFetch<Partial<ExitKidModeResponseDto>>('/auth/kid-mode/exit', {
       method: 'POST',
       skipAuth: true,
       body: JSON.stringify({ pin, kidSessionToken }),
@@ -238,7 +238,7 @@ export const authService = {
     return true;
   },
 
-  formatUser: (raw: any): SessionUser => {
+  formatUser: (raw: Partial<AuthUserDto> | undefined | null): SessionUser => {
     // Không tạo user khi BE trả dữ liệu thiếu/sai
     if (!raw || typeof raw !== 'object' || typeof raw.id !== 'string' || !raw.id || typeof raw.email !== 'string' || !raw.email) {
       throw new ApiError('Dữ liệu tài khoản từ máy chủ không hợp lệ.', 502);
@@ -248,17 +248,16 @@ export const authService = {
       id: raw.id,
       email: raw.email,
       fullName: raw.fullName || raw.username || 'Phụ huynh',
-      avatarUrl: raw.avatarUrl || 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&auto=format&fit=crop&q=80',
+      // BE không trả avatar (API_MAPPING §1): ảnh mặc định cho UI
+      avatarUrl: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&auto=format&fit=crop&q=80',
       phone: raw.phone || '',
       role: (raw.role?.toUpperCase() as any) || 'PARENT',
       kidModePinHash: raw.hasKidPin ? '****' : '',
       createdAt: raw.createdAt || new Date().toISOString(),
-      updatedAt: raw.updatedAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
       // null = BE chưa trả ví (login không có wallet); UI hiển thị "—"
-      creditBalance: numberOrNull(raw.wallet?.creditBalance ?? raw.creditBalance),
-      sellerAvailableBalance: numberOrNull(raw.wallet?.sellerAvailableBalance ?? raw.sellerAvailableBalance) ?? undefined,
-      sellerPendingBalance: numberOrNull(raw.wallet?.sellerPendingBalance ?? raw.sellerPendingBalance) ?? undefined,
-      bankAccount: raw.bankAccount,
+      creditBalance: numberOrNull(raw.wallet?.creditBalance),
+      // Ví người bán/ngân hàng thuộc SCOPE PENDING: BE trả earningAvailableVnd, chưa ánh xạ (không bịa)
     };
   },
 };

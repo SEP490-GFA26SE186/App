@@ -8,11 +8,11 @@ import {
   StyleSheet,
   ActivityIndicator,
 } from 'react-native';
-import { HeyButton } from '../components/ui/HeyButton';
-import { HeyInput } from '../components/ui/HeyInput';
-import { Colors } from '../theme/colors';
-import { authService } from '../services';
-import { SessionUser } from '../types/sessionUser';
+import { HeyButton } from '../../components/ui/HeyButton';
+import { HeyInput } from '../../components/ui/HeyInput';
+import { Colors } from '../../theme/colors';
+import { authService } from '../../services';
+import { SessionUser } from '../../types/sessionUser';
 
 interface RegisterScreenProps {
   onRegisterSuccess: (user: SessionUser) => void;

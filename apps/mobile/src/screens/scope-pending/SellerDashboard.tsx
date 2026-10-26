@@ -8,11 +8,11 @@ import {
   Image,
   StyleSheet,
 } from 'react-native';
-import { HeyButton } from '../components/ui/HeyButton';
-import { HeyCard } from '../components/ui/HeyCard';
-import { Story } from '../../../../packages/shared-types';
-import { SessionUser } from '../types/sessionUser';
-import { Colors } from '../theme/colors';
+import { HeyButton } from '../../components/ui/HeyButton';
+import { HeyCard } from '../../components/ui/HeyCard';
+import { Story } from '../../../../../packages/shared-types';
+import { SessionUser } from '../../types/sessionUser';
+import { Colors } from '../../theme/colors';
 
 interface SellerDashboardProps {
   currentUser: SessionUser;

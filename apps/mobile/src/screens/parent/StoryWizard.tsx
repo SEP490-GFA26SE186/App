@@ -11,14 +11,14 @@ import {
   ActivityIndicator,
   TextInput,
 } from 'react-native';
-import { HeyButton } from '../components/ui/HeyButton';
-import { HeyProgressBar } from '../components/ui/HeyProgressBar';
-import { FamilyCharacter, PedagogicalTemplate, Story } from '../../../../packages/shared-types';
-import { SessionUser } from '../types/sessionUser';
-import { Colors } from '../theme/colors';
-import { speechTTS } from '../../../../src/utils/speech-tts';
-import { soundFX } from '../../../../src/utils/sound-fx';
-import { characterService } from '../services';
+import { HeyButton } from '../../components/ui/HeyButton';
+import { HeyProgressBar } from '../../components/ui/HeyProgressBar';
+import { FamilyCharacter, PedagogicalTemplate, Story } from '../../../../../packages/shared-types';
+import { SessionUser } from '../../types/sessionUser';
+import { Colors } from '../../theme/colors';
+import { speechTTS } from '../../utils/speech-tts';
+import { soundFX } from '../../utils/sound-fx';
+import { characterService } from '../../services';
 
 interface StoryWizardProps {
   characters: FamilyCharacter[];

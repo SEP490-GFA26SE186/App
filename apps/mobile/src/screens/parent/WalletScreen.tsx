@@ -8,12 +8,12 @@ import {
   StyleSheet,
   Modal,
 } from 'react-native';
-import { HeyButton } from '../components/ui/HeyButton';
-import { HeyCard } from '../components/ui/HeyCard';
-import { HeyInput } from '../components/ui/HeyInput';
-import { WalletTransaction } from '../../../../packages/shared-types';
-import { SessionUser } from '../types/sessionUser';
-import { Colors } from '../theme/colors';
+import { HeyButton } from '../../components/ui/HeyButton';
+import { HeyCard } from '../../components/ui/HeyCard';
+import { HeyInput } from '../../components/ui/HeyInput';
+import { WalletTransaction } from '../../../../../packages/shared-types';
+import { SessionUser } from '../../types/sessionUser';
+import { Colors } from '../../theme/colors';
 
 interface WalletScreenProps {
   currentUser: SessionUser;

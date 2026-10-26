@@ -170,3 +170,11 @@ dev/demo/     dữ liệu demo tạm thời (ADR-016) – chỉ import qua demoG
 - **Độ dài PIN:** theo validation thực tế của BE. Đã xác minh (đọc BE, không sửa): `BE/api/src/modules/auth/auth.validation.js` – `setKidPin`, `changeKidPin.newPin`, `exitKidMode.pin` đều `^\d{4,6}$`. UI hiện cố định 4 số → điều chỉnh ở T3.2/T3.3; chi tiết giao diện do người dùng duyệt (ADR-007, U6).
 - **AI Image (T5.4) và Audio (T6.3, ADR-010):** chờ task liên quan; chưa chọn thư viện.
 - **Seller, Specialist, Admin, Marketplace, Payment:** SCOPE PENDING (ADR-003, ADR-011). Không tự xóa màn hình hiện có khi nhóm chưa thống nhất loại bỏ.
+
+## Ghi chú hiện thực hóa Phase A (2026-10-26)
+- **ADR-015 đã áp dụng** (cấu trúc thực tế: `PHASE_A_PROGRESS.md`): `navigation/` (ROUTES typed, giữ điều hướng bằng state), `screens/{auth,parent,kid,scope-pending}`, `components/{ui,auth,parent}`, `dev/demo/`. Thư mục `components/kid/`, `hooks/`, `constants/`, `config/` **chưa tạo** vì chưa có module nào cần.
+- **ADR-017 đã áp dụng:** `stores/` gồm 3 hook state + `SessionProvider` (3 context riêng: phiên Parent, dữ liệu Parent, Kid session). Không thêm thư viện.
+- **Cấu hình API (A0.2, thay thế phần "URL hardcode" của ADR-004):** địa chỉ lấy từ `EXPO_PUBLIC_API_URL` (công khai, không bí mật), chuẩn hóa về `…/api/v1`; thiếu cấu hình → lỗi rõ ràng, không dùng URL mặc định. Hướng dẫn: `docs/mobile/ENVIRONMENT.md`. Địa chỉ production chỉ cấu hình khi nhóm BE xác nhận.
+- **ADR-016:** fixture đã tách vào `src/dev/demo/`; không file nào ngoài `src/dev/` import chúng.
+- **Type DTO:** `types/api.ts` (chỉ trường BE trả) + view model `types/sessionUser.ts`; `packages/shared-types` vẫn chỉ đọc.
+- **Alias `@/`:** không dùng (chưa xác minh Metro SDK 52 hỗ trợ không cần cấu hình thêm); dùng đường dẫn tương đối.

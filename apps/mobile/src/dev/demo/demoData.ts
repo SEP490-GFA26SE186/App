@@ -1,12 +1,13 @@
-// apps/mobile/src/services/demoData.ts
-// Demo data matching seed_demo.js for offline fallback / demo testing
+// apps/mobile/src/dev/demo/demoData.ts
+// Fixture UI Preview (dữ liệu mẫu). KHÔNG import vào màn hình thật/service/store: không dùng làm dữ liệu BE,
+// fallback khi API lỗi, phiên hay PIN (ADR-016). Xóa ở D4 (cần duyệt).
 import {
   UserAccount,
   ChildProfile,
   FamilyCharacter,
   PedagogicalTemplate,
   Story,
-} from '../../../../packages/shared-types';
+} from '../../../../../packages/shared-types';
 
 export const DEMO_PARENT_USER: UserAccount = {
   id: 'usr_demo_parent_01',
