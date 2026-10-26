@@ -194,11 +194,6 @@ export default function App() {
             loadAllData();
           }}
           onGoRegister={() => setAppPhase('REGISTER')}
-          onSkip={() => {
-            setCurrentUser(DEMO_PARENT_USER);
-            setAppPhase('APP');
-            loadAllData();
-          }}
         />
       </SafeAreaView>
     );

@@ -1,5 +1,5 @@
 // apps/mobile/src/screens/LoginScreen.tsx
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -14,7 +14,6 @@ import { HeyInput } from '../components/ui/HeyInput';
 import { Colors } from '../theme/colors';
 import {
   authService,
-  DEMO_CREDENTIALS,
   getApiEnvironment,
   setApiEnvironment,
   getApiBaseUrl,
@@ -25,28 +24,29 @@ import { UserAccount } from '../../../../packages/shared-types';
 interface LoginScreenProps {
   onLoginSuccess: (user: UserAccount) => void;
   onGoRegister: () => void;
-  onSkip?: () => void;
 }
 
 export const LoginScreen: React.FC<LoginScreenProps> = ({
   onLoginSuccess,
   onGoRegister,
-  onSkip,
 }) => {
-  const [email, setEmail] = useState('me.lanhuong@storyweaver.vn');
-  const [password, setPassword] = useState('123456');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const submittingRef = useRef(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [currentEnv, setCurrentEnv] = useState<ApiEnvironment>(getApiEnvironment());
   const [showEnvOptions, setShowEnvOptions] = useState(false);
 
   const handleLogin = async () => {
+    if (submittingRef.current) return;
     setErrorMsg(null);
     if (!email.trim() || !password) {
       setErrorMsg('Vui lòng nhập email/tên đăng nhập và mật khẩu');
       return;
     }
 
+    submittingRef.current = true;
     setLoading(true);
     try {
       const user = await authService.login(email.trim(), password);
@@ -54,14 +54,9 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
     } catch (err: any) {
       setErrorMsg(err?.message || 'Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin!');
     } finally {
+      submittingRef.current = false;
       setLoading(false);
     }
-  };
-
-  const fillDemo = (cred: { email: string; password: string }) => {
-    setEmail(cred.email);
-    setPassword(cred.password);
-    setErrorMsg(null);
   };
 
   const handleSelectEnv = (env: ApiEnvironment) => {
@@ -106,7 +101,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
 
         <HeyInput
           label="Email hoặc Tên đăng nhập"
-          placeholder="me.lanhuong@storyweaver.vn"
+          placeholder="email@example.com hoặc tên đăng nhập"
           value={email}
           onChangeText={setEmail}
           keyboardType="email-address"
@@ -120,38 +115,12 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
           secureTextEntry
         />
 
-        {/* Quick Demo Accounts Fill */}
-        <View style={styles.demoSection}>
-          <Text style={styles.demoLabel}>⚡ Điền nhanh tài khoản demo (Mật khẩu: 123456):</Text>
-          <View style={styles.demoRow}>
-            <TouchableOpacity
-              style={[styles.demoChip, email === DEMO_CREDENTIALS.parent.email && styles.demoChipActive]}
-              onPress={() => fillDemo(DEMO_CREDENTIALS.parent)}
-            >
-              <Text style={styles.demoChipText}>👩 Phụ huynh</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.demoChip, email === DEMO_CREDENTIALS.specialist.email && styles.demoChipActive]}
-              onPress={() => fillDemo(DEMO_CREDENTIALS.specialist)}
-            >
-              <Text style={styles.demoChipText}>🎓 Chuyên gia</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.demoChip, email === DEMO_CREDENTIALS.admin.email && styles.demoChipActive]}
-              onPress={() => fillDemo(DEMO_CREDENTIALS.admin)}
-            >
-              <Text style={styles.demoChipText}>🛡️ Admin</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
         <HeyButton
           title={loading ? '⏳ Đang đăng nhập...' : '🚀 Đăng nhập ngay'}
           onPress={handleLogin}
           style={styles.loginBtn}
           size="lg"
+          disabled={loading}
         />
 
         {/* Register Link */}
@@ -161,13 +130,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
             <Text style={styles.registerLink}>Đăng ký ngay ➔</Text>
           </TouchableOpacity>
         </View>
-
-        {/* Skip / Direct Explore */}
-        {onSkip && (
-          <TouchableOpacity onPress={onSkip} style={styles.skipBtn} activeOpacity={0.8}>
-            <Text style={styles.skipBtnText}>✨ Hoặc trải nghiệm nhanh (Offline Demo) ➔</Text>
-          </TouchableOpacity>
-        )}
 
         {/* Server Environment Bar */}
         <View style={styles.envBar}>
@@ -194,12 +156,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
                 onPress={() => handleSelectEnv('prod')}
               >
                 <Text style={styles.envChoiceText}>🌐 Prod (api.storyweaver.id.vn)</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.envChoice, currentEnv === 'mock' && styles.envChoiceActive]}
-                onPress={() => handleSelectEnv('mock')}
-              >
-                <Text style={styles.envChoiceText}>📦 Mock Demo (Offline)</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -309,43 +265,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
   },
-  demoSection: {
-    backgroundColor: '#F0F9FF',
-    padding: 12,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#BAE6FD',
-    marginTop: 8,
-    marginBottom: 14,
-  },
-  demoLabel: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#0369A1',
-    marginBottom: 8,
-  },
-  demoRow: {
-    flexDirection: 'row',
-    gap: 6,
-  },
-  demoChip: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-    paddingVertical: 7,
-    borderRadius: 10,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#7DD3FC',
-  },
-  demoChipActive: {
-    backgroundColor: '#E0F2FE',
-    borderColor: '#0284C7',
-  },
-  demoChipText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#0284C7',
-  },
   loginBtn: {
     marginTop: 4,
   },
@@ -363,19 +282,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '800',
     color: Colors.primary,
-  },
-  skipBtn: {
-    marginTop: 12,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    backgroundColor: '#F3F4F6',
-    borderRadius: 10,
-    alignItems: 'center',
-  },
-  skipBtnText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#4B5563',
   },
   envBar: {
     marginTop: 18,

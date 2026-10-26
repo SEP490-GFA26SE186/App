@@ -1,7 +1,7 @@
 // apps/mobile/src/services/config.ts
 import { Platform } from 'react-native';
 
-export type ApiEnvironment = 'dev' | 'prod' | 'mock';
+export type ApiEnvironment = 'dev' | 'prod';
 
 // Local dev default: Android emulator uses 10.0.2.2, Web/iOS uses localhost
 const LOCAL_DEV_URL =
@@ -31,32 +31,12 @@ export const getApiBaseUrl = (): string => {
 };
 
 export const setApiEnvironment = (env: ApiEnvironment, customUrl?: string) => {
+  // Giá trị ngoài 'dev' | 'prod' (vd 'mock' cũ) được đưa về 'dev'
+  const safeEnv: ApiEnvironment = env === 'prod' ? 'prod' : 'dev';
   currentConfig = {
-    env,
+    env: safeEnv,
     customBaseUrl: customUrl,
   };
 };
 
 export const getApiEnvironment = (): ApiEnvironment => currentConfig.env;
-
-export const DEMO_CREDENTIALS = {
-  parent: {
-    email: 'me.lanhuong@storyweaver.vn',
-    password: '123456',
-    role: 'parent',
-    name: 'Mẹ Lan Hương',
-    kidPin: '1234',
-  },
-  admin: {
-    email: 'admin@storyweaver.vn',
-    password: '123456',
-    role: 'admin',
-    name: 'Quản trị viên',
-  },
-  specialist: {
-    email: 'kdv@storyweaver.vn',
-    password: '123456',
-    role: 'specialist',
-    name: 'Chuyên gia sư phạm',
-  },
-};

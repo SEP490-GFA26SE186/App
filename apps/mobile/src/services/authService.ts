@@ -1,5 +1,5 @@
 // apps/mobile/src/services/authService.ts
-import { apiFetch } from './apiClient';
+import { apiFetch, ApiError } from './apiClient';
 import { safeStorage, STORAGE_KEYS } from './storage';
 import { DEMO_PARENT_USER } from './demoData';
 import { UserAccount } from '../../../../packages/shared-types';
@@ -26,36 +26,36 @@ export const authService = {
    * Đăng nhập: POST /auth/login
    */
   login: async (emailOrUsername: string, password: string): Promise<UserAccount> => {
+    let data: LoginResponse | null;
     try {
-      const data = await apiFetch<LoginResponse>('/auth/login', {
+      data = await apiFetch<LoginResponse>('/auth/login', {
         method: 'POST',
         skipAuth: true,
         body: JSON.stringify({ emailOrUsername: emailOrUsername.trim(), password }),
       });
-
-      if (data?.tokens) {
-        safeStorage.setItem(STORAGE_KEYS.ACCESS_TOKEN, data.tokens.accessToken);
-        safeStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, data.tokens.refreshToken);
-      }
-
-      const rawUser = data?.user || data;
-      const user = authService.formatUser(rawUser);
-      safeStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(user));
-      return user;
     } catch (error: any) {
-      // Mock / Offline Fallback for Demo
-      if (
-        (emailOrUsername.toLowerCase() === 'me.lanhuong@storyweaver.vn' ||
-         emailOrUsername.toLowerCase() === 'me_lanhuong') &&
-        password === '123456'
-      ) {
-        safeStorage.setItem(STORAGE_KEYS.ACCESS_TOKEN, 'demo_mock_jwt_token');
-        safeStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, 'demo_mock_refresh_token');
-        safeStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(DEMO_PARENT_USER));
-        return DEMO_PARENT_USER;
+      if (error instanceof ApiError) {
+        if (error.status === 401) {
+          throw new ApiError('Email/Tên đăng nhập hoặc mật khẩu chưa đúng', 401, error.errors);
+        }
+        if (error.status === 403) {
+          throw new ApiError('Tài khoản đã bị khóa, ba mẹ liên hệ hỗ trợ nhé', 403, error.errors);
+        }
       }
       throw error;
     }
+
+    // Chỉ coi là đăng nhập thành công khi BE trả đủ user + tokens
+    const tokens = data?.tokens;
+    if (!data?.user || !tokens?.accessToken || !tokens?.refreshToken) {
+      throw new ApiError('Phản hồi đăng nhập từ máy chủ không hợp lệ. Vui lòng thử lại.', 502);
+    }
+
+    const user = authService.formatUser(data.user);
+    safeStorage.setItem(STORAGE_KEYS.ACCESS_TOKEN, tokens.accessToken);
+    safeStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, tokens.refreshToken);
+    safeStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(user));
+    return user;
   },
 
   /**

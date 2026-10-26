@@ -1,5 +1,5 @@
 // apps/mobile/src/components/AuthModal.tsx
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   Modal,
   View,
@@ -16,7 +16,6 @@ import { Colors } from '../theme/colors';
 import {
   authService,
   childService,
-  DEMO_CREDENTIALS,
   getApiEnvironment,
   setApiEnvironment,
   getApiBaseUrl,
@@ -52,16 +51,17 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     currentUser ? 'PROFILE' : initialTab
   );
 
-  const [email, setEmail] = useState(currentUser?.email || DEMO_CREDENTIALS.parent.email);
-  const [password, setPassword] = useState(DEMO_CREDENTIALS.parent.password);
-  const [fullName, setFullName] = useState(currentUser?.fullName || DEMO_CREDENTIALS.parent.name);
-  const [phone, setPhone] = useState(currentUser?.phone || '0901234567');
-  const [kidPin, setKidPin] = useState(currentUser?.kidModePinHash || '1234');
+  const [email, setEmail] = useState(currentUser?.email || '');
+  const [password, setPassword] = useState('');
+  const [fullName, setFullName] = useState(currentUser?.fullName || '');
+  const [phone, setPhone] = useState(currentUser?.phone || '');
+  const [kidPin, setKidPin] = useState('');
   const [newChildName, setNewChildName] = useState('');
   const [newChildAge, setNewChildAge] = useState('4');
   const [notice, setNotice] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const submittingRef = useRef(false);
 
   // Server Environment State
   const [currentEnv, setCurrentEnv] = useState<ApiEnvironment>(getApiEnvironment());
@@ -70,7 +70,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const handleSaveProfile = async () => {
     if (currentUser) {
       try {
-        if (kidPin && kidPin !== currentUser.kidModePinHash) {
+        if (kidPin) {
           await authService.setKidPin(kidPin);
         }
       } catch {}
@@ -79,8 +79,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         ...currentUser,
         fullName,
         phone,
-        kidModePinHash: kidPin,
+        // Không lưu PIN thô ở client; xử lý đầy đủ ở T1.11
+        kidModePinHash: currentUser.kidModePinHash,
       };
+      setKidPin('');
       onUserUpdate(updated);
       setNotice('Đã cập nhật thông tin thành công!');
       setTimeout(() => {
@@ -101,14 +103,19 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   };
 
   const handleLoginSubmit = async () => {
+    if (submittingRef.current) return;
     setErrorMsg(null);
     if (!email.trim() || !password) {
       setErrorMsg('Vui lòng nhập đầy đủ email/tên đăng nhập và mật khẩu');
       return;
     }
+    submittingRef.current = true;
     setLoading(true);
     try {
       const user = await authService.login(email.trim(), password);
+      setPassword('');
+      setFullName(user.fullName || '');
+      setPhone(user.phone || '');
       onUserUpdate(user);
       setNotice(`Đăng nhập thành công! Chào ${user.fullName}`);
       if (onRefreshData) onRefreshData();
@@ -119,11 +126,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     } catch (err: any) {
       setErrorMsg(err?.message || 'Đăng nhập thất bại. Kiểm tra lại thông tin hoặc chuyển môi trường.');
     } finally {
+      submittingRef.current = false;
       setLoading(false);
     }
   };
 
   const handleRegisterSubmit = async () => {
+    if (submittingRef.current) return;
     setErrorMsg(null);
     if (!email.trim() || !password || !fullName.trim()) {
       setErrorMsg('Vui lòng nhập đầy đủ họ tên, email và mật khẩu');
@@ -133,6 +142,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       setErrorMsg('Mật khẩu tối thiểu 8 ký tự (yêu cầu bảo mật)');
       return;
     }
+    submittingRef.current = true;
     setLoading(true);
     try {
       const username = email.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '_').toLowerCase();
@@ -153,6 +163,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     } catch (err: any) {
       setErrorMsg(err?.message || 'Đăng ký thất bại');
     } finally {
+      submittingRef.current = false;
       setLoading(false);
     }
   };
@@ -185,13 +196,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     setCurrentEnv(env);
     setNotice(`Đã chuyển sang môi trường: ${env.toUpperCase()} (${getApiBaseUrl()})`);
     setTimeout(() => setNotice(null), 2000);
-  };
-
-  const fillDemoAccount = (acc: { email: string; password: string; name?: string; kidPin?: string }) => {
-    setEmail(acc.email);
-    setPassword(acc.password);
-    if (acc.name) setFullName(acc.name);
-    setErrorMsg(null);
   };
 
   return (
@@ -359,11 +363,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   Mã PIN 4 số giúp ngăn bé vô tình thoát khỏi giao diện Chế độ Trẻ Em (Kid Mode).
                 </Text>
                 <HeyInput
-                  label="Mã PIN 4 số hiện tại (Mặc định: 1234)"
+                  label="Mã PIN Kid Mode (4 số)"
                   value={kidPin}
                   onChangeText={setKidPin}
                   keyboardType="numeric"
-                  placeholder="1234"
+                  placeholder="••••"
                 />
                 <HeyButton title="🔒 Lưu mã PIN" variant="secondary" onPress={handleSaveProfile} style={styles.mt} />
               </View>
@@ -374,35 +378,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 <HeyInput label="Email / Tên đăng nhập" value={email} onChangeText={setEmail} keyboardType="email-address" />
                 <HeyInput label="Mật khẩu" value={password} onChangeText={setPassword} secureTextEntry />
 
-                {/* Quick Demo Accounts Buttons */}
-                <View style={styles.demoBox}>
-                  <Text style={styles.demoTitle}>👉 Bấm để điền nhanh tài khoản demo:</Text>
-                  <View style={styles.demoRow}>
-                    <TouchableOpacity
-                      style={styles.demoBtn}
-                      onPress={() => fillDemoAccount(DEMO_CREDENTIALS.parent)}
-                    >
-                      <Text style={styles.demoBtnText}>👩 Phụ huynh</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={styles.demoBtn}
-                      onPress={() => fillDemoAccount(DEMO_CREDENTIALS.specialist)}
-                    >
-                      <Text style={styles.demoBtnText}>🎓 Chuyên gia</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={styles.demoBtn}
-                      onPress={() => fillDemoAccount(DEMO_CREDENTIALS.admin)}
-                    >
-                      <Text style={styles.demoBtnText}>🛡️ Admin</Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-
                 <HeyButton
                   title={loading ? '⏳ Đang đăng nhập...' : '🚀 Đăng nhập ngay'}
                   onPress={handleLoginSubmit}
                   style={styles.mt}
+                  disabled={loading}
                 />
               </View>
             )}
@@ -418,6 +398,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   variant="teal"
                   onPress={handleRegisterSubmit}
                   style={styles.mt}
+                  disabled={loading}
                 />
               </View>
             )}
@@ -442,14 +423,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 >
                   <Text style={styles.envOptionTitle}>🌐 Môi trường Prod (Đã deploy)</Text>
                   <Text style={styles.envOptionDesc}>https://api.storyweaver.id.vn/api/v1</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[styles.envOption, currentEnv === 'mock' && styles.envOptionActive]}
-                  onPress={() => handleApplyEnv('mock')}
-                >
-                  <Text style={styles.envOptionTitle}>📦 Chế độ Mock Demo (Offline)</Text>
-                  <Text style={styles.envOptionDesc}>Tự động dùng dữ liệu demo khi không có mạng hoặc chưa bật máy chủ.</Text>
                 </TouchableOpacity>
 
                 <Text style={[styles.sectionTitle, styles.mt]}>Hoặc URL tuỳ chỉnh:</Text>
@@ -601,38 +574,6 @@ const styles = StyleSheet.create({
     color: Colors.textMuted,
     lineHeight: 18,
     marginBottom: 12,
-  },
-  demoBox: {
-    marginTop: 10,
-    padding: 10,
-    backgroundColor: '#F0F9FF',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#BAE6FD',
-  },
-  demoTitle: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#0369A1',
-    marginBottom: 6,
-  },
-  demoRow: {
-    flexDirection: 'row',
-    gap: 6,
-  },
-  demoBtn: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-    paddingVertical: 6,
-    borderRadius: 8,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#7DD3FC',
-  },
-  demoBtnText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#0284C7',
   },
   envOption: {
     padding: 12,
