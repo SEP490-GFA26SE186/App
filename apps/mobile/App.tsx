@@ -1,11 +1,12 @@
 // apps/mobile/App.tsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   SafeAreaView,
   View,
   StyleSheet,
   StatusBar,
   Platform,
+  Alert,
 } from 'react-native';
 import {
   UserAccount,
@@ -54,6 +55,10 @@ export default function App() {
   );
   const [activeRole, setActiveRole] = useState<Role>('PARENT');
   const [isKidMode, setIsKidMode] = useState<boolean>(false);
+  // Bé đã được BE xác nhận khi vào Kid Mode
+  const [kidChild, setKidChild] = useState<ChildProfile | null>(null);
+  const enteringKidRef = useRef(false);
+  const exitKidInFlightRef = useRef<Promise<void> | null>(null);
   const [currentTab, setCurrentTab] = useState<string>('HOME');
   const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
   const [selectedStoryToRead, setSelectedStoryToRead] = useState<Story | null>(null);
@@ -115,25 +120,38 @@ export default function App() {
   };
 
   const handleOpenKidMode = async (child?: ChildProfile) => {
+    if (enteringKidRef.current || isKidMode) return;
+    // TODO(B2): chưa có UI chọn bé; tạm dùng bé đầu tiên khi không truyền bé cụ thể
     const target = child || childrenProfiles[0];
-    if (target) {
-      try {
-        await authService.enterKidMode(target.id);
-      } catch (err) {
-        console.log('Kid mode enter error:', err);
-      }
+    if (!target) {
+      Alert.alert('Chưa có hồ sơ bé', 'Ba mẹ cần thêm hồ sơ bé trước khi vào Chế độ Bé.');
+      return;
     }
-    setIsKidMode(true);
+    enteringKidRef.current = true;
+    try {
+      await authService.enterKidMode(target.id);
+      setKidChild(target);
+      setIsKidMode(true);
+    } catch (err: any) {
+      Alert.alert('Không thể vào Chế độ Bé', err?.message || 'Vui lòng thử lại.');
+    } finally {
+      enteringKidRef.current = false;
+    }
   };
 
-  const handleExitKidMode = async (pin?: string) => {
-    if (pin) {
-      try {
-        await authService.exitKidMode(pin);
-      } catch {}
-    }
-    setIsKidMode(false);
-    loadAllData();
+  // Điểm duy nhất gọi exit; reject khi BE từ chối/lỗi để KidModeScreen hiện lỗi và giữ Kid Mode
+  const handleExitKidMode = (pin: string): Promise<void> => {
+    if (exitKidInFlightRef.current) return exitKidInFlightRef.current;
+    const attempt = (async () => {
+      await authService.exitKidMode(pin);
+      setIsKidMode(false);
+      setKidChild(null);
+      loadAllData();
+    })().finally(() => {
+      exitKidInFlightRef.current = null;
+    });
+    exitKidInFlightRef.current = attempt;
+    return attempt;
   };
 
   const handleStoryCreated = async (newStory: Story) => {
@@ -220,11 +238,10 @@ export default function App() {
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
       {/* KID MODE VIEW (CHILDREN EXPERIENCE) */}
-      {isKidMode ? (
+      {isKidMode && kidChild ? (
         <KidModeScreen
-          child={childrenProfiles[0]}
+          child={kidChild}
           stories={stories}
-          correctPin={currentUser.kidModePinHash || '1234'}
           onExitKidMode={handleExitKidMode}
           onRecordEqSignal={(signal, skill) => {
             console.log('Record EQ signal:', signal, skill);

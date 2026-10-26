@@ -22,15 +22,15 @@ import Animated, {
 } from 'react-native-reanimated';
 import { Story, StoryPage, ChildProfile } from '../../../../packages/shared-types';
 import { Colors } from '../theme/colors';
-import { kidService, authService } from '../services';
+import { kidService } from '../services';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 interface KidModeScreenProps {
   child: ChildProfile;
   stories: Story[];
-  correctPin: string;
-  onExitKidMode: (pin?: string) => void;
+  // Reject khi BE từ chối/lỗi; resolve khi BE đã xác minh PIN (màn này sẽ được gỡ)
+  onExitKidMode: (pin: string) => Promise<void>;
   onRecordEqSignal: (signal: string, skill: string) => void;
 }
 
@@ -98,7 +98,6 @@ const AnimatedStoryCard: React.FC<{
 export const KidModeScreen: React.FC<KidModeScreenProps> = ({
   child,
   stories,
-  correctPin,
   onExitKidMode,
   onRecordEqSignal,
 }) => {
@@ -110,6 +109,7 @@ export const KidModeScreen: React.FC<KidModeScreenProps> = ({
   const [showPinModal, setShowPinModal] = useState(false);
   const [enteredPin, setEnteredPin] = useState('');
   const [pinError, setPinError] = useState(false);
+  const verifyingPinRef = useRef(false);
 
   // Timer — 20 phút
   const [remainingSeconds, setRemainingSeconds] = useState(20 * 60);
@@ -137,23 +137,20 @@ export const KidModeScreen: React.FC<KidModeScreenProps> = ({
   };
 
   const handleVerifyPin = async (pin: string) => {
+    if (verifyingPinRef.current) return;
+    verifyingPinRef.current = true;
     try {
-      await authService.exitKidMode(pin);
-      setShowPinModal(false);
-      onExitKidMode(pin);
-      return;
+      await onExitKidMode(pin);
     } catch {
-      if (pin === correctPin || pin === '1234') {
-        setShowPinModal(false);
-        onExitKidMode(pin);
-        return;
-      }
+      // BE từ chối hoặc lỗi: không coi PIN là hợp lệ, giữ nguyên Kid Mode
+      setPinError(true);
+      setTimeout(() => {
+        setEnteredPin('');
+        setPinError(false);
+      }, 900);
+    } finally {
+      verifyingPinRef.current = false;
     }
-    setPinError(true);
-    setTimeout(() => {
-      setEnteredPin('');
-      setPinError(false);
-    }, 900);
   };
 
   const handlePressPinKey = (num: string) => {
@@ -412,7 +409,9 @@ export const KidModeScreen: React.FC<KidModeScreenProps> = ({
                   <TouchableOpacity
                     key={key}
                     onPress={() => {
-                      if (key === 'C') setEnteredPin('');
+                      if (key === 'C') {
+                        if (!verifyingPinRef.current) setEnteredPin('');
+                      }
                       else if (key === '✕') setShowPinModal(false);
                       else handlePressPinKey(key);
                     }}

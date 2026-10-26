@@ -21,6 +21,12 @@ export interface RegisterPayload {
   phone?: string;
 }
 
+// BE trả message tiếng Anh → dịch các lỗi vào Kid Mode hay gặp (đối chiếu auth.service.js enterKidMode)
+const KID_ENTER_VI_MESSAGES: Record<string, string> = {
+  'You must set a Kid Exit PIN before entering Kid Mode': 'Ba mẹ cần đặt mã PIN trước khi vào Chế độ Bé',
+  'Child profile not found or does not belong to this account': 'Không tìm thấy hồ sơ bé này trong tài khoản',
+};
+
 export const authService = {
   /**
    * Đăng nhập: POST /auth/login
@@ -169,53 +175,57 @@ export const authService = {
    * Vào Chế độ Trẻ Em: POST /auth/kid-mode/enter { childId }
    */
   enterKidMode: async (childId: string): Promise<{ child: any; kidSessionToken: string }> => {
+    let data: { child?: any; session?: { kidSessionToken?: string } } | null;
     try {
-      const data = await apiFetch<{ child: any; session: { kidSessionToken: string } }>('/auth/kid-mode/enter', {
+      data = await apiFetch<{ child?: any; session?: { kidSessionToken?: string } }>('/auth/kid-mode/enter', {
         method: 'POST',
         body: JSON.stringify({ childId }),
       });
-      const token = data?.session?.kidSessionToken || 'mock_kid_session_token';
-      safeStorage.setItem(STORAGE_KEYS.KID_SESSION_TOKEN, token);
-      safeStorage.setItem(STORAGE_KEYS.CURRENT_CHILD_ID, childId);
-      return { child: data?.child, kidSessionToken: token };
-    } catch (error) {
-      // Offline fallback
-      const token = `mock_kid_session_${childId}`;
-      safeStorage.setItem(STORAGE_KEYS.KID_SESSION_TOKEN, token);
-      safeStorage.setItem(STORAGE_KEYS.CURRENT_CHILD_ID, childId);
-      return { child: { id: childId }, kidSessionToken: token };
+    } catch (error: any) {
+      if (error instanceof ApiError) {
+        throw new ApiError(KID_ENTER_VI_MESSAGES[error.message] ?? error.message, error.status, error.errors);
+      }
+      throw error;
     }
+
+    // Chỉ coi là vào Kid Mode khi BE trả session hợp lệ cho đúng bé đã yêu cầu
+    const token = data?.session?.kidSessionToken;
+    if (!token || typeof token !== 'string' || !data?.child?.id || data.child.id !== childId) {
+      throw new ApiError('Phản hồi vào Chế độ Bé từ máy chủ không hợp lệ. Vui lòng thử lại.', 502);
+    }
+
+    safeStorage.setItem(STORAGE_KEYS.KID_SESSION_TOKEN, token);
+    safeStorage.setItem(STORAGE_KEYS.CURRENT_CHILD_ID, childId);
+    return { child: data.child, kidSessionToken: token };
   },
 
   /**
    * Thoát Chế độ Trẻ Em: POST /auth/kid-mode/exit { pin, kidSessionToken }
+   * Chỉ trả về khi BE xác minh PIN và trả tokens hợp lệ; mọi trường hợp khác throw
+   * và giữ nguyên kid session.
    */
   exitKidMode: async (pin: string): Promise<boolean> => {
     const kidSessionToken = safeStorage.getItem(STORAGE_KEYS.KID_SESSION_TOKEN);
-    try {
-      const data = await apiFetch<{ tokens?: { accessToken: string; refreshToken: string } }>('/auth/kid-mode/exit', {
-        method: 'POST',
-        skipAuth: true,
-        body: JSON.stringify({ pin, kidSessionToken }),
-      });
-      if (data?.tokens) {
-        safeStorage.setItem(STORAGE_KEYS.ACCESS_TOKEN, data.tokens.accessToken);
-        if (data.tokens.refreshToken) {
-          safeStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, data.tokens.refreshToken);
-        }
-      }
-      safeStorage.removeItem(STORAGE_KEYS.KID_SESSION_TOKEN);
-      safeStorage.removeItem(STORAGE_KEYS.CURRENT_CHILD_ID);
-      return true;
-    } catch (error: any) {
-      // If PIN matches demo pin 1234, allow exit in fallback mode
-      if (pin === '1234') {
-        safeStorage.removeItem(STORAGE_KEYS.KID_SESSION_TOKEN);
-        safeStorage.removeItem(STORAGE_KEYS.CURRENT_CHILD_ID);
-        return true;
-      }
-      throw error;
+    if (!kidSessionToken) {
+      throw new ApiError('Không tìm thấy phiên Chế độ Bé. Vui lòng thử lại hoặc khởi động lại ứng dụng.', 401);
     }
+
+    const data = await apiFetch<{ tokens?: { accessToken?: string; refreshToken?: string } }>('/auth/kid-mode/exit', {
+      method: 'POST',
+      skipAuth: true,
+      body: JSON.stringify({ pin, kidSessionToken }),
+    });
+
+    const tokens = data?.tokens;
+    if (!tokens?.accessToken || !tokens?.refreshToken) {
+      throw new ApiError('Phản hồi thoát Chế độ Bé từ máy chủ không hợp lệ. Vui lòng thử lại.', 502);
+    }
+
+    safeStorage.setItem(STORAGE_KEYS.ACCESS_TOKEN, tokens.accessToken);
+    safeStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, tokens.refreshToken);
+    safeStorage.removeItem(STORAGE_KEYS.KID_SESSION_TOKEN);
+    safeStorage.removeItem(STORAGE_KEYS.CURRENT_CHILD_ID);
+    return true;
   },
 
   formatUser: (raw: any): UserAccount => {
@@ -226,7 +236,7 @@ export const authService = {
       avatarUrl: raw.avatarUrl || 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&auto=format&fit=crop&q=80',
       phone: raw.phone || '',
       role: (raw.role?.toUpperCase() as any) || 'PARENT',
-      kidModePinHash: raw.hasKidPin ? '****' : (raw.kidModePinHash || '1234'),
+      kidModePinHash: raw.hasKidPin ? '****' : '',
       createdAt: raw.createdAt || new Date().toISOString(),
       updatedAt: raw.updatedAt || new Date().toISOString(),
       creditBalance: raw.wallet?.creditBalance ?? raw.creditBalance ?? 50,
