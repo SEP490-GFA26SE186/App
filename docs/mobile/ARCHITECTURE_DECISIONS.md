@@ -36,6 +36,8 @@ config/     env/base URL
 - **Điều hướng:** giai đoạn đầu giữ cơ chế hiện có; việc đưa router (React Navigation hoặc expo-router ~4.0.22) là **quyết định riêng, chưa duyệt**.
 - Không copy `mockApi.ts`/`mocks/db.ts` của App_v2.
 
+> **Cập nhật 2026-10-26:** cấu trúc đích chi tiết và quyết định điều hướng nằm ở [ADR-015](#adr-015--cấu-trúc-thư-mục-đích--điều-hướng). ADR-004 giữ nguyên làm lịch sử.
+
 ## ADR-005 – HTTP: tiếp tục dùng `fetch`
 - Lý do: envelope BE đơn giản; axios không có tính năng bắt buộc.
 - Wrapper cần: base URL từ env, timeout, parse `{success,message,data,errors[]}`, header Bearer, **single-flight refresh** khi 401 (loại trừ `/auth/login|register|refresh-tokens|logout`, theo `Web/src/services/api.js`), lỗi có kiểu (401/402/403/409/422/429/502).
@@ -72,3 +74,99 @@ config/     env/base URL
 
 ## ADR-013 – Chất lượng
 - Hiện chưa có test/lint. Tối thiểu: `npx tsc --noEmit` mỗi task; unit test cho API client/mapper sau khi được duyệt thêm tooling (dependency → cần duyệt).
+
+---
+# Điều chỉnh roadmap 2026-10-26 (ADR-014 → ADR-020)
+
+> **Trạng thái: ĐÃ PHÊ DUYỆT CÓ ĐIỀU KIỆN (2026-10-26).** Các điều kiện đã được ghi trong từng ADR dưới đây và trong `IMPLEMENTATION_PLAN.md` §0. Chưa bắt đầu coding; task kế tiếp chờ lệnh: S0.1.
+
+## ADR-014 – Thứ tự triển khai v2 và Safety Gate
+- **Quyết định (đã duyệt):** thứ tự **Safety tối thiểu → A → B → C → D → E**: A Refactor cấu trúc theo App_v2 · B Đồng bộ UI/nghiệp vụ với Web · C Tích hợp API thật · D Gỡ mock/fake/demo · E Kiểm thử & hoàn thiện. Chi tiết task ở `IMPLEMENTATION_PLAN.md`.
+- **Không bắt buộc hoàn thành toàn bộ S0.1–S0.7 trước khi bắt đầu A.** Chỉ **S-min** làm trước A:
+  1. **S0.1** – loại bỏ bypass PIN `1234` và so sánh PIN cục bộ;
+  2. **S0.2** – không vào/thoát Kid Mode bằng xác thực giả hoặc khi xác minh thật thất bại;
+  3. **S0.4 + S0.5a** – không để thao tác ghi nhạy cảm, thanh toán hoặc credit giả báo thành công như BE thật.
+- **Hoãn có blocker, xử lý tại milestone:** S0.3 → A3 · S0.5b → B5/C8 · S0.5c → B3/B11 (U8) · S0.6 → A8/B · S0.7 → A2. Phần cần refactor lớn hoặc phụ thuộc API chưa có được ghi rõ blocker trong `IMPLEMENTATION_PLAN.md` §0.1.
+- **G-DEMO vẫn bắt buộc** trước mọi buổi demo/bàn giao có đăng nhập, Kid Mode hoặc tiền/credit; hoãn S đồng nghĩa chưa được demo luồng liên quan.
+- **Hệ quả:** không task gốc nào bị xóa; chỉ gán lại phase. Quy tắc "mỗi lần một task nhỏ, dừng chờ review" giữ nguyên.
+
+## ADR-015 – Cấu trúc thư mục đích & điều hướng
+- **Mục tiêu:** học **cách tổ chức** của App_v2 (tách screen/component/service/store/hook/constants/types), **không** bắt buộc dùng công nghệ của App_v2 (Expo Router, zustand, react-query, Expo 58).
+- **Điều hướng – quyết định hiện tại:** giữ điều hướng bằng state nhưng **đưa sau một lớp trừu tượng**: `navigation/routes.ts` (hằng `ROUTES` có kiểu, mô phỏng `App_v2/src/constants/routes.ts`), `AppNavigator`, `ParentTabs` (Home · Library · Studio · Marketplace[SCOPE PENDING] · More), `KidStack`. Màn hình chỉ gọi `navigate(ROUTES.x)`, không gọi `setCurrentTab(...)` trực tiếp. Nhờ đó đổi sang React Navigation hoặc `expo-router ~4.0.22` sau này chỉ sửa lớp này.
+- **Đã duyệt:** không tự chuyển sang Expo Router; không thêm thư viện điều hướng khi chưa được người dùng phê duyệt.
+- **Không dùng Expo Router/React Navigation ở phase A** vì cần thêm dependency (cần duyệt) và không cần thiết để đạt mục tiêu refactor. Xem lại ở cổng A9 nếu nhu cầu deep link/back stack thực sự phát sinh (payOS deep link hiện BLOCKED nên chưa cần).
+- **Cấu trúc đích** (`apps/mobile/src/`; chỉ di chuyển, không xóa):
+```
+navigation/   routes.ts, AppNavigator, ParentTabs, KidStack
+screens/
+  auth/  parent/  kid/  scope-pending/   (Seller, Moderator/Admin, Marketplace, Wallet-payment: giữ nguyên)
+components/
+  ui/ (Hey* hiện có + Screen, Sheet, Toaster, SelectField, Badge, TextField)
+  auth/  parent/  kid/
+services/     apiClient, authService, childService, ... (BE → UI mapper, không bịa field)
+stores/       auth, kidSession (tách riêng), toast
+hooks/        useXxx (poll generation, ...)
+constants/    routes, casel, eqLevels, story
+types/        DTO theo BE rev8 (mobile-local)
+utils/        format, child, audio/speech cho mobile (thay import legacy, T1.12)
+theme/        tokens (colors, spacing, shadows) – bổ sung từ App_v2
+config/       env/base URL (T1.2)
+dev/demo/     dữ liệu demo tạm thời (ADR-016) – chỉ import qua demoGate
+```
+- **Types:** `packages/shared-types` nằm ngoài `apps/mobile` và **READ-ONLY** → mobile tạo `src/types/` riêng theo BE rev8, chuyển import dần; không sửa `packages/`.
+- **Alias import** (`@/`): chỉ dùng nếu xác minh Metro SDK 52 hỗ trợ **không cần dependency**; mặc định dùng đường dẫn tương đối.
+- **Nguyên tắc refactor:** không đổi hành vi; mỗi task một thay đổi nhỏ; sau mỗi task `tsc` pass và app khởi động; không xóa màn hình/file (kể cả `IntroScreen` chưa được import).
+
+## ADR-016 – Dữ liệu mẫu: chỉ trong UI Preview tách biệt
+- **Bối cảnh:** cần dữ liệu mẫu để phát triển UI ở phase A–B trước khi nối API. ADR-008 (cấm fake-success) **vẫn hiệu lực**. *(Thay thế bản nháp ngày 2026-10-26 cho phép demo trộn trong màn thật; bản duyệt hạn chế hơn.)*
+- **Đã duyệt:** dữ liệu mẫu được dùng **trong preview tách biệt** (ADR-020). Màn thật không âm thầm hiển thị dữ liệu mẫu như dữ liệu thật; **production khi chưa có dữ liệu thật hiển thị trạng thái rỗng hoặc thông báo phù hợp**.
+- **Cách tổ chức:**
+  1. Dữ liệu mẫu gom ở `src/dev/demo/`; chỉ `src/dev/preview/` (và lớp chuyển tiếp có nhãn, bên dưới) được import.
+  2. Màn hình viết dạng trình bày (nhận dữ liệu qua props/hook): màn thật cấp dữ liệu từ service, preview cấp dữ liệu mẫu.
+  3. **Lớp chuyển tiếp** (cho code demo cũ chưa kịp chuyển): bọc `__DEV__` + `DemoBanner` + marker `// TEMP-DEMO(<task xóa>)`; production thấy trạng thái rỗng. Xóa dần ở A8/B/D.
+  4. Màn `API INTEGRATED` phải ngừng dùng dữ liệu mẫu ngay trong task tích hợp.
+  5. Xóa `src/dev/demo/` ở D4 (cần duyệt riêng).
+- **Cấm tuyệt đối (kể cả tạm thời):** fake API/endpoint; mô phỏng thành công cho **đăng nhập thật, quyền truy cập thật, ghi dữ liệu BE, thanh toán**, PIN, phiên; token/user/ví/credit giả; so sánh PIN cục bộ; số liệu EQ/tiến độ hardcode hiển thị như dữ liệu thật.
+- **Thao tác ghi ở phase A–B:** gọi `notConnected()` hiển thị "Chưa kết nối API", không đổi state như thể đã thành công.
+
+## ADR-017 – Quản lý state
+- **Đã duyệt:** không tự thêm Zustand, Axios hay thư viện state/HTTP khác; ưu tiên thư viện và state management hiện có; thư viện mới phải được người dùng phê duyệt trước.
+- **Quyết định:** không thêm thư viện state ở giai đoạn này. Dùng React context + store tối giản trong `stores/`, giữ **kid session tách riêng parent session** (ADR-006).
+- **Lý do:** `zustand`/`react-query` là dependency mới (cần duyệt, AGENTS §2); nhu cầu hiện tại nhỏ. Xem lại khi bắt đầu phase C nếu cache/refetch trở nên phức tạp; khi đó đề xuất duyệt riêng.
+- App_v2 dùng zustand persist (AsyncStorage) chỉ là tham chiếu; **không** lưu token trong store persist thường — token đi qua `expo-secure-store` (T2.2, chờ duyệt).
+
+## ADR-018 – UI: theo nghiệp vụ Web, tối ưu cho React Native
+- **Nghiệp vụ & luồng người dùng** theo Web (`Web/src/pages/**`, `services/*.js`): cùng bước, cùng quy tắc kiểm tra, cùng thông báo lỗi (Việt hoá như `VI_MESSAGES`). **Bố cục/tương tác** theo App_v2 và thói quen mobile, không sao chép layout desktop.
+- **Nguyên tắc RN:** safe area; `KeyboardAvoidingView`; `FlatList` cho danh sách dài; vùng chạm ≥44pt; bottom sheet thay modal/trang phụ khi hợp lý; pull-to-refresh; không phụ thuộc hover; chạy tốt ở 2 cỡ màn hình; Kid Mode ưu tiên chạm lớn.
+- **Mọi màn** có đủ 3 trạng thái: loading · empty · error (kèm thử lại). Lỗi lấy từ `ApiError`, không bịa.
+- **Không thêm dependency UI** (chart, date picker, icon…) khi chưa duyệt; nếu thiếu thì ghi UNKNOWN/đề xuất. **Đã duyệt:** không thêm date picker — `birthDate` nhập text `YYYY-MM-DD` có kiểm tra (B3).
+- **SCOPE PENDING:** giữ nguyên màn hiện có, không phát triển thêm (ADR-003).
+
+## ADR-019 – Bốn trục trạng thái tính năng & Definition of Done
+- Mỗi tính năng (F1–F15 và SCOPE PENDING) được theo dõi bằng **4 trục độc lập**: `UI COMPLETE` · `API INTEGRATED` · `RUNTIME TESTED` · `MOCK REMOVED`; ký hiệu ✅ ◐ ❌ —. Định nghĩa và bằng chứng yêu cầu ở `IMPLEMENTATION_PLAN.md` §1.2; ma trận hiện tại ở §1.3.
+- **Quy tắc:**
+  - `UI COMPLETE` được chứng minh bằng dữ liệu mẫu trong UI Preview tách biệt (ADR-020); **không** suy ra `API INTEGRATED`.
+  - `API INTEGRATED` chỉ chứng minh code đúng contract; **không** suy ra chạy được.
+  - `RUNTIME TESTED` chỉ đánh ✅ khi đã chạy thật với BE thật và ghi Nhật ký (ngày, commit BE/App, thiết bị, ca test, kết quả). Không có bằng chứng → ❌ hoặc "CHƯA CHẠY".
+  - `MOCK REMOVED` chỉ đánh ✅ khi grep cổng của tính năng sạch (IMPLEMENTATION_PLAN §6).
+- **Trạng thái task** tách riêng: `NOT STARTED → IN PROGRESS → DONE-STATIC → ACCEPTED` (+ `BLOCKED`). `ACCEPTED` chỉ do người dùng xác nhận.
+- **Áp dụng hiện tại:** T1.3 = `DONE-STATIC`, RUNTIME TESTED = ❌ cho tới khi chạy cùng BE.
+
+## ADR-020 – UI Preview (công cụ dev) & Kid UI Preview
+- **Bối cảnh:** S0.2 chặn vào Kid Mode khi BE lỗi nên không xem được UI Kid khi BE chưa chạy. **Đã duyệt** tạo Kid UI Preview riêng để phát triển giao diện; mở rộng cùng cơ chế cho các màn khác khi cần.
+- **Thời điểm:** chỉ triển khai khi tới task UI phù hợp (**B9-P**). **Chưa viết code preview** ở giai đoạn này.
+- **Điều kiện bắt buộc (cả 7):**
+  1. Chỉ khả dụng khi `__DEV__` và phải **bật bằng thao tác chủ động** (không tự mở).
+  2. **Không** dùng token giả, fake authentication hay bypass PIN.
+  3. **Không** thay đổi trạng thái đăng nhập/Kid Mode thật để mở preview (cây preview tách khỏi cây điều hướng và store phiên thật).
+  4. **Không** gọi API ghi dữ liệu, thanh toán hay nghiệp vụ thật.
+  5. **Không** lưu dữ liệu mẫu như dữ liệu người dùng thật (không ghi vào `safeStorage`/SecureStore, không đẩy vào store phiên).
+  6. Hiển thị rõ "UI Preview – dữ liệu mẫu".
+  7. **Không tồn tại đường truy cập preview trong production.**
+- **Cách kiểm chứng:** cổng grep G11 (`IMPLEMENTATION_PLAN.md` §6): `dev/preview` chỉ xuất hiện trong nhánh `__DEV__`; `src/dev/**` không import `apiClient`, `safeStorage`, `authService`, `kidService`. Kiểm tra bản build production không có lối vào ở phase E.
+- **Phân biệt với phiên thật:** preview **không phải** Kid Mode; thoát preview không dùng PIN và không đổi phiên. Vào Kid Mode thật vẫn bắt buộc qua `/auth/kid-mode/enter` (S0.2).
+
+## Ghi chú – các quyết định còn PENDING (không tự quyết)
+- **Độ dài PIN:** theo validation thực tế của BE. Đã xác minh (đọc BE, không sửa): `BE/api/src/modules/auth/auth.validation.js` – `setKidPin`, `changeKidPin.newPin`, `exitKidMode.pin` đều `^\d{4,6}$`. UI hiện cố định 4 số → điều chỉnh ở T3.2/T3.3; chi tiết giao diện do người dùng duyệt (ADR-007, U6).
+- **AI Image (T5.4) và Audio (T6.3, ADR-010):** chờ task liên quan; chưa chọn thư viện.
+- **Seller, Specialist, Admin, Marketplace, Payment:** SCOPE PENDING (ADR-003, ADR-011). Không tự xóa màn hình hiện có khi nhóm chưa thống nhất loại bỏ.
