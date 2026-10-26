@@ -25,7 +25,7 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const sessionRef = useRef(0);
   const data = useParentDataState(sessionRef);
   const kid = useKidSessionState({
-    childrenProfiles: data.childrenProfiles,
+    selectedChild: data.selectedChild,
     onExited: () => {
       void loadData();
     },

@@ -5,7 +5,7 @@
 - **M0, T1.0: HOÀN TẤT** (người dùng xác nhận). Kết quả T1.0 ở [AUDIT_REPORT §5](./AUDIT_REPORT.md) (M01–M90).
 - **T1.3: đã commit `3379fed` – DONE-STATIC (tsc, `git diff --check`, grep đạt) – RUNTIME CHƯA PASS** (chưa chạy app/BE, U1). Còn lại: T1.3a (HeyInput `autoCapitalize`), T3.1b (validate response `register`).
 - **Safety Gate (S0.1–S0.7, G-DEMO): DONE-STATIC** (chi tiết và giới hạn: [SAFETY_GATE_PROGRESS.md](./SAFETY_GATE_PROGRESS.md)); **RUNTIME CHƯA KIỂM THỬ**. Các task còn lại: NOT STARTED – chỉ chạy khi có lệnh của người dùng.
-- **Roadmap v2: ĐÃ PHÊ DUYỆT CÓ ĐIỀU KIỆN (2026-10-26)** – điều kiện ở "§0". Safety Gate và **Phase A (A0.2–A9) đã hoàn tất mức tĩnh** (chi tiết: [PHASE_A_PROGRESS.md](./PHASE_A_PROGRESS.md); A2 PARTIAL); **chưa bắt đầu Phase B**, chờ người dùng review.
+- **Roadmap v2: ĐÃ PHÊ DUYỆT CÓ ĐIỀU KIỆN (2026-10-26)** – điều kiện ở "§0". Safety Gate, **Phase A** và **Phase B (B1–B12)** đã hoàn tất mức tĩnh ([PHASE_A_PROGRESS](./PHASE_A_PROGRESS.md), [PHASE_B_PROGRESS](./PHASE_B_PROGRESS.md); B6, B9 PARTIAL); **chưa bắt đầu Phase C**, chờ người dùng review.
 **Quyết định đã duyệt:** giữ Expo SDK 52 (A) · App là repo chính · Parent + Kid = P0 · Seller/Specialist/Admin/Marketplace/Payment = SCOPE PENDING · không xóa tính năng hiện có · không bắt buộc Expo Router / nâng SDK chỉ vì App_v2 dùng công nghệ khác.
 
 ## Quy tắc chung

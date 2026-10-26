@@ -1,5 +1,5 @@
-// apps/mobile/src/screens/RegisterScreen.tsx
-import React, { useState } from 'react';
+// apps/mobile/src/screens/auth/RegisterScreen.tsx
+import React, { useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -7,12 +7,15 @@ import {
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { HeyButton } from '../../components/ui/HeyButton';
 import { HeyInput } from '../../components/ui/HeyInput';
 import { Colors } from '../../theme/colors';
 import { authService } from '../../services';
 import { SessionUser } from '../../types/sessionUser';
+import { EMAIL_REGEX, MIN_REGISTER_PASSWORD, USERNAME_REGEX } from '../../utils/validation';
 
 interface RegisterScreenProps {
   onRegisterSuccess: (user: SessionUser) => void;
@@ -24,58 +27,70 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
   onGoLogin,
 }) => {
   const [fullName, setFullName] = useState('');
+  const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const submittingRef = useRef(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [errors, setErrors] = useState<Record<string, string | undefined>>({});
+
+  // Quy tắc kiểm tra khớp Web RegisterPage / BE auth.validation.js
+  const validate = (): boolean => {
+    const next: Record<string, string> = {};
+    const u = username.trim();
+    if (!u) next.username = 'Ba mẹ nhập tên đăng nhập nhé';
+    else if (!USERNAME_REGEX.test(u)) next.username = 'Từ 3–50 ký tự, chỉ gồm chữ không dấu, số và dấu _';
+    if (!email.trim()) next.email = 'Ba mẹ nhập email nhé';
+    else if (!EMAIL_REGEX.test(email.trim())) next.email = 'Email chưa đúng định dạng';
+    if (fullName.trim().length > 150) next.fullName = 'Họ tên tối đa 150 ký tự';
+    if (phone.trim().length > 20) next.phone = 'Số điện thoại tối đa 20 ký tự';
+    if (password.length < MIN_REGISTER_PASSWORD) next.password = `Mật khẩu có ít nhất ${MIN_REGISTER_PASSWORD} ký tự`;
+    if (confirmPassword !== password) next.confirmPassword = 'Mật khẩu nhập lại chưa khớp';
+    setErrors(next);
+    return Object.keys(next).length === 0;
+  };
+
+  // Gõ vào ô nào thì xóa lỗi của ô đó
+  const bind = (key: string, setter: (v: string) => void) => (text: string) => {
+    setter(text);
+    setErrors((e) => ({ ...e, [key]: undefined }));
+    setErrorMsg(null);
+  };
 
   const handleRegister = async () => {
+    if (submittingRef.current) return;
     setErrorMsg(null);
-    if (!fullName.trim()) {
-      setErrorMsg('Vui lòng nhập họ và tên của ba mẹ');
-      return;
-    }
-    if (!email.trim()) {
-      setErrorMsg('Vui lòng nhập địa chỉ email');
-      return;
-    }
-    if (password.length < 8) {
-      setErrorMsg('Mật khẩu tối thiểu 8 ký tự (yêu cầu an toàn)');
-      return;
-    }
-    if (password !== confirmPassword) {
-      setErrorMsg('Mật khẩu xác nhận không khớp');
-      return;
-    }
+    if (!validate()) return;
 
+    submittingRef.current = true;
     setLoading(true);
     try {
-      const username = email.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '_').toLowerCase();
-      const cleanUsername = username.length >= 3 ? username : `${username}_usr`;
-
       const user = await authService.register({
-        username: cleanUsername,
-        email: email.trim().toLowerCase(),
+        username: username.trim(),
+        email: email.trim(),
         password,
-        fullName: fullName.trim(),
-        phone: phone.trim() || undefined,
+        ...(fullName.trim() ? { fullName: fullName.trim() } : {}),
+        ...(phone.trim() ? { phone: phone.trim() } : {}),
       });
-
       onRegisterSuccess(user);
     } catch (err: any) {
       setErrorMsg(err?.message || 'Đăng ký không thành công. Thử lại sau nhé!');
     } finally {
+      submittingRef.current = false;
       setLoading(false);
     }
   };
 
   return (
+    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
     <ScrollView
       style={styles.container}
       contentContainerStyle={styles.scrollContent}
       showsVerticalScrollIndicator={false}
+      keyboardShouldPersistTaps="handled"
     >
       {/* Top Bar with Back Button */}
       <View style={styles.topBar}>
@@ -91,7 +106,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
         <Text style={styles.heroEmoji}>🎁</Text>
         <View style={styles.heroInfo}>
           <Text style={styles.heroTitle}>Chào mừng ba mẹ gia nhập StoryWeaver!</Text>
-          <Text style={styles.heroSubtitle}>Tặng ngay 50 💎 Credits sáng tác truyện AI miễn phí cho tài khoản mới.</Text>
+          <Text style={styles.heroSubtitle}>Gói Miễn phí cấp credit mỗi tháng để AI viết truyện cùng bé.</Text>
         </View>
       </View>
 
@@ -104,17 +119,30 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
         )}
 
         <HeyInput
-          label="Họ và tên phụ huynh *"
+          label="Họ và tên phụ huynh"
           placeholder="Mẹ Lan Phương"
           value={fullName}
-          onChangeText={setFullName}
+          onChangeText={bind('fullName', setFullName)}
+          error={errors.fullName}
+        />
+
+        <HeyInput
+          label="Tên đăng nhập *"
+          placeholder="vd: lanphuong_2024"
+          value={username}
+          onChangeText={bind('username', setUsername)}
+          error={errors.username}
+          hint="3–50 ký tự: chữ không dấu, số và dấu _"
+          autoCapitalize="none"
+          autoCorrect={false}
         />
 
         <HeyInput
           label="Địa chỉ email *"
           placeholder="lanphuong@gmail.com"
           value={email}
-          onChangeText={setEmail}
+          onChangeText={bind('email', setEmail)}
+          error={errors.email}
           keyboardType="email-address"
           autoCapitalize="none"
           autoCorrect={false}
@@ -124,7 +152,8 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
           label="Số điện thoại (tùy chọn)"
           placeholder="0901234567"
           value={phone}
-          onChangeText={setPhone}
+          onChangeText={bind('phone', setPhone)}
+          error={errors.phone}
           keyboardType="phone-pad"
         />
 
@@ -132,8 +161,10 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
           label="Mật khẩu (tối thiểu 8 ký tự) *"
           placeholder="••••••••"
           value={password}
-          onChangeText={setPassword}
+          onChangeText={bind('password', setPassword)}
+          error={errors.password}
           secureTextEntry
+          revealable
           autoCapitalize="none"
           autoCorrect={false}
         />
@@ -142,8 +173,10 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
           label="Nhập lại mật khẩu *"
           placeholder="••••••••"
           value={confirmPassword}
-          onChangeText={setConfirmPassword}
+          onChangeText={bind('confirmPassword', setConfirmPassword)}
+          error={errors.confirmPassword}
           secureTextEntry
+          revealable
           autoCapitalize="none"
           autoCorrect={false}
         />
@@ -154,6 +187,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
           size="lg"
           onPress={handleRegister}
           style={styles.registerBtn}
+          disabled={loading}
         />
 
         <View style={styles.loginRow}>
@@ -164,6 +198,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
         </View>
       </View>
     </ScrollView>
+    </KeyboardAvoidingView>
   );
 };
 

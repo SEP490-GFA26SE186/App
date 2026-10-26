@@ -1,4 +1,4 @@
-// apps/mobile/src/screens/LoginScreen.tsx
+// apps/mobile/src/screens/auth/LoginScreen.tsx
 import React, { useRef, useState } from 'react';
 import {
   View,
@@ -8,6 +8,8 @@ import {
   StyleSheet,
   ActivityIndicator,
   Image,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { HeyButton } from '../../components/ui/HeyButton';
 import { HeyInput } from '../../components/ui/HeyInput';
@@ -18,18 +20,22 @@ import {
   API_NOT_CONFIGURED_MESSAGE,
 } from '../../services';
 import { SessionUser } from '../../types/sessionUser';
+import { isValidIdentity } from '../../utils/validation';
 
 interface LoginScreenProps {
   onLoginSuccess: (user: SessionUser) => void;
   onGoRegister: () => void;
   // Thông báo hiển thị khi vào màn (vd phiên hết hạn)
   initialMessage?: string | null;
+  /** Chỉ truyền khi __DEV__: mở Kid UI Preview (ADR-020). Không có prop = không có lối vào. */
+  onOpenPreview?: () => void;
 }
 
 export const LoginScreen: React.FC<LoginScreenProps> = ({
   onLoginSuccess,
   onGoRegister,
   initialMessage,
+  onOpenPreview,
 }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -38,13 +44,23 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
   const [errorMsg, setErrorMsg] = useState<string | null>(initialMessage ?? null);
   const apiBaseUrl = getApiBaseUrl();
 
+  const [fieldErrors, setFieldErrors] = useState<{ identity?: string; password?: string }>({});
+
+  // Quy tắc kiểm tra khớp Web LoginPage
+  const validate = (): boolean => {
+    const next: { identity?: string; password?: string } = {};
+    const identity = email.trim();
+    if (!identity) next.identity = 'Ba mẹ nhập email hoặc tên đăng nhập nhé';
+    else if (!isValidIdentity(identity)) next.identity = 'Email hoặc tên đăng nhập chưa đúng định dạng';
+    if (!password) next.password = 'Ba mẹ nhập mật khẩu nhé';
+    setFieldErrors(next);
+    return Object.keys(next).length === 0;
+  };
+
   const handleLogin = async () => {
     if (submittingRef.current) return;
     setErrorMsg(null);
-    if (!email.trim() || !password) {
-      setErrorMsg('Vui lòng nhập email/tên đăng nhập và mật khẩu');
-      return;
-    }
+    if (!validate()) return;
 
     submittingRef.current = true;
     setLoading(true);
@@ -53,6 +69,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
       onLoginSuccess(user);
     } catch (err: any) {
       setErrorMsg(err?.message || 'Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin!');
+      setPassword('');
     } finally {
       submittingRef.current = false;
       setLoading(false);
@@ -60,10 +77,12 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
   };
 
   return (
+    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
     <ScrollView
       style={styles.container}
       contentContainerStyle={styles.scrollContent}
       showsVerticalScrollIndicator={false}
+      keyboardShouldPersistTaps="handled"
     >
       {/* Brand Header */}
       <View style={styles.brandHero}>
@@ -97,7 +116,12 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
           label="Email hoặc Tên đăng nhập"
           placeholder="email@example.com hoặc tên đăng nhập"
           value={email}
-          onChangeText={setEmail}
+          onChangeText={(t) => {
+            setEmail(t);
+            setFieldErrors((e) => ({ ...e, identity: undefined }));
+            setErrorMsg(null);
+          }}
+          error={fieldErrors.identity}
           keyboardType="email-address"
           autoCapitalize="none"
           autoCorrect={false}
@@ -107,8 +131,14 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
           label="Mật khẩu"
           placeholder="••••••"
           value={password}
-          onChangeText={setPassword}
+          onChangeText={(t) => {
+            setPassword(t);
+            setFieldErrors((e) => ({ ...e, password: undefined }));
+            setErrorMsg(null);
+          }}
+          error={fieldErrors.password}
           secureTextEntry
+          revealable
           autoCapitalize="none"
           autoCorrect={false}
         />
@@ -129,6 +159,12 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
           </TouchableOpacity>
         </View>
 
+        {__DEV__ && !!onOpenPreview && (
+          <TouchableOpacity onPress={onOpenPreview} style={{ alignSelf: 'center', marginTop: 14 }}>
+            <Text style={styles.registerText}>🧪 UI Preview (dev) – dữ liệu mẫu</Text>
+          </TouchableOpacity>
+        )}
+
         {/* Địa chỉ máy chủ lấy từ cấu hình (EXPO_PUBLIC_API_URL), chỉ hiển thị */}
         <View style={styles.envBar}>
           <Text style={styles.envTriggerText}>
@@ -139,6 +175,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
         </View>
       </View>
     </ScrollView>
+    </KeyboardAvoidingView>
   );
 };
 

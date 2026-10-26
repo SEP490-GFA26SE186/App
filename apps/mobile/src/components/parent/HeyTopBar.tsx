@@ -20,14 +20,15 @@ interface HeyTopBarProps {
   currentUser: SessionUser;
   activeRole?: Role;
   onRoleChange?: (role: Role) => void;
-  onOpenAuth: (defaultTab?: 'LOGIN' | 'REGISTER' | 'PROFILE') => void;
+  /** Mở menu "Thêm" (hồ sơ bé, nhân vật, cài đặt, trợ giúp, đăng xuất) */
+  onOpenMenu: () => void;
   onOpenWallet: () => void;
   onOpenKidMode?: () => void;
 }
 
 export const HeyTopBar: React.FC<HeyTopBarProps> = ({
   currentUser,
-  onOpenAuth,
+  onOpenMenu,
   onOpenWallet,
 }) => {
   const logoScale = useSharedValue(1);
@@ -65,12 +66,6 @@ export const HeyTopBar: React.FC<HeyTopBarProps> = ({
 
         {/* Right actions */}
         <View style={styles.rightActions}>
-          {/* Star badge */}
-          <View style={styles.starBadge}>
-            <Text style={styles.starIcon}>⭐</Text>
-            <Text style={styles.starCount}>12</Text>
-          </View>
-
           {/* Credits pill */}
           <TouchableOpacity
             activeOpacity={0.85}
@@ -87,7 +82,7 @@ export const HeyTopBar: React.FC<HeyTopBarProps> = ({
           {/* Avatar */}
           <TouchableOpacity
             activeOpacity={0.85}
-            onPress={() => onOpenAuth('PROFILE')}
+            onPress={onOpenMenu}
             style={styles.avatarButton}
           >
             <Image

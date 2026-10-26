@@ -26,10 +26,10 @@ interface HeyTabBarProps {
 
 const tabs = [
   { id: ROUTES.HOME,   label: 'Trang chủ', icon: '🌱' },
-  { id: ROUTES.MARKET, label: 'Tủ truyện', icon: '📚' },
+  { id: ROUTES.LIBRARY, label: 'Tủ truyện', icon: '📚' },
   { id: ROUTES.CREATE, label: 'Sáng tác',  icon: '🪄', highlight: true },
   { id: ROUTES.EQ,     label: 'Tiến độ',   icon: '⭐' },
-  { id: ROUTES.WALLET, label: 'Ví Sao',    icon: '💎' },
+  { id: ROUTES.WALLET, label: 'Credit',    icon: '💎' },
 ];
 
 const AnimatedTabItem: React.FC<{

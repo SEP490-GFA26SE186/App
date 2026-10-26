@@ -1,4 +1,6 @@
 // apps/mobile/src/components/AuthModal.tsx
+// DEPRECATED (Phase B): không còn được mount. Chức năng đã chuyển sang SettingsScreen (PIN, tài khoản, máy chủ),
+// ChildrenScreen (thêm bé) và MoreScreen (đăng xuất). Giữ file, chưa xóa khi chưa được duyệt.
 import React, { useRef, useState } from 'react';
 import {
   Modal,

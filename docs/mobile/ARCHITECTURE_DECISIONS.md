@@ -178,3 +178,12 @@ dev/demo/     dữ liệu demo tạm thời (ADR-016) – chỉ import qua demoG
 - **ADR-016:** fixture đã tách vào `src/dev/demo/`; không file nào ngoài `src/dev/` import chúng.
 - **Type DTO:** `types/api.ts` (chỉ trường BE trả) + view model `types/sessionUser.ts`; `packages/shared-types` vẫn chỉ đọc.
 - **Alias `@/`:** không dùng (chưa xác minh Metro SDK 52 hỗ trợ không cần cấu hình thêm); dùng đường dẫn tương đối.
+
+## Ghi chú hiện thực hóa Phase B (2026-10-26)
+- **ADR-015 (điều hướng):** vẫn state, nhưng có ngăn xếp màn con (`useParentNavigation`) + nút Back Android; thanh tab 5 mục là Trang chủ · Tủ truyện · Sáng tác · Tiến độ · Credit; menu "Thêm" mở các màn con. Không thêm thư viện.
+- **Bé đang chọn** là state dữ liệu Parent (`useParentData.selectedChild`), không phải state điều hướng; Kid Mode mặc định theo bé này.
+- **ADR-018 (UI):** primitive dùng chung thật sự có nơi dùng: `Badge`, `StateView` (loading/empty/error/chưa hỗ trợ), `Sheet`, `ScreenHeader`; chưa tạo `SelectField/TextField/Toaster`.
+- **ADR-020 (UI Preview):** đã hiện thực cho Kid (`src/dev/preview/KidPreview`): lớp phủ `__DEV__`, bật chủ động ở màn Login, nạp bằng `require` trong nhánh `__DEV__`, không PIN/phiên/API/storage. `KidModeScreen` bỏ qua prop `preview` ngoài `__DEV__`.
+- **Kid shelf thật:** để trống tới khi nối API kệ sách Kid (C9); không dùng danh sách truyện của phụ huynh làm tủ sách của bé.
+- **Quy tắc ghi dữ liệu trong Phase B:** chỉ các lời gọi ghi đã có và đúng contract (đăng nhập/đăng ký, tạo bé, tạo nhân vật, đặt/đổi PIN); mọi thao tác ghi khác hiện "Chưa hỗ trợ".
+- `AuthModal` đã DEPRECATED (không mount), chờ duyệt xóa.

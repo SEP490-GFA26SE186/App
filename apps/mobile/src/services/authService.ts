@@ -26,6 +26,23 @@ const KID_ENTER_VI_MESSAGES: Record<string, string> = {
   'Child profile not found or does not belong to this account': 'Không tìm thấy hồ sơ bé này trong tài khoản',
 };
 
+// BE trả message tiếng Anh → dịch các lỗi auth hay gặp cho ba mẹ (nguồn: Web/src/services/authService.js VI_MESSAGES)
+const AUTH_VI_MESSAGES: Record<string, string> = {
+  'Email is already registered': 'Email này đã được đăng ký, ba mẹ đăng nhập nhé',
+  'Username is already taken': 'Tên đăng nhập đã có người dùng',
+  'Invalid email address': 'Email chưa đúng định dạng',
+  'Username must be at least 3 characters': 'Tên đăng nhập có ít nhất 3 ký tự',
+  'Username can only contain letters, numbers, and underscores': 'Tên đăng nhập chỉ gồm chữ không dấu, số và dấu _',
+  'Password must be at least 8 characters': 'Mật khẩu có ít nhất 8 ký tự',
+  'Email or username is required': 'Ba mẹ nhập email hoặc tên đăng nhập nhé',
+  'Password is required': 'Ba mẹ nhập mật khẩu nhé',
+};
+
+const translateAuthError = (error: unknown): unknown =>
+  error instanceof ApiError && AUTH_VI_MESSAGES[error.message]
+    ? new ApiError(AUTH_VI_MESSAGES[error.message], error.status, error.errors)
+    : error;
+
 export const authService = {
   /**
    * Đăng nhập: POST /auth/login
@@ -47,7 +64,7 @@ export const authService = {
           throw new ApiError('Tài khoản đã bị khóa, ba mẹ liên hệ hỗ trợ nhé', 403, error.errors);
         }
       }
-      throw error;
+      throw translateAuthError(error);
     }
 
     // Chỉ coi là đăng nhập thành công khi BE trả đủ user + tokens
@@ -68,11 +85,16 @@ export const authService = {
    * Đăng ký: POST /auth/register
    */
   register: async (payload: RegisterPayload): Promise<SessionUser> => {
-    const data = await apiFetch<LoginResponse>('/auth/register', {
-      method: 'POST',
-      skipAuth: true,
-      body: JSON.stringify(payload),
-    });
+    let data: LoginResponseDto | null;
+    try {
+      data = await apiFetch<LoginResponse>('/auth/register', {
+        method: 'POST',
+        skipAuth: true,
+        body: JSON.stringify(payload),
+      });
+    } catch (error) {
+      throw translateAuthError(error);
+    }
 
     // Chỉ coi là đăng ký thành công khi BE trả đủ user + tokens
     const tokens = data?.tokens;

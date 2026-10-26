@@ -34,6 +34,13 @@ interface KidModeScreenProps {
   // Kid session mất/hết hạn: không thể thoát bằng PIN → App xóa phiên và buộc đăng nhập lại bằng mật khẩu
   onKidSessionLost: () => void;
   onRecordEqSignal: (signal: string, skill: string) => void;
+  /** Ghi chú dưới trạng thái "tủ sách trống" (vd chưa kết nối máy chủ) */
+  shelfNotice?: string;
+  /**
+   * CHỈ cho UI Preview (dev-only, ADR-020): có giá trị = đây KHÔNG phải Kid Mode thật.
+   * Không có PIN, không phiên Kid, không gọi API; nút thoát đóng preview trực tiếp.
+   */
+  preview?: { onExit: () => void };
 }
 
 // Animated Story Card với stagger effect
@@ -103,7 +110,11 @@ export const KidModeScreen: React.FC<KidModeScreenProps> = ({
   onExitKidMode,
   onKidSessionLost,
   onRecordEqSignal,
+  shelfNotice,
+  preview: previewProp,
 }) => {
+  // Phòng thủ chiều sâu: prop preview bỏ qua PIN nên bị vô hiệu hóa hoàn toàn ngoài __DEV__
+  const preview = __DEV__ ? previewProp : undefined;
   const [activeStory, setActiveStory] = useState<Story | null>(null);
   const [activePageIndex, setActivePageIndex] = useState(0);
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
@@ -115,9 +126,6 @@ export const KidModeScreen: React.FC<KidModeScreenProps> = ({
   const verifyingPinRef = useRef(false);
   const [sessionLost, setSessionLost] = useState(false);
 
-  // Timer — 20 phút
-  const [remainingSeconds, setRemainingSeconds] = useState(20 * 60);
-
   // Header entrance animation
   const headerOpacity = useSharedValue(0);
   const headerTranslateY = useSharedValue(-20);
@@ -126,19 +134,6 @@ export const KidModeScreen: React.FC<KidModeScreenProps> = ({
     headerOpacity.value = withTiming(1, { duration: 400 });
     headerTranslateY.value = withSpring(0, { damping: 16, stiffness: 90 });
   }, []);
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setRemainingSeconds((prev) => (prev > 0 ? prev - 1 : 0));
-    }, 1000);
-    return () => clearInterval(timer);
-  }, []);
-
-  const formatTime = (secs: number) => {
-    const mins = Math.floor(secs / 60);
-    const s = secs % 60;
-    return `${mins}:${s < 10 ? '0' : ''}${s}`;
-  };
 
   const handleVerifyPin = async (pin: string) => {
     if (verifyingPinRef.current) return;
@@ -184,6 +179,12 @@ export const KidModeScreen: React.FC<KidModeScreenProps> = ({
   return (
     <View style={styles.container}>
 
+      {preview && (
+        <View style={styles.previewBanner}>
+          <Text style={styles.previewBannerText}>UI Preview – dữ liệu mẫu (không phải Chế độ Trẻ Em thật)</Text>
+        </View>
+      )}
+
       {/* ── HEADER ── */}
       <Animated.View style={[styles.topHeader, headerStyle]}>
         {/* Left: Avatar + Greeting */}
@@ -200,18 +201,14 @@ export const KidModeScreen: React.FC<KidModeScreenProps> = ({
           </View>
         </View>
 
-        {/* Right: Timer + Exit */}
+        {/* Right: Exit */}
         <View style={styles.headerRight}>
-          <View style={styles.timerBadge}>
-            <Text style={styles.timerIcon}>⏳</Text>
-            <Text style={styles.timerText}>{formatTime(remainingSeconds)}</Text>
-          </View>
           <TouchableOpacity
-            onPress={() => setShowPinModal(true)}
+            onPress={() => (preview ? preview.onExit() : setShowPinModal(true))}
             style={styles.exitBtn}
             activeOpacity={0.85}
           >
-            <Text style={styles.exitBtnText}>🔒 Thoát</Text>
+            <Text style={styles.exitBtnText}>{preview ? '↩ Thoát Preview' : '🔒 Thoát'}</Text>
           </TouchableOpacity>
         </View>
       </Animated.View>
@@ -231,7 +228,7 @@ export const KidModeScreen: React.FC<KidModeScreenProps> = ({
             <Text style={[styles.cloudDecor, { marginLeft: 80 }]}>☁️</Text>
           </View>
 
-          <Text style={styles.shelfTitle}>📚 Tủ truyện cổ tích của bé</Text>
+          <Text style={styles.shelfTitle}>Tủ sách của {child?.name || 'bé'} 📚</Text>
 
           <View style={styles.grid}>
             {stories.map((s, index) => (
@@ -250,10 +247,11 @@ export const KidModeScreen: React.FC<KidModeScreenProps> = ({
           {stories.length === 0 && (
             <View style={styles.emptyState}>
               <Text style={styles.emptyEmoji}>🌱</Text>
-              <Text style={styles.emptyTitle}>Chưa có truyện nào</Text>
+              <Text style={styles.emptyTitle}>Tủ sách còn trống</Text>
               <Text style={styles.emptySubtitle}>
-                Ba mẹ ơi, hãy tạo câu chuyện đầu tiên cho bé nhé! 🪄
+                Ba mẹ đưa truyện lên tủ sách cho bé ở trang sáng tác truyện nhé.
               </Text>
+              {!!shelfNotice && <Text style={styles.emptySubtitle}>{shelfNotice}</Text>}
             </View>
           )}
         </ScrollView>
@@ -464,6 +462,12 @@ export const KidModeScreen: React.FC<KidModeScreenProps> = ({
 };
 
 const styles = StyleSheet.create({
+  previewBanner: {
+    backgroundColor: '#7C3AED',
+    paddingVertical: 6,
+    alignItems: 'center',
+  },
+  previewBannerText: { color: '#FFFFFF', fontSize: 12, fontWeight: '800' },
   container: {
     flex: 1,
     backgroundColor: '#FAFFFE', // Fairy Garden cream background

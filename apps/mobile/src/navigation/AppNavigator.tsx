@@ -6,21 +6,20 @@ import { View, ActivityIndicator } from 'react-native';
 import { Role } from '../../../../packages/shared-types';
 import { Screen } from '../components/ui/Screen';
 import { Colors } from '../theme/colors';
-import { useAuth, useKidSession, useParentData } from '../stores/SessionProvider';
+import { useAuth, useKidSession } from '../stores/SessionProvider';
 import { LoginScreen } from '../screens/auth/LoginScreen';
 import { RegisterScreen } from '../screens/auth/RegisterScreen';
 import { BootScreen, BootErrorScreen } from '../screens/auth/BootScreen';
 import { KidModeScreen } from '../screens/kid/KidModeScreen';
 import { ParentTabs } from './ParentTabs';
-import { ROUTES, RouteKey } from './routes';
+import { useParentNavigation } from './useParentNavigation';
 
 // Chỉ được mount khi đang trong phiên: state điều hướng tự reset khi đăng xuất/đổi tài khoản.
 const AuthedNavigator: React.FC = () => {
   const auth = useAuth();
-  const { stories } = useParentData();
   const kid = useKidSession();
   // Giữ ở đây (không ở ParentTabs) để quay lại đúng tab sau khi thoát Kid Mode
-  const [currentTab, setCurrentTab] = useState<RouteKey>(ROUTES.HOME);
+  const nav = useParentNavigation();
   const [activeRole, setActiveRole] = useState<Role>('PARENT');
 
   // Không bao giờ vào giao diện khi chưa có user do BE xác nhận
@@ -39,7 +38,9 @@ const AuthedNavigator: React.FC = () => {
       <Screen>
         <KidModeScreen
           child={kid.kidChild}
-          stories={stories}
+          // Tủ sách của bé phải lấy từ API kệ sách Kid (C9); chưa nối nên để trống, không đổ truyện của phụ huynh vào
+          stories={[]}
+          shelfNotice="Tủ sách của bé sẽ hiển thị khi ứng dụng kết nối với máy chủ."
           onExitKidMode={kid.exitKidMode}
           onKidSessionLost={auth.onKidSessionLost}
           onRecordEqSignal={(signal, skill) => {
@@ -54,8 +55,7 @@ const AuthedNavigator: React.FC = () => {
     <Screen>
       <ParentTabs
         currentUser={auth.currentUser}
-        currentTab={currentTab}
-        navigate={setCurrentTab}
+        nav={nav}
         activeRole={activeRole}
         setActiveRole={setActiveRole}
       />
@@ -63,7 +63,7 @@ const AuthedNavigator: React.FC = () => {
   );
 };
 
-export const AppNavigator: React.FC = () => {
+export const AppNavigator: React.FC<{ onOpenPreview?: () => void }> = ({ onOpenPreview }) => {
   const auth = useAuth();
 
   switch (auth.appPhase) {
@@ -86,6 +86,7 @@ export const AppNavigator: React.FC = () => {
             initialMessage={auth.loginNotice}
             onLoginSuccess={auth.startSession}
             onGoRegister={auth.showRegister}
+            onOpenPreview={onOpenPreview}
           />
         </Screen>
       );

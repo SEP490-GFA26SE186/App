@@ -1,6 +1,6 @@
 // apps/mobile/src/services/characterService.ts
 import { apiFetch, invalidResponseError } from './apiClient';
-import { FamilyCharacter } from '../../../../packages/shared-types';
+import { CharacterView } from '../types/viewModels';
 import type { CharactersListDto, CharacterResponseDto } from '../types/api';
 
 // Mọi hàm ở đây throw ApiError khi BE lỗi/từ chối/trả sai hình dạng.
@@ -10,14 +10,14 @@ export const characterService = {
    * Danh sách nhân vật: GET /characters → data { characters: [] }
    * Danh sách rỗng là kết quả hợp lệ.
    */
-  getCharacters: async (): Promise<FamilyCharacter[]> => {
+  getCharacters: async (): Promise<CharacterView[]> => {
     const data = await apiFetch<Partial<CharactersListDto>>('/characters');
     const list = Array.isArray(data?.characters) ? data.characters : Array.isArray(data) ? (data as any[]) : null;
     if (!list) throw invalidResponseError('danh sách nhân vật');
     return list.map(characterService.formatCharacter);
   },
 
-  createCharacter: async (payload: { name: string; appearance: string; role?: string }): Promise<FamilyCharacter> => {
+  createCharacter: async (payload: { name: string; appearance: string }): Promise<CharacterView> => {
     const data = await apiFetch<Partial<CharacterResponseDto>>('/characters', {
       method: 'POST',
       body: JSON.stringify(payload),
@@ -26,7 +26,7 @@ export const characterService = {
     return characterService.formatCharacter(data.character);
   },
 
-  updateCharacter: async (id: string, payload: { name?: string; appearance?: string }): Promise<FamilyCharacter> => {
+  updateCharacter: async (id: string, payload: { name?: string; appearance?: string }): Promise<CharacterView> => {
     const data = await apiFetch<Partial<CharacterResponseDto>>(`/characters/${id}`, {
       method: 'PUT',
       body: JSON.stringify(payload),
@@ -40,8 +40,10 @@ export const characterService = {
     return true;
   },
 
-  formatCharacter: (raw: any): FamilyCharacter => {
+  formatCharacter: (raw: any): CharacterView => {
     return {
+      portraitStatus: raw.portraitStatus ?? null,
+      childId: raw.childId ?? null,
       id: raw.id,
       parentId: raw.parentId || '',
       name: raw.name,

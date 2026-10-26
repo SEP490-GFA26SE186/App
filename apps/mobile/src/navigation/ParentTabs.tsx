@@ -1,51 +1,163 @@
 // apps/mobile/src/navigation/ParentTabs.tsx
-// Khung giao diện Parent: thanh trên, dải trạng thái dữ liệu, nội dung theo tab, thanh tab, modal.
+// Khung giao diện Parent: thanh trên, dải trạng thái dữ liệu, nội dung theo route, thanh tab, modal đọc truyện.
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { Alert, View, Text, StyleSheet, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { Role, Story } from '../../../../packages/shared-types';
 import { SessionUser } from '../types/sessionUser';
 import { Colors } from '../theme/colors';
 import { HeyTopBar } from '../components/parent/HeyTopBar';
 import { HeyTabBar } from '../components/parent/HeyTabBar';
-import { AuthModal } from '../components/auth/AuthModal';
 import { StoryReaderModal } from '../components/parent/StoryReaderModal';
 import { ParentHomeScreen } from '../screens/parent/ParentHomeScreen';
+import { LibraryScreen } from '../screens/parent/LibraryScreen';
+import { StoryDetailScreen } from '../screens/parent/StoryDetailScreen';
 import { StoryWizard } from '../screens/parent/StoryWizard';
+import { EqReportScreen } from '../screens/parent/EqReportScreen';
+import { WalletScreen } from '../screens/parent/WalletScreen';
+import { MoreScreen, MoreMenuItem } from '../screens/parent/MoreScreen';
+import { ChildrenScreen } from '../screens/parent/ChildrenScreen';
+import { CharactersScreen } from '../screens/parent/CharactersScreen';
+import { SettingsScreen } from '../screens/parent/SettingsScreen';
+import { HelpScreen } from '../screens/parent/HelpScreen';
 import { MarketplaceScreen } from '../screens/scope-pending/MarketplaceScreen';
 import { SellerDashboard } from '../screens/scope-pending/SellerDashboard';
-import { WalletScreen } from '../screens/parent/WalletScreen';
-import { EqReportScreen } from '../screens/parent/EqReportScreen';
 import { ModeratorAdminScreen } from '../screens/scope-pending/ModeratorAdminScreen';
 import { useAuth, useKidSession, useParentData } from '../stores/SessionProvider';
-import { ROUTES, RouteKey } from './routes';
+import { ParentNavigation } from './useParentNavigation';
+import { ROUTES } from './routes';
 
 interface ParentTabsProps {
   currentUser: SessionUser;
-  currentTab: RouteKey;
-  navigate: (route: RouteKey) => void;
+  nav: ParentNavigation;
   activeRole: Role;
   setActiveRole: (role: Role) => void;
 }
 
-export const ParentTabs: React.FC<ParentTabsProps> = ({
-  currentUser,
-  currentTab,
-  navigate,
-  activeRole,
-  setActiveRole,
-}) => {
+// Hành động chưa có API thật: báo rõ, không thay đổi dữ liệu
+const notSupported = (what: string) =>
+  Alert.alert('Chưa hỗ trợ', `${what} chưa được hỗ trợ trên ứng dụng (chưa kết nối máy chủ).`);
+
+export const ParentTabs: React.FC<ParentTabsProps> = ({ currentUser, nav, activeRole, setActiveRole }) => {
   const auth = useAuth();
   const data = useParentData();
   const kid = useKidSession();
-  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [selectedStoryToRead, setSelectedStoryToRead] = useState<Story | null>(null);
+  const { navigate, goBack } = nav;
+  const hasKidPin = !!currentUser.kidModePinHash;
 
-  // Chỉ nhận truyện đã được BE xác nhận (luồng tạo truyện thật: T5.1/T5.2).
-  // Không trừ credit cục bộ: số dư lấy lại từ BE.
-  const handleStoryCreated = (story: Story) => {
-    setSelectedStoryToRead(story);
-    navigate(ROUTES.HOME);
-    void data.reload();
+  const moreItems: MoreMenuItem[] = [
+    { key: 'children', icon: '👶', title: 'Bé nhà mình', description: 'Hồ sơ từng bé', onPress: () => navigate(ROUTES.CHILDREN) },
+    { key: 'characters', icon: '👨‍👩‍👧', title: 'Nhân vật gia đình', description: 'Người thân xuất hiện trong truyện', onPress: () => navigate(ROUTES.CHARACTERS) },
+    { key: 'settings', icon: '⚙️', title: 'Cài đặt', description: 'Tài khoản, mã PIN Chế độ Trẻ Em, máy chủ', onPress: () => navigate(ROUTES.SETTINGS) },
+    { key: 'help', icon: '❓', title: 'Trợ giúp', description: 'Câu hỏi thường gặp', onPress: () => navigate(ROUTES.HELP) },
+    { key: 'market', icon: '🛒', title: 'Chợ truyện', description: 'Chưa kết nối máy chủ', badge: 'Đang chờ quyết định phạm vi', onPress: () => navigate(ROUTES.MARKET) },
+  ];
+
+  const renderRoute = () => {
+    switch (nav.current.route) {
+      case ROUTES.HOME:
+        return (
+          <ParentHomeScreen
+            currentUser={currentUser}
+            childrenProfiles={data.childrenProfiles}
+            selectedChild={data.selectedChild}
+            stories={data.stories}
+            templates={data.templates}
+            dataStatus={data.dataStatus}
+            onSelectChild={data.selectChild}
+            onStartStoryWizard={() => navigate(ROUTES.CREATE)}
+            onOpenKidMode={() => kid.openKidMode()}
+            onOpenLibrary={() => navigate(ROUTES.LIBRARY)}
+            onOpenEq={() => navigate(ROUTES.EQ)}
+            onOpenChildren={() => navigate(ROUTES.CHILDREN)}
+            onSelectStoryToRead={setSelectedStoryToRead}
+          />
+        );
+      case ROUTES.LIBRARY:
+        return (
+          <LibraryScreen
+            stories={data.stories}
+            childrenProfiles={data.childrenProfiles}
+            selectedChildId={data.selectedChild?.id}
+            dataStatus={data.dataStatus}
+            onSelectChild={data.selectChild}
+            onOpenStory={(s) => navigate(ROUTES.STORY, { storyId: s.id })}
+            onAddToShelf={() => notSupported('Thêm truyện vào tủ sách của bé')}
+            onCreateStory={() => navigate(ROUTES.CREATE)}
+          />
+        );
+      case ROUTES.STORY:
+        return (
+          <StoryDetailScreen
+            story={data.stories.find((s) => s.id === nav.current.params?.storyId)}
+            onBack={goBack}
+            onRead={setSelectedStoryToRead}
+            onUnsupported={notSupported}
+          />
+        );
+      case ROUTES.CREATE:
+        return (
+          <StoryWizard
+            characters={data.characters}
+            templates={data.templates}
+            onCharacterCreated={(c) => data.setCharacters((prev) => [...prev, c])}
+            onCancel={() => navigate(ROUTES.HOME)}
+          />
+        );
+      case ROUTES.EQ:
+        return (
+          <EqReportScreen
+            childrenProfiles={data.childrenProfiles}
+            selectedChildId={data.selectedChild?.id}
+            onSelectChild={data.selectChild}
+          />
+        );
+      case ROUTES.WALLET:
+        return <WalletScreen currentUser={currentUser} onRefreshWallet={() => void data.reload()} />;
+      case ROUTES.MORE:
+        return <MoreScreen currentUser={currentUser} items={moreItems} onLogout={auth.logout} onBack={goBack} />;
+      case ROUTES.CHILDREN:
+        return (
+          <ChildrenScreen
+            childrenProfiles={data.childrenProfiles}
+            selectedChildId={data.selectedChild?.id}
+            dataStatus={data.dataStatus}
+            hasKidPin={hasKidPin}
+            onSelect={data.selectChild}
+            onChildCreated={data.addChild}
+            onOpenKidMode={(c) => kid.openKidMode(c)}
+            onOpenSettings={() => navigate(ROUTES.SETTINGS)}
+            onBack={goBack}
+          />
+        );
+      case ROUTES.CHARACTERS:
+        return (
+          <CharactersScreen
+            characters={data.characters}
+            dataStatus={data.dataStatus}
+            onCharacterCreated={(c) => data.setCharacters((prev) => [...prev, c])}
+            onBack={goBack}
+          />
+        );
+      case ROUTES.SETTINGS:
+        return (
+          <SettingsScreen currentUser={currentUser} onUserUpdate={auth.setCurrentUser} onLogout={auth.logout} onBack={goBack} />
+        );
+      case ROUTES.HELP:
+        return <HelpScreen onBack={goBack} />;
+      case ROUTES.MARKET:
+        // SCOPE PENDING: giữ nguyên màn hiện có, không phát triển thêm
+        return (
+          <MarketplaceScreen
+            stories={data.stories}
+            currentUser={currentUser}
+            onStoryPurchased={() => {}}
+            onSelectStoryToRead={setSelectedStoryToRead}
+          />
+        );
+      default:
+        return null;
+    }
   };
 
   return (
@@ -55,7 +167,7 @@ export const ParentTabs: React.FC<ParentTabsProps> = ({
         currentUser={currentUser}
         activeRole={activeRole}
         onRoleChange={setActiveRole}
-        onOpenAuth={() => setIsAuthModalOpen(true)}
+        onOpenMenu={() => navigate(ROUTES.MORE)}
         onOpenWallet={() => navigate(ROUTES.WALLET)}
         onOpenKidMode={() => kid.openKidMode()}
       />
@@ -75,7 +187,7 @@ export const ParentTabs: React.FC<ParentTabsProps> = ({
         </View>
       )}
 
-      {/* Body Content by Role & Tab */}
+      {/* Body Content by Role & Route */}
       <View style={styles.main}>
         {activeRole === 'SELLER' ? (
           <SellerDashboard
@@ -83,78 +195,19 @@ export const ParentTabs: React.FC<ParentTabsProps> = ({
             stories={data.stories}
             onOpenStoryWizard={() => navigate(ROUTES.CREATE)}
             onOpenWallet={() => navigate(ROUTES.WALLET)}
-            onSubmitForReview={() => alert('Gửi duyệt truyện chưa được hỗ trợ (chưa kết nối máy chủ).')}
+            onSubmitForReview={() => notSupported('Gửi duyệt truyện')}
           />
         ) : activeRole === 'MODERATOR' || activeRole === 'ADMIN' ? (
           <ModeratorAdminScreen />
         ) : (
-          <>
-            {currentTab === ROUTES.HOME && (
-              <ParentHomeScreen
-                currentUser={currentUser}
-                childrenProfiles={data.childrenProfiles}
-                characters={data.characters}
-                stories={data.stories}
-                templates={data.templates}
-                onStartStoryWizard={() => navigate(ROUTES.CREATE)}
-                onOpenKidMode={() => kid.openKidMode()}
-                onNavigateTab={navigate}
-                onSelectStoryToRead={setSelectedStoryToRead}
-              />
-            )}
-
-            {currentTab === ROUTES.CREATE && (
-              <StoryWizard
-                characters={data.characters}
-                templates={data.templates}
-                currentUser={currentUser}
-                onStoryCreated={handleStoryCreated}
-                onCancel={() => navigate(ROUTES.HOME)}
-                onUpdateCharacters={data.setCharacters}
-              />
-            )}
-
-            {currentTab === ROUTES.MARKET && (
-              <MarketplaceScreen
-                stories={data.stories}
-                currentUser={currentUser}
-                onStoryPurchased={() => {}}
-                onSelectStoryToRead={setSelectedStoryToRead}
-              />
-            )}
-
-            {currentTab === ROUTES.EQ && <EqReportScreen childrenProfiles={data.childrenProfiles} />}
-
-            {currentTab === ROUTES.WALLET && (
-              <WalletScreen
-                currentUser={currentUser}
-                transactions={[]}
-                onRefreshWallet={() => void data.reload()}
-              />
-            )}
-          </>
+          renderRoute()
         )}
       </View>
 
       {/* Bottom Tab Bar (for Parent role) */}
-      {activeRole === 'PARENT' && currentTab !== ROUTES.CREATE && (
-        <HeyTabBar currentTab={currentTab} onSelectTab={navigate} onOpenKidMode={() => kid.openKidMode()} />
+      {activeRole === 'PARENT' && nav.current.route !== ROUTES.CREATE && (
+        <HeyTabBar currentTab={nav.rootTab} onSelectTab={navigate} onOpenKidMode={() => kid.openKidMode()} />
       )}
-
-      {/* Modals */}
-      <AuthModal
-        isOpen={isAuthModalOpen}
-        onClose={() => setIsAuthModalOpen(false)}
-        currentUser={currentUser}
-        onUserUpdate={(u) => {
-          if (u) auth.setCurrentUser(u);
-          else auth.logout();
-        }}
-        onLogout={auth.logout}
-        childrenProfiles={data.childrenProfiles}
-        onAddChild={data.addChild}
-        onRefreshData={() => void data.reload()}
-      />
 
       <StoryReaderModal
         story={selectedStoryToRead}

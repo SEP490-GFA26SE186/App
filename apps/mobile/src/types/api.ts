@@ -125,3 +125,33 @@ export interface TopicDto {
   ageMax?: number | null;
   skill?: { nameVi?: string | null } | null;
 }
+
+// ---- EQ (GET /children/:id/eq-report) ----
+export interface EqSubSkillDto {
+  id: string;
+  nameVi: string;
+  level: 'emerging' | 'developing' | 'secure' | null;
+}
+
+export interface EqCompetencyDto {
+  caselCode: string;
+  nameVi: string;
+  /** null = chưa đủ dữ liệu (hiển thị "Chưa có dữ liệu", không bịa điểm) */
+  level: 'emerging' | 'developing' | 'secure' | null;
+  subSkills: EqSubSkillDto[];
+}
+
+/** Gợi ý chuyện mẫu nên đọc tiếp (BE children/lib/recommend.js) */
+export interface EqRecommendationDto {
+  id: string;
+  title: string;
+  skill: { caselCode: string; nameVi: string };
+  subSkills: { id: string; nameVi: string }[];
+}
+
+export interface EqReportDto {
+  childId: string;
+  childName: string;
+  competencies: EqCompetencyDto[];
+  recommendations: EqRecommendationDto[];
+}
