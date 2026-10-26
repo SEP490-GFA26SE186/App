@@ -11,7 +11,7 @@ import {
 import { HeyButton } from '../../components/ui/HeyButton';
 import { HeyCard } from '../../components/ui/HeyCard';
 import { HeyChip } from '../../components/ui/HeyChip';
-import { Story } from '../../../../../packages/shared-types';
+import { Story } from '../../types/domain';
 import { Colors } from '../../theme/colors';
 
 export const ModeratorAdminScreen: React.FC = () => {

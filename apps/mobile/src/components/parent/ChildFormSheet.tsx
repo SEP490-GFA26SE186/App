@@ -3,7 +3,7 @@
 // Chỉ báo thành công khi BE lưu xong; lỗi (vd vượt giới hạn hồ sơ của gói) hiện nguyên văn từ BE.
 import React, { useEffect, useRef, useState } from 'react';
 import { Text, StyleSheet } from 'react-native';
-import { ChildProfile } from '../../../../../packages/shared-types';
+import { ChildProfile } from '../../types/domain';
 import { Sheet } from '../ui/Sheet';
 import { HeyInput } from '../ui/HeyInput';
 import { HeyButton } from '../ui/HeyButton';

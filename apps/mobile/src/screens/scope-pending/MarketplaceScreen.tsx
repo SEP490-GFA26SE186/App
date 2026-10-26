@@ -13,7 +13,7 @@ import { HeyButton } from '../../components/ui/HeyButton';
 import { HeyCard } from '../../components/ui/HeyCard';
 import { HeyChip } from '../../components/ui/HeyChip';
 import { HeyInput } from '../../components/ui/HeyInput';
-import { Story } from '../../../../../packages/shared-types';
+import { Story } from '../../types/domain';
 import { SessionUser } from '../../types/sessionUser';
 import { Colors } from '../../theme/colors';
 

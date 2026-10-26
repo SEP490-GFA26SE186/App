@@ -20,7 +20,7 @@ import Animated, {
   withSequence,
   Easing,
 } from 'react-native-reanimated';
-import { ChildProfile } from '../../../../../packages/shared-types';
+import { ChildProfile } from '../../types/domain';
 import { Colors } from '../../theme/colors';
 import { authService } from '../../services/authService';
 import { ApiError } from '../../services/apiClient';

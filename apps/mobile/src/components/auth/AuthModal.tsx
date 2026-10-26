@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { HeyButton } from '../ui/HeyButton';
 import { HeyInput } from '../ui/HeyInput';
-import { ChildProfile } from '../../../../../packages/shared-types';
+import { ChildProfile } from '../../types/domain';
 import { SessionUser } from '../../types/sessionUser';
 import { Colors } from '../../theme/colors';
 import {

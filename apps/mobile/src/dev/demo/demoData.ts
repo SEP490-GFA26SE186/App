@@ -7,7 +7,7 @@ import {
   FamilyCharacter,
   PedagogicalTemplate,
   Story,
-} from '../../../../../packages/shared-types';
+} from '../../types/domain';
 
 export const DEMO_PARENT_USER: UserAccount = {
   id: 'usr_demo_parent_01',
@@ -15,7 +15,6 @@ export const DEMO_PARENT_USER: UserAccount = {
   fullName: 'Mẹ Lan Hương',
   phone: '0901234567',
   role: 'PARENT',
-  kidModePinHash: '1234',
   creditBalance: 50,
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),

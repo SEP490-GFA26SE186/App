@@ -4,7 +4,7 @@
 // level = null → "Chưa có dữ liệu".
 import React from 'react';
 import { View, Text, ScrollView, StyleSheet } from 'react-native';
-import { ChildProfile } from '../../../../../packages/shared-types';
+import { ChildProfile } from '../../types/domain';
 import { HeyCard } from '../../components/ui/HeyCard';
 import { StateView } from '../../components/ui/StateView';
 import { ScreenHeader } from '../../components/ui/ScreenHeader';

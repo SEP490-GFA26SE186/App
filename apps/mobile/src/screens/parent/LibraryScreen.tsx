@@ -3,7 +3,7 @@
 // "Thêm vào tủ sách bé" gọi POST /bookshelf (C9); 422 = truyện chưa sẵn sàng, BE nêu lý do.
 import React, { useMemo, useState } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet } from 'react-native';
-import { ChildProfile, Story } from '../../../../../packages/shared-types';
+import { ChildProfile, Story } from '../../types/domain';
 import { HeyInput } from '../../components/ui/HeyInput';
 import { HeyChip } from '../../components/ui/HeyChip';
 import { HeyButton } from '../../components/ui/HeyButton';

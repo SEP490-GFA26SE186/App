@@ -3,7 +3,7 @@
 // Dữ liệu BE thật: bé, truyện, chuyện mẫu, và (C7) tổng quan của bé đang chọn: GET /children/:id/overview.
 import React from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
-import { ChildProfile, PedagogicalTemplate } from '../../../../../packages/shared-types';
+import { ChildProfile, PedagogicalTemplate } from '../../types/domain';
 import { StoryView } from '../../types/viewModels';
 import { SessionUser } from '../../types/sessionUser';
 import { HeyButton } from '../../components/ui/HeyButton';

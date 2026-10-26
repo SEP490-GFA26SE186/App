@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { HeyButton } from '../../components/ui/HeyButton';
 import { HeyCard } from '../../components/ui/HeyCard';
-import { Story } from '../../../../../packages/shared-types';
+import { Story } from '../../types/domain';
 import { SessionUser } from '../../types/sessionUser';
 import { Colors } from '../../theme/colors';
 

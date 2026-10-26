@@ -4,7 +4,7 @@
 // Chưa có: sửa chữ từng trang / điểm dừng (PUT /stories/:id/pages|checkpoints) → "Chưa hỗ trợ".
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, View, Text, ScrollView, StyleSheet } from 'react-native';
-import { ChildProfile } from '../../../../../packages/shared-types';
+import { ChildProfile } from '../../types/domain';
 import { HeyCard } from '../../components/ui/HeyCard';
 import { HeyButton } from '../../components/ui/HeyButton';
 import { Badge } from '../../components/ui/Badge';

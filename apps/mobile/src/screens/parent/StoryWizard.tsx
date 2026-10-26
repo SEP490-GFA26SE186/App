@@ -7,7 +7,7 @@
 // Credit do BE giữ/hoàn; Mobile chỉ hiển thị giá (GET /stories/ai-pricing) và số dư (GET /auth/me).
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { View, Text, ScrollView, Switch, TouchableOpacity, StyleSheet } from 'react-native';
-import { PedagogicalTemplate } from '../../../../../packages/shared-types';
+import { PedagogicalTemplate } from '../../types/domain';
 import { HeyButton } from '../../components/ui/HeyButton';
 import { HeyCard } from '../../components/ui/HeyCard';
 import { HeyChip } from '../../components/ui/HeyChip';

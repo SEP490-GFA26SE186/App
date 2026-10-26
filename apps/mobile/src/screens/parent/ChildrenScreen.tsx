@@ -2,7 +2,7 @@
 // B3/C6 – Hồ sơ bé (Web: ChildrenPage). Danh sách + chọn bé + thêm/sửa/xóa hồ sơ qua BE thật.
 import React, { useState } from 'react';
 import { Alert, View, Text, ScrollView, StyleSheet } from 'react-native';
-import { ChildProfile } from '../../../../../packages/shared-types';
+import { ChildProfile } from '../../types/domain';
 import { HeyButton } from '../../components/ui/HeyButton';
 import { HeyCard } from '../../components/ui/HeyCard';
 import { Badge } from '../../components/ui/Badge';

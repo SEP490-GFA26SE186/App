@@ -1,6 +1,6 @@
 # AGENTS.md – Quy tắc phạm vi chỉnh sửa cho mọi AI agent (StoryWeaver)
 
-Áp dụng cho **tất cả AI agents** (Claude Code, Antigravity, v.v.) làm việc trong workspace `D:\fpt\SEP\SEP` (4 repo: `App`, `App_v2`, `Web`, `BE`). Đây là quy tắc **bắt buộc**. Nếu có xung đột với chỉ dẫn khác, quy tắc trong file này được ưu tiên; chỉ người dùng mới được nới lỏng, bằng lời cho phép rõ ràng.
+Áp dụng cho **tất cả AI agents** (Claude Code, Antigravity, v.v.) làm việc trong workspace `D:\fpt\SEP\SEP` (4 repo: `App`, `App_v2`, `Web`, `BE`; `App` nay chỉ gồm Mobile `apps/mobile` + `docs/mobile`). Đây là quy tắc **bắt buộc**. Nếu có xung đột với chỉ dẫn khác, quy tắc trong file này được ưu tiên; chỉ người dùng mới được nới lỏng, bằng lời cho phép rõ ràng.
 
 Đường dẫn dưới đây tính từ gốc workspace `D:\fpt\SEP\SEP`.
 
@@ -14,7 +14,7 @@
 | `BE/**` | **READ-ONLY tuyệt đối** |
 | `Web/**` | **READ-ONLY tuyệt đối** |
 | `App_v2/**` | **READ-ONLY tuyệt đối** (chỉ tham khảo kiến trúc/UI) |
-| Mọi file khác trong `App/**` (kể cả `App/server.ts`, `App/apps/api`, `App/src/**`, `App/package.json` ở gốc, `App/packages/**`, cấu hình gốc) | **READ-ONLY**, trừ khi người dùng cho phép rõ ràng |
+| Mọi file khác trong `App/**` (cấu hình gốc repo, ví dụ `.gitignore`; không còn Backend/Vite/Prisma/`packages` ở gốc sau Architecture Cleanup) | **READ-ONLY**, trừ khi người dùng cho phép rõ ràng |
 | Ngoài các repo trên | Không chỉnh sửa |
 
 - "READ-ONLY" nghĩa là: được đọc/phân tích; **không** tạo, sửa, xóa, đổi tên, format hay chạy lệnh làm thay đổi file ở đó.

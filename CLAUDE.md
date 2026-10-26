@@ -28,7 +28,7 @@ Mục tiêu: (1) đồng bộ UI/luồng với Web & BE, (2) nối API thật, (
 - Không hiển thị/ghi secret từ `.env`. Không hardcode URL/khóa trong code.
 - Không sửa `Web`, `BE`, `App_v2`. Không commit/push trừ khi được yêu cầu rõ.
 - Giữ nguyên comment/docstring không liên quan thay đổi.
-- Gốc `App/` còn prototype Vite (`server.ts`, `apps/api`, `src/utils/mockData.ts`, `src/shims/*`): **deprecated, không dùng làm runtime mobile, không xóa khi chưa duyệt.**
+- Prototype Vite/Express/Prisma ở gốc `App/` **đã được xóa** (ARCHITECTURE_CLEANUP_REPORT.md). Repo chỉ còn `apps/mobile` + `docs/mobile`; kiểu miền nằm ở `apps/mobile/src/types/domain.ts`.
 
 ## 4. Quy ước kỹ thuật
 - Stack hiện tại: Expo ~52, RN 0.76.7, React 18.3.1, TypeScript. Điều hướng hiện bằng state trong `App.tsx` (chưa có router).

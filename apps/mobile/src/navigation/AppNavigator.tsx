@@ -3,7 +3,7 @@
 // Chỉ vào giao diện Parent/Kid khi phiên đã được BE xác nhận (appPhase === 'APP' và có currentUser).
 import React, { useState } from 'react';
 import { View, ActivityIndicator } from 'react-native';
-import { Role } from '../../../../packages/shared-types';
+import { Role } from '../types/domain';
 import { Screen } from '../components/ui/Screen';
 import { Colors } from '../theme/colors';
 import { useAuth, useKidSession } from '../stores/SessionProvider';

@@ -2,7 +2,7 @@
 // Chọn bé đang xem (Web: ChildSwitcher + parentStore.selectedChildId). Chỉ hiện khi có từ 2 bé trở lên.
 import React from 'react';
 import { ScrollView, StyleSheet } from 'react-native';
-import { ChildProfile } from '../../../../../packages/shared-types';
+import { ChildProfile } from '../../types/domain';
 import { HeyChip } from '../ui/HeyChip';
 import { childEmoji } from '../../utils/child';
 

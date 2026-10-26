@@ -1,6 +1,6 @@
 // apps/mobile/src/services/storyService.ts
 import { apiFetch, invalidResponseError } from './apiClient';
-import { PedagogicalTemplate } from '../../../../packages/shared-types';
+import { PedagogicalTemplate } from '../types/domain';
 import { StoryView } from '../types/viewModels';
 import type {
   AiPricingDto,

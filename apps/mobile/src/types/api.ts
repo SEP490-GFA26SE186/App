@@ -1,6 +1,6 @@
 // apps/mobile/src/types/api.ts
 // DTO response của BE (rev8) mà Mobile đang dùng. Nguồn: docs/mobile/API_MAPPING.md đối chiếu BE/api/src/modules/*.
-// Chỉ liệt kê trường BE thực sự trả; không thêm trường để hợp với UI. packages/shared-types là READ-ONLY nên DTO nằm ở Mobile.
+// Chỉ liệt kê trường BE thực sự trả; không thêm trường để hợp với UI. DTO của Backend nằm ở Mobile (types/api.ts).
 // Mapper BE → UI vẫn nhận `any` ở các hàm formatXxx (còn đọc trường legacy) – sẽ siết ở T4.1/T4.2.
 
 export interface PaginationDto {

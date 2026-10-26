@@ -2,7 +2,7 @@
 // Khung giao diện Parent: thanh trên, dải trạng thái dữ liệu, nội dung theo route, thanh tab, modal đọc truyện.
 import React, { useEffect, useRef, useState } from 'react';
 import { Alert, View, Text, StyleSheet, ActivityIndicator, TouchableOpacity } from 'react-native';
-import { Role, Story } from '../../../../packages/shared-types';
+import { Role, Story } from '../types/domain';
 import { SessionUser } from '../types/sessionUser';
 import { Colors } from '../theme/colors';
 import { HeyTopBar } from '../components/parent/HeyTopBar';

@@ -1,6 +1,6 @@
 // apps/mobile/src/services/childService.ts
 import { apiFetch, invalidResponseError } from './apiClient';
-import { ChildProfile } from '../../../../packages/shared-types';
+import { ChildProfile } from '../types/domain';
 import type { ChildDto, ChildOverviewDto, ChildrenListDto, ChildResponseDto, EqReportDto } from '../types/api';
 
 export interface CreateChildPayload {

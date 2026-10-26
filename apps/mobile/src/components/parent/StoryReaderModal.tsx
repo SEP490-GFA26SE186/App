@@ -10,7 +10,7 @@ import {
   StyleSheet,
   Dimensions,
 } from 'react-native';
-import { Story, StoryPageBranchChoice } from '../../../../../packages/shared-types';
+import { Story, StoryPageBranchChoice } from '../../types/domain';
 import { Colors } from '../../theme/colors';
 import { speechTTS } from '../../utils/speech-tts';
 import { soundFX } from '../../utils/sound-fx';

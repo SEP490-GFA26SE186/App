@@ -2,7 +2,7 @@
 // Dữ liệu Parent của phiên hiện tại (do BE trả). Rỗng = chưa có/không có dữ liệu; lỗi = dataStatus 'error'.
 // KHÔNG bao giờ thay bằng dữ liệu mẫu khi API lỗi (ADR-008, ADR-016).
 import { MutableRefObject, useCallback, useState } from 'react';
-import { ChildProfile, PedagogicalTemplate } from '../../../../packages/shared-types';
+import { ChildProfile, PedagogicalTemplate } from '../types/domain';
 import { CharacterView, StoryView } from '../types/viewModels';
 import { SessionUser } from '../types/sessionUser';
 import { authService, childService, characterService, storyService } from '../services';

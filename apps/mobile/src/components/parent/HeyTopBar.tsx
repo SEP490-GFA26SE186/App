@@ -12,7 +12,7 @@ import Animated, {
   useAnimatedStyle,
   withSpring,
 } from 'react-native-reanimated';
-import { Role } from '../../../../../packages/shared-types';
+import { Role } from '../../types/domain';
 import { SessionUser } from '../../types/sessionUser';
 import { Colors } from '../../theme/colors';
 

@@ -1,6 +1,6 @@
 // apps/mobile/src/types/viewModels.ts
-// View model cho UI = kiểu dùng chung + trường BE trả mà UI cần (packages/shared-types là READ-ONLY).
-import { FamilyCharacter, Story } from '../../../../packages/shared-types';
+// View model cho UI = kiểu miền (types/domain.ts) + trường BE trả mà UI cần.
+import { FamilyCharacter, Story } from './domain';
 import type { StoryCharacterRefDto, StoryCheckpointDto, StoryLengthDto } from './api';
 
 export type CharacterView = FamilyCharacter & {

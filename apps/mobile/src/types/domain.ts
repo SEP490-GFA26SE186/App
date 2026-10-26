@@ -1,4 +1,4 @@
-// packages/shared-types/index.ts
+// apps/mobile/src/types/domain.ts
 // Shared types for StoryWeaver platform
 
 export type Role = 'PARENT' | 'SELLER' | 'MODERATOR' | 'ADMIN';

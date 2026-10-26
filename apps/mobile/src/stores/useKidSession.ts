@@ -2,7 +2,7 @@
 // Trạng thái Kid Mode, tách khỏi phiên Parent. Chỉ vào/thoát khi BE xác nhận (S0.1/S0.2/S0.3d).
 import { useCallback, useRef, useState } from 'react';
 import { Alert } from 'react-native';
-import { ChildProfile } from '../../../../packages/shared-types';
+import { ChildProfile } from '../types/domain';
 import { authService } from '../services';
 
 interface Options {
