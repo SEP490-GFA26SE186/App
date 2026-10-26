@@ -1,5 +1,5 @@
 // apps/mobile/src/screens/auth/LoginScreen.tsx
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -44,6 +44,10 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
   const [errorMsg, setErrorMsg] = useState<string | null>(initialMessage ?? null);
   const apiBaseUrl = getApiBaseUrl();
 
+  // Rời màn (vd. sang Đăng ký) thì hủy request đang chờ để phản hồi muộn không tự đăng nhập
+  const abortRef = useRef<AbortController | null>(null);
+  useEffect(() => () => abortRef.current?.abort(), []);
+
   const [fieldErrors, setFieldErrors] = useState<{ identity?: string; password?: string }>({});
 
   // Quy tắc kiểm tra khớp Web LoginPage
@@ -64,12 +68,17 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
 
     submittingRef.current = true;
     setLoading(true);
+    const controller = new AbortController();
+    abortRef.current = controller;
     try {
-      const user = await authService.login(email.trim(), password);
+      const user = await authService.login(email.trim(), password, controller.signal);
+      if (controller.signal.aborted) return;
       onLoginSuccess(user);
     } catch (err: any) {
+      if (controller.signal.aborted) return;
       setErrorMsg(err?.message || 'Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin!');
-      setPassword('');
+      // Lỗi mạng/máy chủ (status 0 hoặc >= 500): giữ mật khẩu để bấm thử lại
+      if (!(err?.status === 0 || err?.status >= 500)) setPassword('');
     } finally {
       submittingRef.current = false;
       setLoading(false);
@@ -114,7 +123,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
 
         <HeyInput
           label="Email hoặc Tên đăng nhập"
-          placeholder="email@example.com hoặc tên đăng nhập"
+          placeholder="email@example.com"
           value={email}
           onChangeText={(t) => {
             setEmail(t);

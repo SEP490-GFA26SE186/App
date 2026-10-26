@@ -1,8 +1,8 @@
 // apps/mobile/src/navigation/AppNavigator.tsx
 // Điều hướng cấp ứng dụng bằng state (ADR-015): theo giai đoạn phiên, rồi Parent hoặc Kid Mode.
 // Chỉ vào giao diện Parent/Kid khi phiên đã được BE xác nhận (appPhase === 'APP' và có currentUser).
-import React, { useState } from 'react';
-import { View, ActivityIndicator } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, ActivityIndicator, BackHandler } from 'react-native';
 import { Role } from '../types/domain';
 import { Screen } from '../components/ui/Screen';
 import { Colors } from '../theme/colors';
@@ -59,6 +59,19 @@ const AuthedNavigator: React.FC = () => {
   );
 };
 
+// Nút Back của Android ở màn Đăng ký quay về Đăng nhập thay vì thoát app.
+const RegisterScreenWithBack: React.FC<React.ComponentProps<typeof RegisterScreen>> = (props) => {
+  const { onGoLogin } = props;
+  useEffect(() => {
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      onGoLogin();
+      return true;
+    });
+    return () => sub.remove();
+  }, [onGoLogin]);
+  return <RegisterScreen {...props} />;
+};
+
 export const AppNavigator: React.FC<{ onOpenPreview?: () => void }> = ({ onOpenPreview }) => {
   const auth = useAuth();
 
@@ -89,7 +102,7 @@ export const AppNavigator: React.FC<{ onOpenPreview?: () => void }> = ({ onOpenP
     case 'REGISTER':
       return (
         <Screen>
-          <RegisterScreen onRegisterSuccess={auth.startSession} onGoLogin={auth.showLogin} />
+          <RegisterScreenWithBack onRegisterSuccess={auth.startSession} onGoLogin={auth.showLogin} />
         </Screen>
       );
     default:

@@ -1,5 +1,5 @@
 // apps/mobile/src/screens/auth/RegisterScreen.tsx
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -34,6 +34,9 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const submittingRef = useRef(false);
+  // Rời màn (Back / "Đăng nhập") thì hủy request đang chờ để phản hồi muộn không tự đăng nhập
+  const abortRef = useRef<AbortController | null>(null);
+  useEffect(() => () => abortRef.current?.abort(), []);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string | undefined>>({});
 
@@ -67,6 +70,8 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
 
     submittingRef.current = true;
     setLoading(true);
+    const controller = new AbortController();
+    abortRef.current = controller;
     try {
       const user = await authService.register({
         username: username.trim(),
@@ -74,9 +79,11 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
         password,
         ...(fullName.trim() ? { fullName: fullName.trim() } : {}),
         ...(phone.trim() ? { phone: phone.trim() } : {}),
-      });
+      }, controller.signal);
+      if (controller.signal.aborted) return;
       onRegisterSuccess(user);
     } catch (err: any) {
+      if (controller.signal.aborted) return;
       setErrorMsg(err?.message || 'Đăng ký không thành công. Thử lại sau nhé!');
     } finally {
       submittingRef.current = false;

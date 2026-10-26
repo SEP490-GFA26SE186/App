@@ -1,7 +1,7 @@
 // apps/mobile/App.tsx
 // Khung ứng dụng: cung cấp phiên (stores) và điều hướng. Logic nằm ở src/stores và src/navigation.
-import React, { useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { BackHandler, StyleSheet, View } from 'react-native';
 import { SessionProvider } from './src/stores/SessionProvider';
 import { AppNavigator } from './src/navigation/AppNavigator';
 import { Screen } from './src/components/ui/Screen';
@@ -15,9 +15,26 @@ export default function App() {
   // Bật bằng thao tác chủ động ở màn Login; không đổi phiên/Kid Mode thật (app thật vẫn mount bên dưới)
   const [previewOpen, setPreviewOpen] = useState(false);
 
+  // Back của Android đóng Preview thay vì thoát app (handler đăng ký sau chạy trước)
+  useEffect(() => {
+    if (!previewOpen) return;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      setPreviewOpen(false);
+      return true;
+    });
+    return () => sub.remove();
+  }, [previewOpen]);
+
   return (
     <SessionProvider>
-      <AppNavigator onOpenPreview={KidPreview ? () => setPreviewOpen(true) : undefined} />
+      {/* Preview mở: ẩn app thật bên dưới khỏi trình đọc màn hình (Android no-hide-descendants, iOS elementsHidden) */}
+      <View
+        style={styles.flex}
+        importantForAccessibility={previewOpen ? 'no-hide-descendants' : 'auto'}
+        accessibilityElementsHidden={previewOpen}
+      >
+        <AppNavigator onOpenPreview={KidPreview ? () => setPreviewOpen(true) : undefined} />
+      </View>
       {KidPreview && previewOpen && (
         <View style={StyleSheet.absoluteFill}>
           <Screen>
@@ -28,3 +45,5 @@ export default function App() {
     </SessionProvider>
   );
 }
+
+const styles = StyleSheet.create({ flex: { flex: 1 } });

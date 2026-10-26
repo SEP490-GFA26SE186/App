@@ -49,15 +49,21 @@ const REQUEST_TIMEOUT_MS = 20000;
 const fetchWithTimeout = async (url: string, init: RequestInit): Promise<Response> => {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  // Người gọi (vd. màn đã rời) có thể hủy request qua init.signal
+  const caller = init.signal;
+  const onCallerAbort = () => controller.abort();
+  if (caller?.aborted) controller.abort();
+  else caller?.addEventListener('abort', onCallerAbort);
   try {
     return await fetch(url, { ...init, signal: controller.signal });
   } catch (err: any) {
-    if (err?.name === 'AbortError') {
+    if (err?.name === 'AbortError' && !caller?.aborted) {
       throw new ApiError('Máy chủ phản hồi quá lâu. Ba mẹ kiểm tra mạng rồi thử lại nhé.', 0);
     }
     throw err;
   } finally {
     clearTimeout(timer);
+    caller?.removeEventListener('abort', onCallerAbort);
   }
 };
 

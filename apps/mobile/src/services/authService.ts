@@ -50,12 +50,13 @@ export const authService = {
   /**
    * Đăng nhập: POST /auth/login
    */
-  login: async (emailOrUsername: string, password: string): Promise<SessionUser> => {
+  login: async (emailOrUsername: string, password: string, signal?: AbortSignal): Promise<SessionUser> => {
     let data: LoginResponseDto | null;
     try {
       data = await apiFetch<LoginResponse>('/auth/login', {
         method: 'POST',
         skipAuth: true,
+        signal,
         body: JSON.stringify({ emailOrUsername: emailOrUsername.trim(), password }),
       });
     } catch (error: any) {
@@ -78,6 +79,8 @@ export const authService = {
 
     // formatUser throw nếu user không hợp lệ → không ghi token
     const user = authService.formatUser(data.user);
+    // Người dùng đã rời màn trong lúc chờ: bỏ phản hồi, không ghi token/phiên
+    if (signal?.aborted) throw new ApiError('Yêu cầu đã bị hủy.', 0);
     safeStorage.setItem(STORAGE_KEYS.ACCESS_TOKEN, tokens.accessToken);
     safeStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, tokens.refreshToken);
     safeStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(user));
@@ -87,12 +90,13 @@ export const authService = {
   /**
    * Đăng ký: POST /auth/register
    */
-  register: async (payload: RegisterPayload): Promise<SessionUser> => {
+  register: async (payload: RegisterPayload, signal?: AbortSignal): Promise<SessionUser> => {
     let data: LoginResponseDto | null;
     try {
       data = await apiFetch<LoginResponse>('/auth/register', {
         method: 'POST',
         skipAuth: true,
+        signal,
         body: JSON.stringify(payload),
       });
     } catch (error) {
@@ -106,6 +110,8 @@ export const authService = {
     }
 
     const user = authService.formatUser(data.user);
+    // Người dùng đã rời màn trong lúc chờ: bỏ phản hồi, không ghi token/phiên
+    if (signal?.aborted) throw new ApiError('Yêu cầu đã bị hủy.', 0);
     safeStorage.setItem(STORAGE_KEYS.ACCESS_TOKEN, tokens.accessToken);
     safeStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, tokens.refreshToken);
     safeStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(user));
