@@ -9,6 +9,9 @@ import { HeyButton } from '../../components/ui/HeyButton';
 import { Badge } from '../../components/ui/Badge';
 import { ScreenHeader } from '../../components/ui/ScreenHeader';
 import { Colors } from '../../theme/colors';
+import { Radius, Spacing } from '../../theme/spacing';
+import { Typography } from '../../theme/typography';
+import { Icon } from '../../components/ui/Icon';
 import { SessionUser } from '../../types/sessionUser';
 import {
   authService,
@@ -38,6 +41,14 @@ const Row: React.FC<{ label: string; value: string }> = ({ label, value }) => (
     <Text style={styles.rowValue} numberOfLines={1}>
       {value || '—'}
     </Text>
+  </View>
+);
+
+/** Thông báo lỗi/thành công: có icon + chữ (không chỉ dựa vào màu), lỗi đọc bằng role=alert */
+const Msg: React.FC<{ tone: 'error' | 'success'; text: string }> = ({ tone, text }) => (
+  <View style={styles.msg} accessibilityRole={tone === 'error' ? 'alert' : undefined} accessibilityLiveRegion="polite">
+    <Icon name={tone === 'error' ? 'alert-circle' : 'checkmark-circle'} size={18} color={tone === 'error' ? Colors.danger : Colors.tealStrong} />
+    <Text style={tone === 'error' ? styles.error : styles.success}>{text}</Text>
   </View>
 );
 
@@ -144,9 +155,9 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ currentUser, onU
         <Text style={styles.cardTitle}>Đổi mật khẩu</Text>
         <HeyInput label="Mật khẩu hiện tại" value={curPw} onChangeText={setCurPw} secureTextEntry revealable autoCapitalize="none" autoCorrect={false} />
         <HeyInput label="Mật khẩu mới (ít nhất 8 ký tự)" value={newPw} onChangeText={setNewPw} secureTextEntry revealable autoCapitalize="none" autoCorrect={false} />
-        {!!pwError && <Text style={styles.error}>⚠️ {pwError}</Text>}
-        {!!pwNotice && <Text style={styles.success}>✓ {pwNotice}</Text>}
-        <HeyButton title={pwSaving ? '⏳ Đang lưu...' : '🔑 Đổi mật khẩu'} variant="secondary" onPress={savePassword} disabled={pwSaving} />
+        {!!pwError && <Msg tone="error" text={pwError} />}
+        {!!pwNotice && <Msg tone="success" text={pwNotice} />}
+        <HeyButton title="Đổi mật khẩu" iconName="key-outline" variant="secondary" onPress={savePassword} loading={pwSaving} />
       </HeyCard>
 
       <HeyCard style={styles.card}>
@@ -177,22 +188,26 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ currentUser, onU
           autoCapitalize="none"
           autoCorrect={false}
         />
-        {!!pinError && <Text style={styles.error}>⚠️ {pinError}</Text>}
-        {!!pinNotice && <Text style={styles.success}>✓ {pinNotice}</Text>}
+        {!!pinError && <Msg tone="error" text={pinError} />}
+        {!!pinNotice && <Msg tone="success" text={pinNotice} />}
         <HeyButton
-          title={saving ? '⏳ Đang lưu...' : hasKidPin ? '🔒 Đổi mã PIN' : '🔒 Đặt mã PIN'}
+          title={hasKidPin ? 'Đổi mã PIN' : 'Đặt mã PIN'}
+          iconName="lock-closed-outline"
           variant="secondary"
           onPress={savePin}
-          disabled={saving}
+          loading={saving}
         />
       </HeyCard>
 
       <HeyCard style={styles.card}>
         <Text style={styles.cardTitle}>Máy chủ</Text>
+        {/* J1: địa chỉ máy chủ chỉ hiện ở bản phát triển; bản thường chỉ báo khi CHƯA cấu hình */}
         <Text style={styles.hint}>
-          {apiBaseUrl
-            ? `Địa chỉ hiện tại: ${apiBaseUrl}. Địa chỉ đặt bằng biến môi trường EXPO_PUBLIC_API_URL khi chạy ứng dụng.`
-            : API_NOT_CONFIGURED_MESSAGE}
+          {!apiBaseUrl
+            ? API_NOT_CONFIGURED_MESSAGE
+            : __DEV__
+              ? `Địa chỉ hiện tại: ${apiBaseUrl}. Địa chỉ đặt bằng biến môi trường EXPO_PUBLIC_API_URL khi chạy ứng dụng.`
+              : 'Ứng dụng đã được cấu hình kết nối máy chủ.'}
         </Text>
         {__DEV__ && (
           <>
@@ -209,7 +224,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ currentUser, onU
               <HeyButton title="Áp dụng" variant="secondary" size="sm" onPress={() => applyUrl(customUrl)} />
               <HeyButton
                 title="Dùng cấu hình"
-                variant="outline"
+                variant="tertiary"
                 size="sm"
                 onPress={() => {
                   setCustomUrl('');
@@ -221,30 +236,31 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ currentUser, onU
         )}
       </HeyCard>
 
-      <HeyButton title="🚪 Đăng xuất" variant="outline" onPress={onLogout} style={styles.logout} />
+      <HeyButton title="Đăng xuất" iconName="log-out-outline" variant="tertiary" onPress={onLogout} style={styles.logout} />
     </ScrollView>
   );
 };
 
 const styles = StyleSheet.create({
-  content: { padding: 16, paddingBottom: 32 },
-  card: { marginBottom: 14, gap: 8 },
-  cardTitle: { fontSize: 15, fontWeight: '900', color: Colors.textPrimary },
-  titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  content: { padding: Spacing.page, paddingBottom: Spacing.xxxl, gap: Spacing.md },
+  card: { gap: Spacing.sm },
+  cardTitle: { ...Typography.heading, color: Colors.text },
+  titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: Spacing.sm },
   row: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    gap: 12,
-    backgroundColor: '#F8FAFC',
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    gap: Spacing.md,
+    backgroundColor: Colors.surfaceMuted,
+    borderRadius: Radius.md,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
   },
-  rowLabel: { fontSize: 12, color: Colors.textSecondary },
-  rowValue: { fontSize: 13, fontWeight: '700', color: Colors.textPrimary, flexShrink: 1 },
-  hint: { fontSize: 12, color: Colors.textSecondary, lineHeight: 18 },
-  error: { fontSize: 13, color: '#B91C1C', fontWeight: '700' },
-  success: { fontSize: 13, color: Colors.textOnGreen, fontWeight: '700' },
-  btnRow: { flexDirection: 'row', gap: 8 },
-  logout: { marginTop: 4 },
+  rowLabel: { ...Typography.caption, color: Colors.textMuted },
+  rowValue: { ...Typography.bodyStrong, fontSize: 14, color: Colors.text, flexShrink: 1 },
+  hint: { ...Typography.caption, color: Colors.textMuted },
+  msg: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.sm },
+  error: { ...Typography.label, color: Colors.danger, flex: 1 },
+  success: { ...Typography.label, color: Colors.successText, flex: 1 },
+  btnRow: { flexDirection: 'row', gap: Spacing.sm },
+  logout: { marginTop: Spacing.xs },
 });

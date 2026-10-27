@@ -1,8 +1,9 @@
 // apps/mobile/src/screens/parent/CharactersScreen.tsx
 // B4/C6 – Nhân vật gia đình (Web: FamilyCharactersPage). Danh sách + thêm/sửa/xóa nhân vật qua BE thật.
 // Không có "role" (rev8). Chân dung AI đang tạm dừng (B5) nên chỉ hiện nhãn trạng thái BE trả.
+// R8: lưới thẻ (2/3/4 cột theo bề ngang) có ảnh/chữ cái đầu, mô tả, nhãn trạng thái; Sửa/Xóa là nút có icon + chữ.
 import React, { useState } from 'react';
-import { Alert, View, Text, Image, ScrollView, StyleSheet } from 'react-native';
+import { Alert, View, Text, Image, ScrollView, StyleSheet, useWindowDimensions } from 'react-native';
 import { HeyButton } from '../../components/ui/HeyButton';
 import { HeyCard } from '../../components/ui/HeyCard';
 import { Badge } from '../../components/ui/Badge';
@@ -10,6 +11,8 @@ import { StateView } from '../../components/ui/StateView';
 import { ScreenHeader } from '../../components/ui/ScreenHeader';
 import { CharacterFormSheet } from '../../components/parent/CharacterFormSheet';
 import { Colors } from '../../theme/colors';
+import { Radius, Spacing } from '../../theme/spacing';
+import { Typography } from '../../theme/typography';
 import { CharacterView } from '../../types/viewModels';
 import { characterService } from '../../services';
 import type { DataStatus } from '../../stores/useParentData';
@@ -30,6 +33,9 @@ interface CharactersScreenProps {
   onBack: () => void;
 }
 
+/** Số cột theo bề ngang cửa sổ */
+const columnsFor = (width: number) => (width >= 1000 ? 4 : width >= 640 ? 3 : 2);
+
 export const CharactersScreen: React.FC<CharactersScreenProps> = ({
   characters,
   dataStatus,
@@ -37,6 +43,10 @@ export const CharactersScreen: React.FC<CharactersScreenProps> = ({
   onCharacterDeleted,
   onBack,
 }) => {
+  const { width } = useWindowDimensions();
+  const cols = columnsFor(width);
+  // Rộng thẻ tính bằng px (trừ lề trang và khe) để đủ cột; phần trăm + khe px sẽ tràn dòng
+  const cardW = Math.floor((width - Spacing.page * 2 - Spacing.md * (cols - 1)) / cols);
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<CharacterView | undefined>(undefined);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -78,26 +88,34 @@ export const CharactersScreen: React.FC<CharactersScreenProps> = ({
       <View style={styles.topRow}>
         <Badge label={`${characters.length} nhân vật`} tone="neutral" />
       </View>
-      <HeyButton title="➕ Thêm nhân vật" onPress={() => openForm()} style={styles.addBtn} />
+      <HeyButton title="Thêm nhân vật" iconName="add" onPress={() => openForm()} />
 
       {loading ? (
         <StateView variant="skeleton" title="Đang tải nhân vật..." />
       ) : characters.length === 0 ? (
         <StateView
-          variant="empty"
-          title="Chưa có nhân vật nào"
+          variant={dataStatus === 'error' ? 'error' : 'empty'}
+          title={dataStatus === 'error' ? 'Không tải được nhân vật' : 'Chưa có nhân vật nào'}
           description={
             dataStatus === 'error'
-              ? 'Không tải được danh sách nhân vật. Ba mẹ thử tải lại ở dải thông báo phía trên nhé.'
+              ? 'Ba mẹ thử tải lại ở dải thông báo phía trên nhé.'
               : 'Thêm người thân để AI viết truyện gần gũi với bé hơn.'
           }
+          actionLabel={dataStatus === 'error' ? undefined : 'Thêm nhân vật'}
+          onAction={dataStatus === 'error' ? undefined : () => openForm()}
         />
       ) : (
         <View style={styles.grid}>
           {characters.map((c) => (
-            <HeyCard key={c.id} style={styles.card}>
-              {!!c.photoReferenceUrl && <Image source={{ uri: c.photoReferenceUrl }} style={styles.portrait} />}
-              <Text style={styles.name} numberOfLines={1}>
+            <HeyCard key={c.id} style={[styles.card, { width: cardW }]}>
+              {c.photoReferenceUrl ? (
+                <Image source={{ uri: c.photoReferenceUrl }} style={styles.portrait} accessibilityIgnoresInvertColors accessible={false} />
+              ) : (
+                <View style={[styles.portrait, styles.initialBox]} accessible={false}>
+                  <Text style={styles.initial}>{(c.name || '?').trim().charAt(0).toUpperCase()}</Text>
+                </View>
+              )}
+              <Text style={styles.name} numberOfLines={1} accessibilityRole="header">
                 {c.name}
               </Text>
               <Text style={styles.appearance} numberOfLines={4}>
@@ -111,14 +129,17 @@ export const CharactersScreen: React.FC<CharactersScreenProps> = ({
                 {!!c.childId && <Badge label="Nhân vật của bé" tone="info" />}
               </View>
               <View style={styles.actions}>
-                <HeyButton title="✏️ Sửa" variant="outline" size="sm" onPress={() => openForm(c)} />
+                <HeyButton title="Sửa" iconName="create-outline" variant="tertiary" size="sm" onPress={() => openForm(c)} accessibilityLabel={`Sửa nhân vật ${c.name}`} />
                 {!c.childId && (
                   <HeyButton
-                    title={deletingId === c.id ? '⏳' : '🗑️ Xóa'}
-                    variant="outline"
+                    title="Xóa"
+                    iconName="trash-outline"
+                    variant="tertiary"
                     size="sm"
+                    loading={deletingId === c.id}
                     disabled={!!deletingId}
                     onPress={() => confirmDelete(c)}
+                    accessibilityLabel={`Xóa nhân vật ${c.name}`}
                   />
                 )}
               </View>
@@ -138,14 +159,15 @@ export const CharactersScreen: React.FC<CharactersScreenProps> = ({
 };
 
 const styles = StyleSheet.create({
-  content: { padding: 16, paddingBottom: 32 },
-  topRow: { flexDirection: 'row', marginBottom: 8 },
-  addBtn: { marginBottom: 12 },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
-  card: { width: '48%', gap: 6 },
-  name: { fontSize: 15, fontWeight: '900', color: Colors.textPrimary },
-  appearance: { fontSize: 12, color: Colors.textSecondary, lineHeight: 17 },
-  badges: { gap: 4, marginTop: 4 },
-  portrait: { width: '100%', aspectRatio: 1, borderRadius: 12, backgroundColor: '#F1F5F9' },
-  actions: { flexDirection: 'row', gap: 6, marginTop: 6, flexWrap: 'wrap' },
+  content: { padding: Spacing.page, paddingBottom: Spacing.xxxl, gap: Spacing.md },
+  topRow: { flexDirection: 'row' },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.md, rowGap: Spacing.md },
+  card: { gap: Spacing.sm },
+  name: { ...Typography.bodyStrong, color: Colors.text },
+  appearance: { ...Typography.caption, color: Colors.textMuted },
+  badges: { gap: Spacing.xs, alignItems: 'flex-start' },
+  portrait: { width: '100%', aspectRatio: 1, borderRadius: Radius.md, backgroundColor: Colors.brandTint },
+  initialBox: { alignItems: 'center', justifyContent: 'center' },
+  initial: { ...Typography.display, color: Colors.brandStrong },
+  actions: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.xs },
 });

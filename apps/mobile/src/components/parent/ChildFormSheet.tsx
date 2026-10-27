@@ -2,11 +2,14 @@
 // Form thêm/sửa hồ sơ bé (POST/PUT /children): name ≤100, birthDate YYYY-MM-DD (nhập chữ, không picker).
 // Chỉ báo thành công khi BE lưu xong; lỗi (vd vượt giới hạn hồ sơ của gói) hiện nguyên văn từ BE.
 import React, { useEffect, useRef, useState } from 'react';
-import { Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { ChildProfile } from '../../types/domain';
 import { Sheet } from '../ui/Sheet';
 import { HeyInput } from '../ui/HeyInput';
 import { HeyButton } from '../ui/HeyButton';
+import { Icon } from '../ui/Icon';
+import { Colors } from '../../theme/colors';
+import { Typography } from '../../theme/typography';
 import { childService } from '../../services';
 import { CHILD_NAME_MAX, validateBirthDate } from '../../utils/validation';
 
@@ -96,11 +99,16 @@ export const ChildFormSheet: React.FC<ChildFormSheetProps> = ({ visible, child, 
         autoCorrect={false}
         autoCapitalize="none"
       />
-      {!!formError && <Text style={styles.formError}>⚠️ {formError}</Text>}
+      {!!formError && (
+        <View style={styles.formErrorBox} accessibilityRole="alert">
+          <Icon name="alert-circle" size={18} color={Colors.danger} />
+          <Text style={styles.formError}>{formError}</Text>
+        </View>
+      )}
       <HeyButton
-        title={submitting ? '⏳ Đang lưu...' : editing ? 'Lưu thay đổi' : 'Tạo hồ sơ'}
+        title={editing ? 'Lưu thay đổi' : 'Tạo hồ sơ'}
         onPress={submit}
-        disabled={submitting}
+        loading={submitting}
         style={styles.btn}
       />
     </Sheet>
@@ -108,6 +116,7 @@ export const ChildFormSheet: React.FC<ChildFormSheetProps> = ({ visible, child, 
 };
 
 const styles = StyleSheet.create({
-  formError: { color: '#B91C1C', fontSize: 13, fontWeight: '700', marginBottom: 8 },
+  formErrorBox: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, backgroundColor: Colors.dangerTint, padding: 12, borderRadius: 12, marginBottom: 8 },
+  formError: { ...Typography.label, color: Colors.danger, flex: 1 },
   btn: { marginTop: 4, marginBottom: 8 },
 });

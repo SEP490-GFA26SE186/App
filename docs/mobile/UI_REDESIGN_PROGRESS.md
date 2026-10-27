@@ -222,6 +222,17 @@ R6 đã commit (`7c2b550`). Báo cáo QA và ảnh: [QA_R7_REPORT.md](QA_R7_REPO
 
 ---
 
+## R8 – EQ, Ví/Credit, Bé nhà mình, Nhân vật, Cài đặt, Trợ giúp — ĐÃ TRIỂN KHAI, CHỜ REVIEW (2026-10-27)
+
+R7 đã commit (`5d0de47`). Báo cáo QA và ảnh: [QA_R8_REPORT.md](QA_R8_REPORT.md), [`qa/r8/`](qa/r8/). Chạy thật trên Web và Android SW_Test (BE local, tài khoản test, **chỉ GET**, không ghi dữ liệu, không thanh toán). Không còn CRITICAL/HIGH/MEDIUM.
+
+- **EQ:** tổng quan "n/5" đếm từ dữ liệu BE, thanh 3 mức kèm chữ + nhãn trợ năng, gợi ý của BE. **Ví:** thẻ số dư lớn, mức dùng có thanh, gói dạng thẻ, lịch sử nhóm theo ngày (chỉ xem). **Bé nhà mình:** "Vào Chế độ Bé" là hành động chính. **Nhân vật:** lưới 2/3/4 cột. **Cài đặt:** J1 ✅ (URL chỉ `__DEV__`). **Trợ giúp:** `expanded`.
+- **Lỗi đã sửa:** lưới nhân vật 1 cột (R8-1), Cài đặt lộ URL máy chủ (R8-2), hex ở màu mức EQ.
+- **Kiểm tra:** `tsc`, 8 bộ test (mới `manage` 7 test), `expo install --check`, export web + android PASS (sau lần sửa cuối).
+- **Fixture (không phải E2E thật):** EQ có dữ liệu, lịch sử credit nhiều ngày, nhân vật 6 thẻ. **NOT RUN:** thêm/sửa/xóa bé & nhân vật, đổi mật khẩu/PIN. **NOT VERIFIED:** xác nhận Xóa trên Web (`Alert.alert` không hiện nút trên RN-web — có sẵn từ trước), EQ thật (cần R4.1). R4.1 hoãn; K1 chưa duyệt.
+
+---
+
 ## Backlog từ audit — giao cho đợt phù hợp (CHƯA làm)
 
 | Mã audit | Vấn đề | Đợt | File |

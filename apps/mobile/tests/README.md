@@ -46,3 +46,9 @@ node %TEMP%/sw-wiz-tests/wizard.test.js
 npx tsc tests/library.test.ts --outDir %TEMP%/sw-lib-tests --module commonjs --target es2022 --esModuleInterop --skipLibCheck --types node
 node %TEMP%/sw-lib-tests/library.test.js
 ```
+
+`manage.test.ts` (R8) chặn hồi quy EQ, Ví/Credit, Bé nhà mình, Nhân vật, Cài đặt, Trợ giúp: không hex/emoji/`TouchableOpacity`, giữ nguyên lời gọi BE, Ví chỉ xem (không thanh toán), EQ không tự tính điểm, J1 ở Cài đặt, nhãn trợ năng. Chạy từ `apps/mobile`:
+```
+npx tsc tests/manage.test.ts --outDir %TEMP%/sw-manage-tests --module commonjs --target es2022 --esModuleInterop --skipLibCheck --types node
+node %TEMP%/sw-manage-tests/manage.test.js
+```
