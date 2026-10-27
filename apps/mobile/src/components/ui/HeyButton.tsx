@@ -1,4 +1,5 @@
-// apps/mobile/src/components/ui/HeyButton.tsx — v2.0 Fairy Garden
+// apps/mobile/src/components/ui/HeyButton.tsx — R1 Warm Storybook Guardian
+// Giữ nguyên props/variant cũ; màu theo token mới đã đạt tương phản AA, vùng chạm >= 44pt (kid >= 56pt).
 import React from 'react';
 import {
   TouchableOpacity,
@@ -16,6 +17,9 @@ import Animated, {
   withSequence,
 } from 'react-native-reanimated';
 import { Colors } from '../../theme/colors';
+import { Elevation } from '../../theme/shadows';
+import { Touch, hitSlopFor } from '../../theme/spacing';
+import { Typography } from '../../theme/typography';
 import { soundFX } from '../../utils/sound-fx';
 
 interface HeyButtonProps {
@@ -59,94 +63,80 @@ export const HeyButton: React.FC<HeyButtonProps> = ({
     transform: [{ scale: scale.value }],
   }));
 
-  const getContainerStyle = (): any => {
+  // Nền cam đi với chữ navy (5.6:1); nền teal/xanh đậm đi với chữ trắng (>= 5.2:1). Không chữ trắng trên cam.
+  const getContainerStyle = (): ViewStyle => {
     switch (variant) {
-      case 'primary':
-      case 'yellow':
-        return {
-          backgroundColor: Colors.primary,
-          boxShadow: '0 6px 12px rgba(245, 196, 0, 0.35)',
-        };
       case 'secondary':
-        return {
-          backgroundColor: Colors.secondary,
-          boxShadow: '0 6px 12px rgba(77, 184, 90, 0.28)',
-        };
       case 'teal':
-        return {
-          backgroundColor: Colors.mint,
-          boxShadow: '0 6px 12px rgba(91, 175, 135, 0.28)',
-        };
+        return { backgroundColor: Colors.tealStrong, ...Elevation.low };
       case 'sky':
-        return {
-          backgroundColor: Colors.accent,
-          boxShadow: '0 6px 12px rgba(26, 133, 214, 0.28)',
-        };
+        return { backgroundColor: Colors.info, ...Elevation.low };
       case 'outline':
-        return {
-          backgroundColor: '#FFFFFF',
-          borderWidth: 1.5,
-          borderColor: Colors.borderMedium,
-          boxShadow: '0 3px 8px rgba(107, 203, 119, 0.12)',
-        };
+        return { backgroundColor: Colors.surface, borderWidth: 1.5, borderColor: Colors.outlineStrong };
       case 'ghost':
         return { backgroundColor: 'transparent' };
       case 'kid':
+        // Nút "có đế" của Kid Mode: viền dưới đậm tạo khối, không phụ thuộc bóng đổ
         return {
-          backgroundColor: Colors.primary,
+          backgroundColor: Colors.brand,
           borderRadius: 24,
-          boxShadow: '0 8px 16px rgba(245, 196, 0, 0.40)',
+          borderBottomWidth: 4,
+          borderBottomColor: Colors.brandStrong,
         };
+      case 'primary':
+      case 'yellow':
       default:
-        return {
-          backgroundColor: Colors.primary,
-          boxShadow: '0 6px 12px rgba(245, 196, 0, 0.35)',
-        };
+        return { backgroundColor: Colors.brand, ...Elevation.low };
     }
   };
 
   const getTextColor = (): string => {
     switch (variant) {
+      case 'secondary':
+      case 'teal':
+      case 'sky':
+        return Colors.onStrong;
+      case 'outline':
+      case 'ghost':
+        return Colors.text;
       case 'primary':
       case 'yellow':
       case 'kid':
-        return Colors.textOnYellow;
-      case 'outline':
-      case 'ghost':
-        return Colors.textPrimary;
-      case 'secondary':
-        return '#FFFFFF';
-      case 'teal':
-        return '#FFFFFF';
-      case 'sky':
-        return '#FFFFFF';
       default:
-        return '#FFFFFF';
+        return Colors.onBrand;
     }
   };
 
+  // sm hiển thị 36pt và bù hitSlop lên 44pt để không đổi bố cục các màn đang dùng nút nhỏ
   const getSizeStyle = () => {
     switch (size) {
-      case 'sm':  return { paddingVertical: 8,  paddingHorizontal: 14, fontSize: 13 };
-      case 'lg':  return { paddingVertical: 14, paddingHorizontal: 24, fontSize: 16 };
-      case 'xl':  return { paddingVertical: 18, paddingHorizontal: 30, fontSize: 18 };
+      case 'sm':  return { minHeight: 36, paddingVertical: 8,  paddingHorizontal: 14, text: Typography.buttonSmall };
+      case 'lg':  return { minHeight: 52, paddingVertical: 14, paddingHorizontal: 24, text: Typography.buttonLarge };
+      case 'xl':  return { minHeight: 60, paddingVertical: 16, paddingHorizontal: 30, text: Typography.buttonLarge };
       case 'md':
-      default:    return { paddingVertical: 12, paddingHorizontal: 20, fontSize: 15 };
+      default:    return { minHeight: Touch.min + 4, paddingVertical: 12, paddingHorizontal: 20, text: Typography.button };
     }
   };
 
   const sizeInfo = getSizeStyle();
+  const minHeight = variant === 'kid' ? Math.max(sizeInfo.minHeight, Touch.kid) : sizeInfo.minHeight;
+  const isDisabled = disabled || loading;
 
   return (
     <Animated.View style={animStyle}>
       <TouchableOpacity
         activeOpacity={1}
-        disabled={disabled || loading}
+        disabled={isDisabled}
         onPress={handlePress}
+        hitSlop={hitSlopFor(minHeight)}
+        accessibilityRole="button"
+        accessibilityLabel={title}
+        accessibilityState={{ disabled: isDisabled, busy: loading }}
         style={[
           styles.base,
           getContainerStyle(),
           {
+            minHeight,
             paddingVertical: sizeInfo.paddingVertical,
             paddingHorizontal: sizeInfo.paddingHorizontal,
             opacity: disabled ? 0.5 : 1,
@@ -164,8 +154,8 @@ export const HeyButton: React.FC<HeyButtonProps> = ({
           <Text
             style={[
               styles.text,
-              { color: getTextColor(), fontSize: sizeInfo.fontSize },
-              variant === 'kid' && styles.kidText,
+              variant === 'kid' ? Typography.kidButton : sizeInfo.text,
+              { color: getTextColor() },
               textStyle,
             ]}
           >
@@ -190,13 +180,7 @@ const styles = StyleSheet.create({
     marginRight: 6,
   },
   text: {
-    fontWeight: '800',
     textAlign: 'center',
     letterSpacing: 0.2,
-  },
-  kidText: {
-    fontWeight: '900',
-    fontSize: 18,
-    letterSpacing: 0.3,
   },
 });

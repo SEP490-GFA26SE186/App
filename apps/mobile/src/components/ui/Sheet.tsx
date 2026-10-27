@@ -12,6 +12,9 @@ import {
   StyleSheet,
 } from 'react-native';
 import { Colors } from '../../theme/colors';
+import { Elevation } from '../../theme/shadows';
+import { Radius, Touch } from '../../theme/spacing';
+import { Typography } from '../../theme/typography';
 
 interface SheetProps {
   visible: boolean;
@@ -28,12 +31,20 @@ export const Sheet: React.FC<SheetProps> = ({ visible, title, description, onClo
       style={styles.overlay}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={onClose} />
+      <TouchableOpacity
+        style={styles.backdrop}
+        activeOpacity={1}
+        onPress={onClose}
+        accessibilityLabel="Đóng"
+        importantForAccessibility="no"
+      />
       <View style={styles.sheet}>
         <View style={styles.handle} />
         <View style={styles.headerRow}>
-          <Text style={styles.title}>{title}</Text>
-          <TouchableOpacity onPress={onClose} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+          <Text style={styles.title} accessibilityRole="header">
+            {title}
+          </Text>
+          <TouchableOpacity onPress={onClose} style={styles.closeBtn} accessibilityRole="button" accessibilityLabel="Đóng">
             <Text style={styles.close}>✕</Text>
           </TouchableOpacity>
         </View>
@@ -49,21 +60,22 @@ export const Sheet: React.FC<SheetProps> = ({ visible, title, description, onClo
 
 const styles = StyleSheet.create({
   overlay: { flex: 1, justifyContent: 'flex-end' },
-  backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.35)' },
+  backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: Colors.overlay },
   sheet: {
-    backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    backgroundColor: Colors.surface,
+    borderTopLeftRadius: Radius.xl,
+    borderTopRightRadius: Radius.xl,
     paddingHorizontal: 18,
     paddingBottom: 18,
     maxHeight: '88%',
+    ...Elevation.high,
   },
   handle: {
     alignSelf: 'center',
     width: 40,
     height: 4,
     borderRadius: 2,
-    backgroundColor: '#E2E8F0',
+    backgroundColor: Colors.outline,
     marginTop: 8,
     marginBottom: 6,
   },
@@ -71,9 +83,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 6,
+    paddingVertical: 2,
   },
-  title: { fontSize: 18, fontWeight: '900', color: Colors.textPrimary, flex: 1 },
-  close: { fontSize: 18, color: Colors.textSecondary, paddingLeft: 12 },
-  desc: { fontSize: 12, color: Colors.textSecondary, lineHeight: 18, marginBottom: 8 },
+  title: { ...Typography.heading, fontSize: 18, lineHeight: 24, color: Colors.text, flex: 1 },
+  closeBtn: { width: Touch.min, height: Touch.min, alignItems: 'center', justifyContent: 'center', marginRight: -10 },
+  close: { fontSize: 18, color: Colors.textMuted },
+  desc: { ...Typography.body, fontSize: 13, lineHeight: 19, color: Colors.textMuted, marginBottom: 8 },
 });

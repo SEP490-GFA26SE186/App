@@ -11,6 +11,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import { MASCOT_IMAGE } from '../../constants/mascot';
 import { HeyButton } from '../../components/ui/HeyButton';
 import { HeyInput } from '../../components/ui/HeyInput';
 import { Colors } from '../../theme/colors';
@@ -96,7 +97,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
       {/* Brand Header */}
       <View style={styles.brandHero}>
         <View style={styles.logoBadge}>
-          <Text style={styles.logoEmoji}>🐶</Text>
+          <Image source={MASCOT_IMAGE} style={styles.logoImage} accessibilityLabel="Mascot cú StoryWeaver" />
         </View>
 
         <Text style={styles.brandTitle}>StoryWeaver</Text>
@@ -106,7 +107,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
 
         {/* Mascot Speech Bubble */}
         <View style={styles.mascotSpeech}>
-          <Text style={styles.speechText}>Gâu gâu! Chào mừng ba mẹ và bé yêu nhé! 👋</Text>
+          <Text style={styles.speechText}>Hú hú! Chào mừng ba mẹ và bé yêu nhé! 👋</Text>
         </View>
       </View>
 
@@ -191,7 +192,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FAFFFE',
+    backgroundColor: Colors.background,
   },
   scrollContent: {
     paddingHorizontal: 20,
@@ -215,8 +216,10 @@ const styles = StyleSheet.create({
     boxShadow: '0 4px 12px rgba(255, 213, 79, 0.4)',
     marginBottom: 10,
   },
-  logoEmoji: {
-    fontSize: 34,
+  logoImage: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
   },
   brandTitle: {
     fontSize: 26,
@@ -304,7 +307,7 @@ const styles = StyleSheet.create({
   registerLink: {
     fontSize: 13,
     fontWeight: '800',
-    color: Colors.primary,
+    color: Colors.brandStrong, // chữ cam trên nền trắng: 5.18:1 (Colors.primary chỉ 2.61:1 — QA_R1 HIGH-3)
   },
   envBar: {
     marginTop: 18,

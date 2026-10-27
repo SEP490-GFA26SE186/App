@@ -166,6 +166,12 @@ dev/demo/     dữ liệu demo tạm thời (ADR-016) – chỉ import qua demoG
 - **Cách kiểm chứng:** cổng grep G11 (`IMPLEMENTATION_PLAN.md` §6): `dev/preview` chỉ xuất hiện trong nhánh `__DEV__`; `src/dev/**` không import `apiClient`, `safeStorage`, `authService`, `kidService`. Kiểm tra bản build production không có lối vào ở phase E.
 - **Phân biệt với phiên thật:** preview **không phải** Kid Mode; thoát preview không dùng PIN và không đổi phiên. Vào Kid Mode thật vẫn bắt buộc qua `/auth/kid-mode/enter` (S0.2).
 
+## ADR-021 – Intro Video khi mở app (2026-10-26)
+- **Đã duyệt** khôi phục `IntroScreen` và cài duy nhất `expo-video ~2.0.6` (bản bundled của SDK 52, qua `npx expo install`; `app.json` thêm config plugin `expo-video`). **Không dùng `expo-av`.** Không ảnh hưởng ADR-010 (Audio vẫn PENDING).
+- Web giữ thẻ `<video src="/intro.mp4">` (file tĩnh `public/`) vì `expo-video` web không báo lỗi autoplay bị chặn; native dùng `useVideoPlayer` + `VideoView` với `require('public/intro.mp4')` (Metro bundle asset).
+- `App.tsx` giữ `introVisible` → intro phát **một lần mỗi lần khởi động** (App không remount khi đổi tab/logout). `AppNavigator` vẫn mount bên dưới để bootstrap phiên chạy song song, nhưng bị `pointerEvents="none"` + ẩn accessibility khi intro mở.
+- Kết thúc intro (một lần duy nhất): Bỏ qua, hết video, lỗi video (chuyển ngay), Back Android (bỏ qua, không thoát app), quá 14 giây (video dài ~10 giây). Player được release khi unmount.
+
 ## Ghi chú – các quyết định còn PENDING (không tự quyết)
 - **Độ dài PIN:** theo validation thực tế của BE. Đã xác minh (đọc BE, không sửa): `BE/api/src/modules/auth/auth.validation.js` – `setKidPin`, `changeKidPin.newPin`, `exitKidMode.pin` đều `^\d{4,6}$`. UI hiện cố định 4 số → điều chỉnh ở T3.2/T3.3; chi tiết giao diện do người dùng duyệt (ADR-007, U6).
 - **AI Image (T5.4) và Audio (T6.3, ADR-010):** chờ task liên quan; chưa chọn thư viện.

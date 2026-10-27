@@ -1,4 +1,5 @@
 // apps/mobile/src/theme/index.ts — Theme barrel export
 export { Colors } from './colors';
-export { Shadows } from './shadows';
-export { Radius, Spacing } from './spacing';
+export { Elevation, Shadows } from './shadows';
+export { Layout, Radius, Spacing, Touch, hitSlopFor } from './spacing';
+export { FONT_ASSETS, FontFamily, Typography } from './typography';

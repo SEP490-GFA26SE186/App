@@ -1,7 +1,10 @@
-// apps/mobile/src/components/ui/HeyChip.tsx
+// apps/mobile/src/components/ui/HeyChip.tsx — R1 Warm Storybook Guardian
+// Hiển thị 36pt, bù hitSlop lên 44pt; trạng thái chọn có cả màu nền, viền và chữ (không chỉ dựa vào màu chữ).
 import React from 'react';
 import { TouchableOpacity, Text, StyleSheet, ViewStyle, TextStyle } from 'react-native';
 import { Colors } from '../../theme/colors';
+import { Radius, hitSlopFor } from '../../theme/spacing';
+import { FontFamily, Typography } from '../../theme/typography';
 
 interface HeyChipProps {
   label: string;
@@ -11,6 +14,8 @@ interface HeyChipProps {
   textStyle?: TextStyle;
   icon?: string;
 }
+
+const CHIP_HEIGHT = 36;
 
 export const HeyChip: React.FC<HeyChipProps> = ({
   label,
@@ -25,6 +30,9 @@ export const HeyChip: React.FC<HeyChipProps> = ({
       activeOpacity={0.7}
       onPress={onPress}
       disabled={!onPress}
+      hitSlop={hitSlopFor(CHIP_HEIGHT)}
+      accessibilityRole={onPress ? 'button' : 'text'}
+      accessibilityState={onPress ? { selected } : undefined}
       style={[
         styles.chip,
         selected ? styles.chipSelected : styles.chipUnselected,
@@ -47,31 +55,35 @@ export const HeyChip: React.FC<HeyChipProps> = ({
 
 const styles = StyleSheet.create({
   chip: {
-    paddingHorizontal: 12,
+    minHeight: CHIP_HEIGHT,
+    justifyContent: 'center',
+    paddingHorizontal: 14,
     paddingVertical: 6,
-    borderRadius: 9999,
+    borderRadius: Radius.full,
     borderWidth: 1.5,
     marginRight: 6,
     marginBottom: 6,
     alignSelf: 'flex-start',
   },
   chipUnselected: {
-    backgroundColor: '#FFFFFF',
-    borderColor: Colors.border,
+    backgroundColor: Colors.surface,
+    borderColor: Colors.outline,
   },
   chipSelected: {
-    backgroundColor: Colors.primaryLight,
-    borderColor: Colors.primary,
+    backgroundColor: Colors.brandTint,
+    borderColor: Colors.brandStrong,
   },
   text: {
+    ...Typography.label,
     fontSize: 13,
-    fontWeight: '600',
+    lineHeight: 18,
   },
   textUnselected: {
     color: Colors.textMuted,
   },
+  // brandInk trên brandTint 12:1 (cam 500 trên nền sáng chỉ 2.6:1)
   textSelected: {
-    color: Colors.primary,
-    fontWeight: '700',
+    fontFamily: FontFamily.extraBold,
+    color: Colors.brandInk,
   },
 });

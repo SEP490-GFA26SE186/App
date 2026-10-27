@@ -64,7 +64,29 @@ Không đổi API/contract. `tsc --noEmit` = 0; `expo export` Android + Web OK; 
 
 **Hồi quy trên emulator sau các sửa đổi (BE tắt):** Login trống/định dạng sai, hiện/ẩn mật khẩu, loading → lỗi mạng, mật khẩu được giữ; Register 3 lỗi khi để trống (ô nhập lại khớp vì cùng rỗng — đúng), điền hợp lệ → loading; Back mid-flight; Back trong Preview (đóng Preview, về Login — từ trình đọc cũng đóng hẳn Preview, chưa lùi từng cấp); Preview đọc/trả lời điểm dừng; bàn phím không che ô "Nhập lại mật khẩu"; cuộn; safe area. Tất cả PASS.
 
+## Lượt 4 – Intro Video (ADR-021)
+Sửa: `App.tsx`, `src/components/IntroScreen.tsx`; thêm dependency `expo-video ~2.0.6` (`package.json`, `package-lock.json`, `app.json` plugin). `tsc --noEmit` = 0; `expo install --check` = up to date; `expo export` Android + Web OK (asset `intro.mp4` có trong bundle Android; Web dùng bản trong `public/`, không nhân đôi).
+
+| Kịch bản | Web (Chrome headless + CDP) | Android SW_Test (Expo Go) |
+|---|---|---|
+| Tự phát khi mở app | **PASS** (có tiếng) | **PASS** (ExoPlayer phát, ảnh chụp có video + nút Bỏ qua) |
+| Trình duyệt chặn autoplay có tiếng | **PASS** (chuyển sang tắt tiếng, vẫn phát; chạm để bật tiếng) | – |
+| Bỏ qua | **PASS** (dừng video, mờ dần, về Login) | **PASS** (về Login, player release) |
+| Hết video | **PASS** (~12 giây từ lúc tải trang) | **PASS** (player Init → Release ≈ 11,1 giây) |
+| Video lỗi (chặn request `intro.mp4`) | **PASS** (vào Login ngay) | NOT TESTED |
+| Back Android trong intro | – | **PASS** (bỏ qua intro, app vẫn ở foreground) |
+| Nền bị chặn khi intro mở | **PASS** (`aria-hidden`) | **PASS** (dump accessibility chỉ thấy nút Bỏ qua) |
+| Hồi quy: Back ở Login thoát app; Preview mở/Back đóng | – | **PASS** |
+| Không phát lại khi logout/đổi tab | **BLOCKED** (cần BE để đăng nhập); bảo đảm theo cấu trúc (state ở `App`, không remount) | **BLOCKED** |
+
+## Lượt 5 – Mascot cú + video intro mới
+- Video: `public/intro.mp4` thay bằng `D:\video_intro\intro.mp4` (H.264/AAC, 10 giây). Bản cũ còn trong Git (`HEAD`).
+- Mascot: ảnh `D:\video_intro\image_7b8261.png` → `src/assets/mascot/owl_mascot.png`, dùng qua `src/constants/mascot.ts` (`MASCOT_IMAGE`, `MASCOT_NAME = 'Cú Lu Lu'`). Thay ở Login, HeyTopBar, PIN Kid Mode, `OwlMascot` (đổi tên từ `ShibaMascot`, `ShibaState` → `MascotState`), `CuteMascot` (prop `shibaState` → `mascotState`, lời thoại "Gâu gâu/Cún" → "Hú hú/Cú"), placeholder Intro native. `public/favicon.ico` (trước là ảnh Shiba) → ICO chứa ảnh cú; xóa `public/shiba_mascot.jpg` (không được dùng; còn trong Git).
+- Kiểm tra: `tsc` = 0; `expo install --check` OK; export Android + Web OK. Web + Android SW_Test: video mới tự phát, Bỏ qua/hết video về Login có logo cú. HeyTopBar, ParentHome (`CuteMascot`), PIN Kid Mode: **BLOCKED** (cần đăng nhập BE), chỉ kiểm qua `tsc`/bundle.
+- Còn lại: `soundFX.playPuppy()` (âm thanh khi chạm mascot) giữ nguyên tên/âm.
+
 ## Quan sát chưa sửa
+- Intro: vùng status bar phía trên video (Android) có nền sáng như các màn khác, không phủ đen toàn màn hình. Web: phím Tab vẫn có thể focus vào ô nhập của Login phía sau (đã chặn chuột/chạm và `aria-hidden`).
 - Back trong Preview đóng cả Preview thay vì lùi từng cấp (trình đọc → tủ sách). Chỉ `__DEV__`.
 - Đổi `font_scale` hệ thống làm Expo Go nạp lại app (khung trắng thoáng qua) — hành vi Expo Go, không phải lỗi app.
 - Back trong Kid Mode thật chưa kiểm thử (cần BE).

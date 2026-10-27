@@ -13,8 +13,9 @@ import Animated, {
   withSpring,
   withSequence,
 } from 'react-native-reanimated';
-import { ShibaMascot, ShibaState } from './ShibaMascot';
+import { OwlMascot, MascotState } from './OwlMascot';
 import { Colors } from '../theme/colors';
+import { MASCOT_NAME } from '../constants/mascot';
 
 interface CuteMascotProps {
   name?: string;
@@ -22,25 +23,25 @@ interface CuteMascotProps {
   speechText?: string;
   onTalk?: () => void;
   style?: ViewStyle;
-  shibaState?: ShibaState;
+  mascotState?: MascotState;
 }
 
 const TIPS = [
-  'Gâu gâu! Hôm nay bé muốn cùng Lu Lu phiêu lưu câu chuyện nào nè? ✨',
+  'Hú hú! Hôm nay bé muốn cùng Lu Lu phiêu lưu câu chuyện nào nè? ✨',
   'Đọc 1 câu chuyện trước khi ngủ giúp bé ngủ ngon và nuôi dưỡng tâm hồn! 🌙',
   'Bé đã thu thập được 12 ⭐ sao rồi! Cố lên nhé! 🎉',
   'Nhấn vào "Sáng Tác AI" để hoá thân bé thành dũng sĩ tí hon nào! 🪄',
-  'Cún Lu Lu luôn ở đây cùng bé và ba mẹ dệt nên những ước mơ đẹp nhất! 🐶',
+  'Cú Lu Lu luôn ở đây cùng bé và ba mẹ dệt nên những ước mơ đẹp nhất! 🦉',
   'Hoa trong vườn cổ tích đang chờ bé đến thăm... 🌸',
 ];
 
 export const CuteMascot: React.FC<CuteMascotProps> = ({
-  name = 'Cún Lu Lu',
+  name = MASCOT_NAME,
   level = 'Tân Binh',
   speechText,
   onTalk,
   style,
-  shibaState = 'idle',
+  mascotState = 'idle',
 }) => {
   const [currentBubble, setCurrentBubble] = useState(speechText || TIPS[0]);
   const [tipIndex, setTipIndex] = useState(0);
@@ -79,9 +80,9 @@ export const CuteMascot: React.FC<CuteMascotProps> = ({
         <View style={styles.bubbleTail} />
       </Animated.View>
 
-      {/* Shiba Mascot */}
-      <ShibaMascot
-        state={shibaState}
+      {/* Owl Mascot */}
+      <OwlMascot
+        state={mascotState}
         size={72}
         onPress={handleMascotPress}
       />

@@ -1,14 +1,16 @@
-// apps/mobile/src/components/ShibaMascot.tsx
-// Mascot Shiba Inu với 5 trạng thái cảm xúc + floating animation
+// apps/mobile/src/components/OwlMascot.tsx
+// Mascot cú phù thủy với 5 trạng thái cảm xúc + floating animation
 // Không cần Lottie — dùng pure React Native + Reanimated v2/v3
 import React, { useEffect } from 'react';
 import {
   View,
   Text,
+  Image,
   TouchableOpacity,
   StyleSheet,
 } from 'react-native';
 import { soundFX } from '../utils/sound-fx';
+import { MASCOT_IMAGE } from '../constants/mascot';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -20,45 +22,40 @@ import Animated, {
   Easing,
 } from 'react-native-reanimated';
 
-export type ShibaState = 'idle' | 'happy' | 'sleeping' | 'celebrate' | 'thinking';
+export type MascotState = 'idle' | 'happy' | 'sleeping' | 'celebrate' | 'thinking';
 
-interface ShibaMascotProps {
-  state?: ShibaState;
+interface OwlMascotProps {
+  state?: MascotState;
   size?: number;
   onPress?: () => void;
   showLabel?: boolean;
 }
 
-// Emoji biểu diễn trạng thái (thay thế tạm trước khi có Lottie)
-const STATE_VISUALS: Record<ShibaState, { emoji: string; bg: string; label: string }> = {
+// Mọi trạng thái dùng ảnh cú; trạng thái thể hiện qua màu nền, animation và chấm trạng thái
+const STATE_VISUALS: Record<MascotState, { bg: string; label: string }> = {
   idle: {
-    emoji: '🐕',
     bg: '#FFF8D6',
     label: 'Lu Lu',
   },
   happy: {
-    emoji: '🐶',
     bg: '#E8F9EB',
     label: 'Vui vẻ!',
   },
   sleeping: {
-    emoji: '😴',
     bg: '#F3EDFB',
     label: 'Đang ngủ...',
   },
   celebrate: {
-    emoji: '🎉',
     bg: '#FFF0D6',
     label: 'Tuyệt vời!',
   },
   thinking: {
-    emoji: '🤔',
     bg: '#E8F4FD',
     label: 'Đang nghĩ...',
   },
 };
 
-export const ShibaMascot: React.FC<ShibaMascotProps> = ({
+export const OwlMascot: React.FC<OwlMascotProps> = ({
   state = 'idle',
   size = 80,
   onPress,
@@ -154,7 +151,6 @@ export const ShibaMascot: React.FC<ShibaMascotProps> = ({
 
   const visual = STATE_VISUALS[state];
   const circleSize = size;
-  const emojiSize = size * 0.52;
 
   return (
     <TouchableOpacity activeOpacity={0.9} onPress={handlePress}>
@@ -187,11 +183,19 @@ export const ShibaMascot: React.FC<ShibaMascotProps> = ({
             },
           ]}
         >
-          <Text style={[styles.mascotEmoji, { fontSize: emojiSize }]}>
-            {visual.emoji}
-          </Text>
+          <Image
+            source={MASCOT_IMAGE}
+            style={{ width: circleSize, height: circleSize, borderRadius: circleSize / 2 }}
+            resizeMode="cover"
+            accessibilityLabel="Mascot cú Lu Lu"
+          />
 
           {/* State indicator dot */}
+          {state === 'celebrate' && (
+            <View style={styles.sleepDot}>
+              <Text style={styles.sleepZzz}>🎉</Text>
+            </View>
+          )}
           {state === 'sleeping' && (
             <View style={styles.sleepDot}>
               <Text style={styles.sleepZzz}>💤</Text>
@@ -235,9 +239,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     zIndex: 1,
     boxShadow: '0 8px 16px rgba(255, 217, 61, 0.30)',
-  },
-  mascotEmoji: {
-    lineHeight: undefined,
   },
   levelBadge: {
     position: 'absolute',

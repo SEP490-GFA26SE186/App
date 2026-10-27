@@ -212,7 +212,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FAFFFE',
+    backgroundColor: Colors.background,
   },
   scrollContent: {
     paddingHorizontal: 20,

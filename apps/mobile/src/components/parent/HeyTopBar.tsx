@@ -15,6 +15,7 @@ import Animated, {
 import { Role } from '../../types/domain';
 import { SessionUser } from '../../types/sessionUser';
 import { Colors } from '../../theme/colors';
+import { MASCOT_IMAGE } from '../../constants/mascot';
 
 interface HeyTopBarProps {
   currentUser: SessionUser;
@@ -50,7 +51,7 @@ export const HeyTopBar: React.FC<HeyTopBarProps> = ({
         {/* Brand Logo */}
         <TouchableOpacity onPress={handleLogoPress} activeOpacity={0.9}>
           <Animated.View style={[styles.logoBadge, logoStyle]}>
-            <Text style={styles.logoEmoji}>🐶</Text>
+            <Image source={MASCOT_IMAGE} style={styles.logoImage} accessibilityLabel="Mascot cú StoryWeaver" />
           </Animated.View>
         </TouchableOpacity>
 
@@ -122,8 +123,10 @@ const styles = StyleSheet.create({
     marginRight: 10,
     boxShadow: '0 4px 8px rgba(255, 217, 61, 0.28)',
   },
-  logoEmoji: {
-    fontSize: 22,
+  logoImage: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
   },
   brandInfo: {
     flex: 1,

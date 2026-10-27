@@ -22,6 +22,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { ChildProfile } from '../../types/domain';
 import { Colors } from '../../theme/colors';
+import { MASCOT_IMAGE } from '../../constants/mascot';
 import { authService } from '../../services/authService';
 import { ApiError } from '../../services/apiClient';
 import { childEmoji } from '../../utils/child';
@@ -408,7 +409,7 @@ export const KidModeScreen: React.FC<KidModeScreenProps> = ({
           <View style={styles.pinModal}>
             {/* Mascot at top of modal */}
             <View style={styles.pinMascotRow}>
-              <Text style={styles.pinMascotEmoji}>🐶</Text>
+              <Image source={MASCOT_IMAGE} style={styles.pinMascotImage} accessibilityLabel="Mascot cú StoryWeaver" />
             </View>
 
             <Text style={styles.pinTitle}>Khoá Phụ Huynh</Text>
@@ -517,7 +518,7 @@ const styles = StyleSheet.create({
   previewBannerText: { color: '#FFFFFF', fontSize: 12, fontWeight: '800' },
   container: {
     flex: 1,
-    backgroundColor: '#FAFFFE', // Fairy Garden cream background
+    backgroundColor: Colors.background, // nền kem theo token (R1)
   },
 
   // ── HEADER ──
@@ -903,8 +904,10 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     boxShadow: '0 4px 10px rgba(255, 217, 61, 0.28)',
   },
-  pinMascotEmoji: {
-    fontSize: 28,
+  pinMascotImage: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
   },
   pinTitle: {
     fontSize: 18,
