@@ -40,3 +40,9 @@ node %TEMP%/sw-home-tests/homeAuth.test.js
 npx tsc tests/wizard.test.ts --outDir %TEMP%/sw-wiz-tests --module commonjs --target es2022 --esModuleInterop --skipLibCheck
 node %TEMP%/sw-wiz-tests/wizard.test.js
 ```
+
+`library.test.ts` (R7) chặn hồi quy Tủ truyện, Chi tiết truyện và Trình đọc phụ huynh: không hex/emoji/`TouchableOpacity`, Trình đọc không `<Modal>` và không gọi API, **tương phản thật ≥ 4.5:1 tính từ token** (audit B1), chỉnh cỡ chữ + điều khiển ẩn/hiện, lưới/segmented/menu "⋯" ở Tủ truyện, giữ nguyên lời gọi BE ở Chi tiết. Chạy từ `apps/mobile`:
+```
+npx tsc tests/library.test.ts --outDir %TEMP%/sw-lib-tests --module commonjs --target es2022 --esModuleInterop --skipLibCheck --types node
+node %TEMP%/sw-lib-tests/library.test.js
+```

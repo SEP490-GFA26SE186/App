@@ -48,7 +48,8 @@ export const ParentTabs: React.FC<ParentTabsProps> = ({ currentUser, nav, active
   const [selectedStoryToRead, setSelectedStoryToRead] = useState<Story | null>(null);
   const { navigate, goBack } = nav;
   const hasKidPin = !!currentUser.kidModePinHash;
-  const tabBarVisible = activeRole === 'PARENT' && nav.current.route !== ROUTES.CREATE;
+  // R7: trình đọc phụ huynh phủ toàn màn, thanh tab ẩn khi đang đọc (thanh tab có elevation nên trên Android nổi lên trên lớp phủ)
+  const tabBarVisible = activeRole === 'PARENT' && nav.current.route !== ROUTES.CREATE && !selectedStoryToRead;
 
   // Toast nằm phía trên thanh tab (đo chiều cao thật) để không che thanh tab hay nút Sáng tác
   const [tabBarHeight, setTabBarHeight] = useState(0);

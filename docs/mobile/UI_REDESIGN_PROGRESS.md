@@ -211,6 +211,17 @@ R5 đã commit (`cf0e7c3`). Báo cáo QA và ảnh: [QA_R6_REPORT.md](QA_R6_REPO
 
 ---
 
+## R7 – Tủ truyện, Chi tiết truyện, Trình đọc phụ huynh — ĐÃ TRIỂN KHAI, CHỜ REVIEW (2026-10-27)
+
+R6 đã commit (`7c2b550`). Báo cáo QA và ảnh: [QA_R7_REPORT.md](QA_R7_REPORT.md), [`qa/r7/`](qa/r7/). Chạy thật trên Web và Android SW_Test (BE local, tài khoản test, **chỉ GET**, không ghi dữ liệu, không tốn credit). Không còn CRITICAL/HIGH/MEDIUM.
+
+- **Tủ truyện:** lưới bìa 2/3/4 cột, bộ lọc segmented, "Thêm vào tủ sách bé" vào menu "⋯" (bỏ nút lặp trên thẻ). **Chi tiết:** nút xếp cột có icon, dịch lý do `not_reviewed`. **Trình đọc:** nền giấy, A−/A+, chạm chữ để ẩn/hiện điều khiển, nút trang 56pt, không `<Modal>`, Back/Esc/←/→, focus không lọt ra nền; **B1 ✅** (2.61 → 5.18:1, 2.47 → 4.90:1, tính từ token).
+- **Lỗi đã sửa:** thanh tab che nút Trình đọc trên Android (R7-1, `ParentTabs` 1 dòng), thẻ giãn kín bề ngang, nút Chi tiết không giãn, Tab lọt ra nền (Web), điều khiển không bao giờ ẩn trên Web.
+- **Kiểm tra:** `tsc`, 7 bộ test (mới `library` 7 test), `expo install --check`, export web + android PASS (chạy sau lần sửa cuối).
+- **Fixture (không phải E2E thật):** lưới nhiều truyện, trang có chữ/tranh, Trình đọc đầy đủ. **NOT RUN** (ghi/tốn credit): thêm vào tủ sách, hoàn tất xem lại, cho AI viết. **NOT VERIFIED:** TTS thật, ảnh thật, TalkBack, iOS. R4.1 hoãn; K1 chưa duyệt.
+
+---
+
 ## Backlog từ audit — giao cho đợt phù hợp (CHƯA làm)
 
 | Mã audit | Vấn đề | Đợt | File |
@@ -218,8 +229,8 @@ R5 đã commit (`cf0e7c3`). Báo cáo QA và ảnh: [QA_R6_REPORT.md](QA_R6_REPO
 | A2 ✅ **R5** | Tip mascot bịa số liệu "Bé đã thu thập được 12 ⭐ sao rồi!" + tip sai tên nút "Sáng Tác AI" | **R5** | `components/CuteMascot.tsx` |
 | A3 ✅ **R5** | Âm thanh `playPuppy` (mascot chó cũ) ở cú và nút Chế độ Bé | **R5** (Home) / **R4** (OwlMascot trong Kid) | `utils/sound-fx.ts`, `components/OwlMascot.tsx`, `screens/parent/ParentHomeScreen.tsx` |
 | A4 | Asset cú dạng huy hiệu có chữ, vỡ ở 34–42px | Chờ asset tách nền (quyết định #4) | `HeyTopBar`, `LoginScreen`, PIN modal |
-| B1 (màn) | Chữ trắng trên `primary` ở nút giọng đọc Reader (2.6:1) | **R7** | `components/parent/StoryReaderModal.tsx` (`audioBtnTextActive`) |
-| B1 (màn) | Link màu `primary` trên nền trắng (Reader title, scope-pending) — 2.6:1, cần `brandStrong`. *Login "Đăng ký ngay" ✅ đã sửa (HIGH-3).* | **R7** | `StoryReaderModal.tsx:241` |
+| B1 (màn) ✅ **R7** | Chữ trắng trên `primary` ở nút giọng đọc Reader (2.6:1) → 5.18:1 | Xong | `components/parent/StoryReaderModal.tsx` (`audioBtnTextActive`) |
+| B1 (màn) ✅ **R7** (Reader) | Link màu `primary` trên nền trắng (Reader title) → `brandStrong` 4.90:1; scope-pending giữ nguyên. *Login ✅ HIGH-3.* | Xong (Reader) | `StoryReaderModal.tsx:241` |
 | CRIT-1 ✅ **ĐÃ SỬA** | Modal PIN thoát Kid Mode root 0×0 trên Android New Arch → đã chuyển sang lớp phủ trong cây (QA_R1_REPORT §12) | Xong | `screens/kid/KidModeScreen.tsx` |
 | K1 *(mới, cần duyệt)* | Khôi phục Kid Mode sau restart bằng `GET /kid/me`; native cần storage lưu bền (`expo-secure-store` = dependency mới) | **Chờ người dùng duyệt** — trước hoặc cùng R4 | `stores/*`, `services/storage.ts` |
 | QA-new | Nhãn "Sáng tác" không nhận chạm (R3); thẻ truyện đơn giãn full width (R7); ~~`HeyChip` thiếu `aria-selected` trên Web~~ ✅ R2 (radio + `aria-checked`); OwlMascot Reduce Motion ✅ đã được Reanimated tự xử lý (R2 xác minh); chấm PIN màu cũ + nút Xác nhận disabled (R4) | R2 / R3 / R4 / R7 | QA_R1_REPORT §11.7 |
