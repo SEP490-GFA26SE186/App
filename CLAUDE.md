@@ -25,14 +25,14 @@ Mục tiêu: (1) đồng bộ UI/luồng với Web & BE, (2) nối API thật, (
 5. **Không tự ý xóa tính năng/màn hình hiện có.** Muốn xóa phải được duyệt.
 
 ## 3. Quy tắc bắt buộc
-- Chỉ làm đúng task được giao (lộ trình giao diện: `docs/mobile/UI_UX_REDESIGN_PLAN.md`, tiến độ: `UI_REDESIGN_PROGRESS.md`). Làm xong một đợt thì dừng chờ review; không tự sang đợt kế. K1 (khôi phục Kid Mode sau restart, cần `expo-secure-store`) là task riêng, **chưa được duyệt**.
+- Chỉ làm đúng task được giao (lộ trình giao diện: `docs/mobile/UI_UX_REDESIGN_PLAN.md`, tiến độ: `docs/mobile/MOBILE_STATUS.md`). Làm xong một đợt thì dừng chờ review; không tự sang đợt kế. K1 (khôi phục Kid Mode sau restart, cần `expo-secure-store`) là task riêng, **chưa được duyệt**.
 - **Không cài/đổi dependency** khi chưa được duyệt. Nếu duyệt: dùng `npx expo install` (đúng SDK 52).
 - **Không đoán API.** Contract lấy từ `docs/mobile/API_MAPPING.md`; điểm chưa chắc ghi UNKNOWN và hỏi người dùng. Có thể đọc BE (`BE/src/modules/*`, Swagger `/api/v1/docs`) và Web (`Web/src/services/*.js`) để xác minh.
 - **Cấm fake-success**: không token giả, user demo, ví/thanh toán giả, dữ liệu bịa khi API lỗi. Lỗi → hiển thị lỗi thật + trạng thái rỗng/thử lại.
 - Không hiển thị/ghi secret từ `.env`. Không hardcode URL/khóa trong code.
 - Không sửa `Web`, `BE`, `App_v2`. Không commit/push trừ khi được yêu cầu rõ.
 - Giữ nguyên comment/docstring không liên quan thay đổi.
-- Prototype Vite/Express/Prisma ở gốc `App/` **đã được xóa** (ARCHITECTURE_CLEANUP_REPORT.md). Repo chỉ còn `apps/mobile` + `docs/mobile`; kiểu miền nằm ở `apps/mobile/src/types/domain.ts`.
+- Prototype Vite/Express/Prisma ở gốc `App/` **đã được xóa** (báo cáo dọn dẹp cũ: lịch sử Git `a9160a7`). Repo chỉ còn `apps/mobile` + `docs/mobile`; kiểu miền nằm ở `apps/mobile/src/types/domain.ts`.
 
 ## 4. Quy ước kỹ thuật
 - Stack (xác minh lại ở `apps/mobile/package.json` khi cần): Expo ~52, RN 0.76.9, React 18.3.1, Reanimated ~3.16, TypeScript. Điều hướng bằng state (`src/navigation/`, ADR-015), chưa có router. Design System: `src/theme/*` + `src/components/ui/*` (R1–R3); dùng lại, không thêm hex/emoji-icon mới.
@@ -42,8 +42,8 @@ Mục tiêu: (1) đồng bộ UI/luồng với Web & BE, (2) nối API thật, (
 - Kid PIN: xác minh **chỉ qua BE** (`/auth/kid-mode/enter|exit`). Không so sánh PIN cục bộ, không backdoor.
 
 ## 5. Tài liệu (nguồn sự thật: source + Git; docs chỉ đọc phần liên quan task)
-- Giao diện: `UI_UX_REDESIGN_PLAN.md` (kế hoạch), `UI_REDESIGN_PROGRESS.md` (tiến độ chính thức, đối chiếu với source/Git), `QA_R*_REPORT.md` (chỉ báo cáo đợt liên quan).
-- API/nghiệp vụ: `API_MAPPING.md`, `BUSINESS_FLOW_MATRIX.md`, `ARCHITECTURE_DECISIONS.md`. Hiện trạng cũ: `AUDIT_REPORT.md`, `IMPLEMENTATION_PLAN.md`.
+- Mục lục: `docs/mobile/README.md`. Giao diện: `UI_UX_REDESIGN_PLAN.md` (kế hoạch). Hiện trạng chính thức: `MOBILE_STATUS.md` (đối chiếu với source/Git). R9-B: `R9B_MANUAL_TEST_PLAN.md`, `QA_R9B_READINESS.md`. Báo cáo QA R1–R9-A cũ đã xóa (lịch sử Git `a9160a7`).
+- API/nghiệp vụ: `API_MAPPING.md`, `BUSINESS_FLOW_MATRIX.md`, `ARCHITECTURE_DECISIONS.md`. Hiện trạng/kế hoạch cũ (`AUDIT_REPORT.md`, `IMPLEMENTATION_PLAN.md`) đã xóa, xem lịch sử Git `a9160a7`.
 - Không chép lại nguyên tài liệu vào CLAUDE.md; không tạo file memory/handoff/tài liệu trùng lặp.
 
 ## 6. Quy trình mỗi task
