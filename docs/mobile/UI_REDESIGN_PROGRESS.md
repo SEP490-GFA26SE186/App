@@ -200,6 +200,17 @@ R4 đã commit (`9118e7a`). Báo cáo QA và ảnh: [QA_R5_REPORT.md](QA_R5_REPO
 
 ---
 
+## R6 – Story Wizard — ĐÃ TRIỂN KHAI, CHỜ REVIEW (2026-10-27)
+
+R5 đã commit (`cf0e7c3`). Báo cáo QA và ảnh: [QA_R6_REPORT.md](QA_R6_REPORT.md), [`qa/r6/`](qa/r6/). Chạy thật trên Web và Android SW_Test (BE local, tài khoản test, **không tạo truyện thật, không tốn credit**). Không còn CRITICAL/HIGH/MEDIUM.
+
+- **Wizard:** stepper 3 bước có thanh tiến độ, chân trang cố định "Tạo truyện · N credit" (N từ `ai-pricing`), segmented độ dài kèm giá thật, nhóm radio/checkbox ≥ 44pt, Android Back quay về bước trước; `GenerationPanel` có cú "đang nghĩ" (không tiến độ giả). State, quy tắc `missing`, API giữ nguyên.
+- **Lỗi đã sửa:** nút chính tràn/không nhận chạm (R6-1), tương phản chấm bước, Back rời Wizard.
+- **Kiểm tra:** `tsc`, 6 bộ test (mới `wizard` 6 test), `expo install --check`, export web + android PASS.
+- **Chưa kiểm chứng:** tạo truyện/phân tích AI/polling/hoàn credit **thật** (NOT RUN, cần duyệt); các trạng thái viết truyện chỉ qua fixture. TalkBack/VoiceOver, Reduce Motion bật thật, iOS. R4.1 vẫn hoãn; K1 chưa duyệt.
+
+---
+
 ## Backlog từ audit — giao cho đợt phù hợp (CHƯA làm)
 
 | Mã audit | Vấn đề | Đợt | File |

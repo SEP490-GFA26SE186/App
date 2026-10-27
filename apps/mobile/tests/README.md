@@ -34,3 +34,9 @@ node %TEMP%/sw-kid-tests/kidUi.test.js
 npx tsc tests/homeAuth.test.ts --outDir %TEMP%/sw-home-tests --module commonjs --target es2022 --esModuleInterop --skipLibCheck
 node %TEMP%/sw-home-tests/homeAuth.test.js
 ```
+
+`wizard.test.ts` (R6) chặn hồi quy Story Wizard: không hex/emoji làm icon/`TouchableOpacity`, giữ nguyên lời gọi BE và quy tắc `missing`, chi phí lấy từ BE (không số cứng), không tiến độ giả khi AI viết, stepper/chân trang/vùng chạm. Chạy từ `apps/mobile`:
+```
+npx tsc tests/wizard.test.ts --outDir %TEMP%/sw-wiz-tests --module commonjs --target es2022 --esModuleInterop --skipLibCheck
+node %TEMP%/sw-wiz-tests/wizard.test.js
+```
