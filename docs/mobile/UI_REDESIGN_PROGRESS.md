@@ -25,9 +25,11 @@ Kết quả QA, ảnh chụp và điều kiện nghiệm thu: [QA_R1_REPORT.md](
   - Intro không phát lại khi đăng xuất hoặc chuyển tab.
   - Chi tiết: QA_R1_REPORT §11.
 - ✅ **HIGH-3 (2026-10-27):** link "Đăng ký ngay" (`LoginScreen.tsx`, style `registerLink`) đổi sang `Colors.brandStrong`; tương phản từ 2.61:1 lên 5.18:1. Chỉ đổi màu.
-- 🔴 **CRIT-1 (có sẵn, KHÔNG do R1):** modal PIN thoát Kid Mode không hiện trên Android Expo Go (New Architecture), nên phụ huynh không thoát được bằng PIN.
-  - Bản HEAD trước R1 bị lỗi y hệt.
-  - Cần task riêng trước demo hoặc trước R2/R4. Xem QA_R1_REPORT §11.5.
+- ✅ **CRIT-1 (có sẵn, KHÔNG do R1) — ĐÃ SỬA (2026-10-27):** khoá PIN thoát Kid Mode không hiện trên Android New Arch, vì Modal nằm cạnh header Reanimated bị kẹt kích thước 0×0.
+  - Đã thay `Modal` bằng lớp phủ ngay trong cây component, thêm Back mở/đóng khoá, spinner khi chờ BE, thông báo lỗi mạng tiếng Việt, và dọn phiên cũ khi khởi động không có token Parent.
+  - PIN chỉ được BE xác thực.
+  - Restart luôn về màn Đăng nhập (không vượt PIN), nhưng **chưa khôi phục Kid Mode**: cần duyệt `expo-secure-store`.
+  - Xem QA_R1_REPORT §12.
 - ⛔ **BLOCKED:** BE local trả 503 khi sinh truyện AI, nên chưa kiểm tra được Reader và tủ sách có truyện thật.
 
 ### Đã làm
@@ -75,7 +77,8 @@ Kết quả QA, ảnh chụp và điều kiện nghiệm thu: [QA_R1_REPORT.md](
 | A4 | Asset cú dạng huy hiệu có chữ, vỡ ở 34–42px | Chờ asset tách nền (quyết định #4) | `HeyTopBar`, `LoginScreen`, PIN modal |
 | B1 (màn) | Chữ trắng trên `primary` ở nút giọng đọc Reader (2.6:1) | **R7** | `components/parent/StoryReaderModal.tsx` (`audioBtnTextActive`) |
 | B1 (màn) | Link màu `primary` trên nền trắng (Reader title, scope-pending) — 2.6:1, cần `brandStrong`. *Login "Đăng ký ngay" ✅ đã sửa (HIGH-3).* | **R7** | `StoryReaderModal.tsx:241` |
-| CRIT-1 🔴 *(mới, có sẵn)* | Modal PIN thoát Kid Mode root 0×0 trên Android Expo Go (New Arch) → không thoát được bằng PIN; tắt app thì thoát (vượt PIN). Xem QA_R1_REPORT §11.5 | **Task riêng P0** — trước demo / R2 hoặc R4, người dùng quyết | `screens/kid/KidModeScreen.tsx` (PIN `Modal`) |
+| CRIT-1 ✅ **ĐÃ SỬA** | Modal PIN thoát Kid Mode root 0×0 trên Android New Arch → đã chuyển sang lớp phủ trong cây (QA_R1_REPORT §12) | Xong | `screens/kid/KidModeScreen.tsx` |
+| K1 *(mới, cần duyệt)* | Khôi phục Kid Mode sau restart bằng `GET /kid/me`; native cần storage lưu bền (`expo-secure-store` = dependency mới) | **Chờ người dùng duyệt** — trước hoặc cùng R4 | `stores/*`, `services/storage.ts` |
 | QA-new | Nhãn "Sáng tác" không nhận chạm (R3); thẻ truyện đơn giãn full width (R7); `HeyChip` thiếu `aria-selected` trên Web (R2); chấm PIN màu cũ + nút Xác nhận disabled (R4) | R2 / R3 / R4 / R7 | QA_R1_REPORT §11.7 |
 | C2 / E3 / E4 | Tab label 10px, tag 8px, vùng chạm tab ~40pt, credit pill ~24pt, avatar 34pt | **R3** | `HeyTabBar.tsx`, `HeyTopBar.tsx` |
 | D1 | Emoji làm icon điều hướng/menu/nút | **R2** (Icon wrapper) → R3+ áp dụng | toàn app |

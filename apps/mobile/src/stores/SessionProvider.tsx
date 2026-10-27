@@ -3,6 +3,7 @@
 // Mỗi store có context riêng để tách trách nhiệm: kid session KHÔNG nằm chung với phiên/token Parent.
 import React, { createContext, useContext, useEffect, useRef } from 'react';
 import { SessionUser } from '../types/sessionUser';
+import { authService } from '../services';
 import { SESSION_EXPIRED_NOTICE, useAuthSessionState } from './useAuthSession';
 import { useParentDataState } from './useParentData';
 import { useKidSessionState } from './useKidSession';
@@ -52,6 +53,8 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   useEffect(() => {
     if (auth.appPhase === 'BOOTING') void bootstrapSession();
+    // Không có token Parent (vd. tải lại khi đang ở Kid Mode): bỏ kid token/user cũ, chỉ đăng nhập bằng mật khẩu mới vào lại
+    else authService.clearLocalSession();
   }, []);
 
   const authValue: AuthStore = {

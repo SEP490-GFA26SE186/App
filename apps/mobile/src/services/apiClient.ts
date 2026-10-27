@@ -161,7 +161,8 @@ export const apiFetch = async <T = any>(endpoint: string, options: RequestOption
     res = await fetchWithTimeout(url, { ...options, headers });
   } catch (err: any) {
     if (err instanceof ApiError) throw err;
-    throw new ApiError(err?.message === 'Network request failed' ? 'Không thể kết nối đến máy chủ. Vui lòng kiểm tra mạng hoặc chế độ máy chủ.' : (err?.message || 'Lỗi mạng'), 0);
+    // fetch lỗi mạng luôn là TypeError: RN "Network request failed", trình duyệt "Failed to fetch"/"Load failed"…
+    throw new ApiError(err instanceof TypeError ? 'Không thể kết nối đến máy chủ. Vui lòng kiểm tra mạng hoặc chế độ máy chủ.' : (err?.message || 'Lỗi mạng'), 0);
   }
 
   // Handle 401 Token Expiration (excluding auth routes)

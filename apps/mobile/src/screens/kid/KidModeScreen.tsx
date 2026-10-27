@@ -8,8 +8,8 @@ import {
   TouchableOpacity,
   Image,
   StyleSheet,
-  Modal,
   ActivityIndicator,
+  BackHandler,
 } from 'react-native';
 import Animated, {
   useSharedValue,
@@ -128,6 +128,7 @@ export const KidModeScreen: React.FC<KidModeScreenProps> = ({
   const [pinMessage, setPinMessage] = useState<string | null>(null);
   const lockedUntilRef = useRef(0);
   const verifyingPinRef = useRef(false);
+  const [verifyingPin, setVerifyingPin] = useState(false);
   const [sessionLost, setSessionLost] = useState(false);
 
   // Header entrance animation
@@ -142,6 +143,8 @@ export const KidModeScreen: React.FC<KidModeScreenProps> = ({
   const handleVerifyPin = async (pin: string) => {
     if (verifyingPinRef.current) return;
     verifyingPinRef.current = true;
+    setVerifyingPin(true);
+    setPinMessage(null);
     try {
       await onExitKidMode(pin);
     } catch (err) {
@@ -165,6 +168,7 @@ export const KidModeScreen: React.FC<KidModeScreenProps> = ({
       }, 900);
     } finally {
       verifyingPinRef.current = false;
+      setVerifyingPin(false);
     }
   };
 
@@ -184,6 +188,20 @@ export const KidModeScreen: React.FC<KidModeScreenProps> = ({
     setPinMessage(null);
     setEnteredPin('');
   };
+
+  // Back của Android trong Kid Mode: mở/đóng khoá PIN thay vì rời app (chỉ BE xác nhận PIN mới về Parent)
+  useEffect(() => {
+    if (preview) return;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (showPinModal) closePinModal();
+      else setShowPinModal(true);
+      return true;
+    });
+    return () => sub.remove();
+  }, [preview, showPinModal]);
+
+  // TalkBack/VoiceOver không được đọc nội dung phía sau khi khoá PIN đang mở
+  const hideBehindPin = showPinModal ? 'no-hide-descendants' : 'auto';
 
   const headerStyle = useAnimatedStyle(() => ({
     opacity: headerOpacity.value,
@@ -208,7 +226,7 @@ export const KidModeScreen: React.FC<KidModeScreenProps> = ({
       )}
 
       {/* ── HEADER ── */}
-      <Animated.View style={[styles.topHeader, headerStyle]}>
+      <Animated.View style={[styles.topHeader, headerStyle]} importantForAccessibility={hideBehindPin}>
         {/* Left: Avatar + Greeting */}
         <View style={styles.avatarRow}>
           <View style={styles.kidAvatar}>
@@ -234,7 +252,7 @@ export const KidModeScreen: React.FC<KidModeScreenProps> = ({
       </Animated.View>
 
       {reader.lost && !preview && (
-        <View style={extra.lostBanner}>
+        <View style={extra.lostBanner} importantForAccessibility={hideBehindPin}>
           <Text style={extra.lostText}>Phiên Chế độ Bé không còn hợp lệ. Ba mẹ đăng nhập lại bằng mật khẩu để tiếp tục.</Text>
           <TouchableOpacity onPress={onKidSessionLost} style={extra.lostBtn} activeOpacity={0.85}>
             <Text style={extra.lostBtnText}>Đăng nhập lại</Text>
@@ -246,6 +264,7 @@ export const KidModeScreen: React.FC<KidModeScreenProps> = ({
       {!play ? (
         /* Story Shelf View */
         <ScrollView
+          importantForAccessibility={hideBehindPin}
           style={styles.body}
           contentContainerStyle={styles.scrollList}
           showsVerticalScrollIndicator={false}
@@ -314,7 +333,7 @@ export const KidModeScreen: React.FC<KidModeScreenProps> = ({
         </View>
       ) : (
         /* Reading View */
-        <View style={styles.readingContainer}>
+        <View style={styles.readingContainer} importantForAccessibility={hideBehindPin}>
           {/* Reader Header */}
           <View style={styles.readerHeader}>
             <TouchableOpacity
@@ -403,9 +422,10 @@ export const KidModeScreen: React.FC<KidModeScreenProps> = ({
         </View>
       )}
 
-      {/* ── Parental PIN Modal ── */}
-      <Modal visible={showPinModal} transparent animationType="fade">
-        <View style={styles.modalOverlay}>
+      {/* ── Parental PIN ── lớp phủ trong cây thay cho <Modal>: trên Android New Arch, Modal cạnh Reanimated
+          (header) bị kẹt kích thước 0×0 nên không hiện bàn phím PIN (QA_R1 CRIT-1). */}
+      {showPinModal && (
+        <View style={styles.modalOverlay} accessibilityViewIsModal>
           <View style={styles.pinModal}>
             {/* Mascot at top of modal */}
             <View style={styles.pinMascotRow}>
@@ -478,16 +498,23 @@ export const KidModeScreen: React.FC<KidModeScreenProps> = ({
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={confirmPin}
-                disabled={enteredPin.length < 4}
+                disabled={enteredPin.length < 4 || verifyingPin}
                 style={[extra.pinConfirm, enteredPin.length < 4 && styles.kidNavBtnDisabled]}
                 activeOpacity={0.85}
+                accessibilityRole="button"
+                accessibilityLabel="Xác nhận"
+                accessibilityState={{ disabled: enteredPin.length < 4 || verifyingPin, busy: verifyingPin }}
               >
-                <Text style={extra.pinConfirmText}>Xác nhận</Text>
+                {verifyingPin ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <Text style={extra.pinConfirmText}>Xác nhận</Text>
+                )}
               </TouchableOpacity>
             </View>
           </View>
         </View>
-      </Modal>
+      )}
     </View>
   );
 };
@@ -877,7 +904,9 @@ const styles = StyleSheet.create({
 
   // ── PIN MODAL ──
   modalOverlay: {
-    flex: 1,
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 10,
+    elevation: 10,
     backgroundColor: 'rgba(44, 62, 80, 0.60)',
     justifyContent: 'center',
     alignItems: 'center',

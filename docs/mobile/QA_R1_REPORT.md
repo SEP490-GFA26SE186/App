@@ -12,6 +12,12 @@
 > - **Kết luận: R1 ĐẠT** về mặt thay đổi R1. HIGH-1 và LOW-1 đã sửa (§10). HIGH-2 đã kiểm tra xong. HIGH-3 đã sửa (§11).
 > - Phát hiện một lỗi **CRITICAL có sẵn từ trước R1, không do R1 gây ra**: trên Android (Expo Go, New Architecture), modal PIN thoát Kid Mode không hiển thị (CRIT-1, §11.5). Cần tách thành task riêng trước demo hoặc trước R2/R4.
 >
+> **Cập nhật 2026-10-27 (sửa CRIT-1, §12):** ✅ CRIT-1 **đã sửa và xác minh** trên Android SW_Test và Expo Web.
+> - PIN được BE xác thực thật.
+> - Restart app luôn về màn Đăng nhập; không vượt được PIN.
+> - Kid Mode **không được khôi phục** sau restart (giới hạn, xem §12.5).
+> - **Đủ điều kiện sang R2.**
+>
 > *Phần dưới đây là kết luận ban đầu của lượt QA, giữ nguyên để đối chiếu.*
 
 **R1 ĐẠT CÓ ĐIỀU KIỆN.**
@@ -151,7 +157,7 @@ Parent Home, Tủ truyện, Story Wizard, Story Detail + Reader phụ huynh, EQ 
 Cột **Nguồn**: *R1* = do thay đổi R1; *Có sẵn* = tồn tại từ trước R1 (xác minh bằng HEAD hoặc đã có trong audit).
 
 ### CRITICAL
-Lượt QA đầu không phát hiện. **CRIT-1** (có sẵn trước R1) được phát hiện ở lượt QA sau đăng nhập, xem §11.5.
+Lượt QA đầu không phát hiện. **CRIT-1** (có sẵn trước R1) được phát hiện ở lượt QA sau đăng nhập (§11.5). ✅ **Đã sửa** (§12).
 
 ### HIGH
 
@@ -349,7 +355,7 @@ Ký hiệu ảnh: `p*` = Web 390px, `c*` = Android SW_Test (Expo Go), `h*` = And
 - **Đối chứng:** chạy bản **HEAD trước R1** (Metro 8083, bản sao mã nguồn tạm) trên cùng emulator thì **lỗi y hệt** (h03, h04). Kết luận: lỗi có sẵn, **R1 không gây ra**.
 - **Phạm vi:** Web hoạt động đúng (p21–p23). Lỗi chỉ xảy ra trên Android Expo Go, luôn chạy New Architecture. Modal ở đây là `<Modal transparent animationType="fade">` và không có `onRequestClose`.
 - **Đường thoát hiện có:** trạng thái Kid Mode chỉ nằm trong bộ nhớ (`useState` trong `stores/useKidSession.ts`, không lưu xuống máy). Vì vậy tắt hẳn app rồi mở lại sẽ ra khỏi Kid Mode.
-- **Rủi ro bảo mật:** việc tắt app để thoát Kid Mode cũng là cách vượt qua PIN. Đây là thiết kế có sẵn và cần quyết định riêng.
+- ~~**Rủi ro bảo mật:** việc tắt app để thoát Kid Mode cũng là cách vượt qua PIN.~~ **Đính chính (§12.4):** nhận định này **sai**. Khi vào Kid Mode, app đã xóa token Parent, nên mở lại app luôn ra màn **Đăng nhập** và phải nhập mật khẩu. Không vào được Parent mà không có mật khẩu.
 - **Đề xuất:** tách thành **task riêng (P0)** trước demo hoặc trước R2/R4. Theo phạm vi lượt này, **chưa sửa**.
 
 ### 11.6 Chặn — AI sinh truyện (BLOCKED, do BE)
@@ -391,6 +397,103 @@ Ký hiệu ảnh: `p*` = Web 390px, `c*` = Android SW_Test (Expo Go), `h*` = And
 
 **R1 ĐẠT. Phần thay đổi R1 đủ điều kiện nghiệm thu:** HIGH-1, LOW-1, HIGH-2 và HIGH-3 đều đã xong, và không có regression do R1.
 
-**Ứng dụng chưa đủ điều kiện demo trên Android** cho tới khi sửa **CRIT-1**. Lỗi này có từ trước R1. Việc mở task riêng (đề xuất: trước R2 hoặc gộp vào R4 Kid Mode) do người dùng quyết định.
+~~**Ứng dụng chưa đủ điều kiện demo trên Android** cho tới khi sửa **CRIT-1**.~~ → CRIT-1 đã sửa ở §12.
 
 Còn **chưa kiểm tra được** Reader và tủ sách có truyện thật, vì BE local trả 503 khi sinh truyện (§11.6).
+
+---
+
+## 12. Sửa CRIT-1 — Khoá PIN thoát Kid Mode (2026-10-27)
+
+### 12.1 Nguyên nhân gốc (đã xác nhận bằng thực nghiệm trên SW_Test)
+
+| Thử nghiệm | Khoá PIN hiện? | Ảnh |
+|---|---|---|
+| Mã gốc: `<Modal transparent animationType="fade">` | ❌ | [d00](qa/r1/d00_android_crit1_before.jpg) |
+| Thêm `onRequestClose` | ❌ | – |
+| Đổi `animationType="slide"` (giống `Sheet` đang chạy đúng) | ❌ | – |
+| Giữ `Modal`, tạm thay header `Animated.View` (Reanimated `useAnimatedStyle`) bằng `View` thường | ✅ | [d00b](qa/r1/d00b_android_exp_no_reanimated_header.jpg) |
+
+- **Hiện tượng:** cửa sổ dialog của Modal có được tạo (`dumpsys window`: kiểu APPLICATION, khung 1080×2400), nhưng root nội dung của Modal có kích thước **0×0**.
+  - Mascot, chấm PIN và bàn phím bị vẽ chồng ở góc trên bên trái (con cú đè lên avatar 🐻).
+  - Lớp nền mờ không hiện, bàn phím không chạm được.
+- **Nguyên nhân:** trên Android New Architecture (Expo Go luôn bật), nếu cùng màn có header dùng Reanimated `useAnimatedStyle` thì Modal không nhận được kích thước màn hình.
+  - Chỉ cần bỏ header Reanimated là Modal hiện đúng. Đổi `animationType` hay thêm `onRequestClose` đều không có tác dụng.
+  - Cơ chế chi tiết bên trong Fabric/Reanimated **chưa lần tới mã native**.
+  - `Sheet` ở màn Parent vẫn chạy dù màn đó cũng dùng Reanimated. Vì vậy chỉ khẳng định quan hệ nhân quả **trên màn Kid**.
+- **Không chọn cách "bỏ hoạt ảnh header":** thẻ truyện trong tủ sách (`StoryCard`) cũng dùng `useAnimatedStyle`, nên lỗi có thể quay lại khi tủ sách có truyện.
+
+### 12.2 Thay đổi (chỉ FE Mobile)
+
+| File | Thay đổi |
+|---|---|
+| `screens/kid/KidModeScreen.tsx` | Khoá PIN là **lớp phủ ngay trong cây component** (`absoluteFill`, `zIndex`/`elevation` 10, `accessibilityViewIsModal`) thay cho `<Modal>`, nên không còn phụ thuộc state kích thước của Modal native. Logic PIN giữ nguyên. |
+| `screens/kid/KidModeScreen.tsx` | Nút **Back của Android** trong Kid Mode: khoá đang đóng → mở khoá PIN; khoá đang mở → đóng. Back không còn rời app, nên không làm mất phiên. Không áp dụng cho UI Preview. |
+| `screens/kid/KidModeScreen.tsx` | **Loading:** nút "Xác nhận" hiện spinner và bị khoá trong lúc chờ BE (`accessibilityState.busy`). Xóa thông báo lỗi cũ khi gửi lại. |
+| `screens/kid/KidModeScreen.tsx` | Khi khoá PIN đang mở, nội dung phía sau bị ẩn khỏi TalkBack (`importantForAccessibility="no-hide-descendants"`). |
+| `services/apiClient.ts` | Lỗi mạng của `fetch` (luôn là `TypeError`) đều dùng chung thông báo tiếng Việt. Trước đây Web hiện thô "Failed to fetch". Huỷ request chủ động (`AbortError`) vẫn xử lý như cũ. |
+| `stores/SessionProvider.tsx` | Khi app khởi động mà **không có token Parent**, dọn phần phiên còn sót: kid token, user data, id bé. Trước đây reload Web trong Kid Mode để lại kid token và user data trong `localStorage`. |
+
+Không sửa BE, Web, App_v2. Không thêm dependency. Không đổi API.
+
+### 12.3 Kết quả kiểm thử (BE local, tài khoản test `qa_r1_1d2cf7`)
+
+| # | Kịch bản | Android SW_Test | Expo Web | Ảnh |
+|---|---|---|---|---|
+| 1 | Bấm "🔒 Thoát" → khoá PIN hiện, đủ bàn phím | ✅ PASS | ✅ PASS | [d01](qa/r1/d01_android_pin_overlay.jpg), [e01](qa/r1/e01_web_pin_open.jpg) |
+| 2 | Hủy → đóng khoá, vẫn ở Kid Mode | ✅ PASS | ✅ PASS | [d02](qa/r1/d02_android_cancel.jpg) |
+| 3 | Back (Android): mở khoá; Back lần nữa: đóng; app không bị thoát | ✅ PASS | N/A (không có nút Back) | [d03](qa/r1/d03_android_back_opens.jpg) |
+| 4 | PIN sai → BE trả **401**, hiện "Còn 4 lần thử", vẫn ở Kid Mode | ✅ PASS | ✅ PASS | [d04](qa/r1/d04_android_pin_wrong.jpg), [e02](qa/r1/e02_web_pin_wrong.jpg) |
+| 5 | Lỗi API: mất kết nối tới BE → thông báo tiếng Việt, vẫn ở Kid Mode | ✅ PASS (cắt `adb reverse`) | ✅ PASS (CDP offline) | [d05](qa/r1/d05_android_api_error.jpg), [e03](qa/r1/e03_web_pin_network_error.jpg) |
+| 6 | Loading: spinner trên "Xác nhận" khi BE chậm | ⚠️ Không chụp được (BE local phản hồi trong khoảng 60 ms) | ✅ PASS (độ trễ giả lập 3 s) | [e04](qa/r1/e04_web_pin_loading.jpg) |
+| 7 | PIN đúng → BE trả **200** kèm token Parent mới → về Parent Home | ✅ PASS | ✅ PASS | [d06](qa/r1/d06_android_pin_ok_parent.jpg), [e05](qa/r1/e05_web_back_to_parent.jpg) |
+| 8 | Restart khi đang ở Parent | ✅ Về Login (storage native chỉ trong bộ nhớ, có từ trước) | ✅ Vẫn ở Parent (phiên lưu trong `localStorage`) | [d07](qa/r1/d07_android_restart_from_parent.jpg) |
+| 9 | Restart khi đang ở Kid Mode | ✅ Về Login, không vào Parent hay Kid | ✅ Về Login; `localStorage` không còn khoá `sw_mobile_*` nào | [d08](qa/r1/d08_android_restart_from_kid.jpg), [e06](qa/r1/e06_web_reload_in_kid.jpg) |
+| 10 | Không thể vào Parent mà không qua PIN hoặc mật khẩu (Back, Hủy, restart, reload) | ✅ PASS | ✅ PASS | – |
+
+**Log BE xác nhận PIN được xác thực thật:** `POST /auth/kid-mode/exit` trả 401 (PIN sai), rồi 200 (PIN đúng). Lần lỗi mạng không tới được BE. FE không tự kiểm tra PIN.
+
+### 12.4 Kid Mode sau khi restart — hành vi hiện tại
+
+- Khi vào Kid Mode, FE **xóa token Parent** và chỉ giữ kid token. Đây là thiết kế có sẵn.
+  - Muốn có lại token Parent chỉ có hai đường: nhập PIN (`POST /auth/kid-mode/exit`, BE cấp token mới) hoặc đăng nhập bằng mật khẩu.
+- **Android (native):** `safeStorage` chỉ lưu trong bộ nhớ, nên restart xóa sạch phiên → về màn Đăng nhập.
+- **Web:** token Parent đã bị xóa, nên reload → màn Đăng nhập. Phiên cũ giờ được dọn sạch (§12.2).
+- **Kết luận:** restart **không vượt được PIN để vào Parent**, vì luôn đóng an toàn về màn Đăng nhập. Nhưng Kid Mode **không được giữ lại**: bé sẽ thấy màn Đăng nhập thay vì tủ sách.
+
+### 12.5 Khôi phục Kid Mode sau restart — giới hạn và phương án (CHƯA làm, cần duyệt)
+
+BE đã có `GET /kid/me`. Endpoint này kiểm tra kid token (`kidAuth`: JWT `kid_session`, chưa bị thu hồi, bé còn tồn tại) và trả về bé. Đây là cách khôi phục an toàn, không cần sửa BE:
+
+| Phương án | Cần | Ghi chú |
+|---|---|---|
+| A. Khi khởi động: không có token Parent nhưng có kid token → gọi `GET /kid/me` → hợp lệ thì vào lại Kid Mode, không hợp lệ thì về màn Đăng nhập | **Web:** không cần gì thêm (`localStorage`). **Native:** cần storage lưu bền → **thêm dependency** (`expo-secure-store`, khuyên dùng cho token; hoặc `@react-native-async-storage/async-storage`) | Đổi luồng bootstrap: cần vào giao diện Kid khi chưa có `currentUser` Parent. PIN vẫn chỉ được BE kiểm tra. |
+| B. Giữ như hiện tại (đóng an toàn về màn Đăng nhập) | – | An toàn; nhược điểm về trải nghiệm là phụ huynh phải nhập mật khẩu. |
+
+**Đề xuất:** làm A cho cả Web và native **sau khi người dùng duyệt `expo-secure-store`** (có sẵn trong Expo SDK 52). Nếu chỉ làm cho Web thì hai nền tảng sẽ khác nhau. Theo yêu cầu, lượt này **chưa thực hiện**.
+
+### 12.6 Kiểm tra kỹ thuật và regression
+
+| Kiểm tra | Kết quả |
+|---|---|
+| `npx tsc --noEmit` | ✅ Exit 0 |
+| `tests/authRace.test.ts` | ✅ 5/5 |
+| `npx expo install --check` | ✅ Up to date |
+| `expo export` Web / Android | ✅ 493 / 818 module (1.14 MB / 2.68 MB) |
+| Đăng nhập → Parent Home → Kid → PIN → Parent (Android, Web) | ✅ ([f02](qa/r1/f02_android_parent_after_pin.jpg), e05) |
+| Chuyển 4 tab, màn Thêm, Đăng xuất → Login, đăng nhập lại; Intro không phát lại | ✅ Android ([f03](qa/r1/f03_android_tabs_home.jpg), [f04](qa/r1/f04_android_after_logout.jpg)), Web ([e07](qa/r1/e07_web_more_menu.jpg)–[e09](qa/r1/e09_web_relogin_home.jpg)) |
+| Request lỗi trên Web ngoài lỗi có chủ đích (PIN sai 401) | ✅ Không có |
+
+### 12.7 Còn lại (không chặn R2)
+
+- **LOW:** khoảng trống giữa bàn phím và hàng "Hủy / Xác nhận" trên Android lớn hơn trên Web (d01). Có từ trước, xử lý ở R4.
+- **LOW:** chấm PIN vẫn màu xanh lá cũ (R4, §11.7).
+- **INFO:** Web có cảnh báo `props.pointerEvents is deprecated`, có từ trước.
+- **Chưa kiểm tra:** spinner loading trên Android (chỉ xác minh trên Web); cách đọc của TalkBack với lớp phủ PIN.
+
+### 12.8 Kết luận
+
+- **CRIT-1 đã sửa:** khoá PIN hiện và dùng được trên Android và Web.
+- **PIN được BE xác thực thật.**
+- **Restart:** không vượt được PIN. Kid Mode không được khôi phục; khôi phục cần duyệt §12.5.
+- **Đủ điều kiện tiếp tục R2.**
