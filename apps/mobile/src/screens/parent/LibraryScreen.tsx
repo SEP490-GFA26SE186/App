@@ -68,7 +68,7 @@ export const LibraryScreen: React.FC<LibraryScreenProps> = ({
 
   let empty: React.ReactElement | null = null;
   if (loading) {
-    empty = <StateView variant="loading" title="Đang tải truyện..." />;
+    empty = <StateView variant="skeleton" title="Đang tải truyện..." />;
   } else if (stories.length === 0) {
     empty = (
       <StateView

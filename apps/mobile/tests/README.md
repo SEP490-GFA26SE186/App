@@ -9,3 +9,9 @@ npx tsc tests/authRace.test.ts --outDir %TEMP%/sw-tests --module commonjs --targ
 node %TEMP%/sw-tests/tests/authRace.test.js
 ```
 (Bash: dùng `$TEMP` thay cho `%TEMP%`.)
+
+`uiStates.test.ts` quét mã nguồn để chặn tái diễn QA_R2 MED-1 (trạng thái lỗi phải dùng `StateView variant="error"`) và MED-2 (Toast có vùng live mount sẵn, bản nhìn thấy không phải live region). Chạy từ `apps/mobile`:
+```
+npx tsc tests/uiStates.test.ts --outDir %TEMP%/sw-ui-tests --module commonjs --target es2022 --esModuleInterop --skipLibCheck
+node %TEMP%/sw-ui-tests/uiStates.test.js
+```

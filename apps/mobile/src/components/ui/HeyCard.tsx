@@ -1,5 +1,7 @@
 // apps/mobile/src/components/ui/HeyCard.tsx — R1 Warm Storybook Guardian
 // Giữ nguyên tên variant cũ; nền theo token mới. Thẻ luôn có viền mảnh để vẫn có cạnh khi nền tảng không vẽ bóng.
+// R2: variant ngữ nghĩa surface | brand | accent | info | muted | kid; tên cũ là alias (white = surface, coral/yellow = brand,
+// teal/mint = accent, sky = info, purple giữ nguyên).
 import React from 'react';
 import { View, StyleSheet, ViewStyle } from 'react-native';
 import { Colors } from '../../theme/colors';
@@ -8,12 +10,17 @@ import { Radius, Spacing } from '../../theme/spacing';
 
 interface HeyCardProps {
   children: React.ReactNode;
-  variant?: 'white' | 'coral' | 'purple' | 'yellow' | 'teal' | 'kid' | 'sky' | 'mint';
+  variant?: 'surface' | 'brand' | 'accent' | 'info' | 'muted' | 'kid' | 'white' | 'coral' | 'purple' | 'yellow' | 'teal' | 'sky' | 'mint';
   style?: ViewStyle | ViewStyle[];
   noPadding?: boolean;
 }
 
 const VARIANT_BG: Record<NonNullable<HeyCardProps['variant']>, string> = {
+  surface: Colors.surface,
+  brand: Colors.brandTint,
+  accent: Colors.tealTint,
+  info: Colors.infoTint,
+  muted: Colors.surfaceMuted,
   white: Colors.surface,
   coral: Colors.brandTint,
   yellow: Colors.brandTint,
@@ -34,7 +41,7 @@ export const HeyCard: React.FC<HeyCardProps> = ({
     style={[
       styles.card,
       // Chỉ thẻ trắng nổi; thẻ nền màu đã tách khỏi nền bằng màu, thêm bóng sẽ rối
-      variant === 'white' ? Elevation.low : null,
+      variant === 'white' || variant === 'surface' ? Elevation.low : null,
       { backgroundColor: VARIANT_BG[variant] ?? Colors.surface },
       variant === 'kid' && styles.kidCard,
       noPadding && { padding: 0 },

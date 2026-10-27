@@ -81,7 +81,7 @@ export const CharactersScreen: React.FC<CharactersScreenProps> = ({
       <HeyButton title="➕ Thêm nhân vật" onPress={() => openForm()} style={styles.addBtn} />
 
       {loading ? (
-        <StateView variant="loading" title="Đang tải nhân vật..." />
+        <StateView variant="skeleton" title="Đang tải nhân vật..." />
       ) : characters.length === 0 ? (
         <StateView
           variant="empty"

@@ -68,6 +68,69 @@ Kết quả QA, ảnh chụp và điều kiện nghiệm thu: [QA_R1_REPORT.md](
 
 ---
 
+## R2 – Shared UI Components (UI kit) — ĐẠT (nghiệm thu sau R2.1, 2026-10-27)
+
+> **QA R2:** [QA_R2_REPORT.md](QA_R2_REPORT.md).
+> - **R2.1 (§10):** MED-1 FIXED (6 trạng thái lỗi ở EQ, Story Detail và Wallet dùng `StateView variant="error"`) và MED-2 FIXED (Toast có vùng live `status`/`alert` mount sẵn trên Web, `announceForAccessibility` trên native, toast nhìn thấy không còn là live region). LOW-4 FIXED kèm theo.
+> - Kiểm thử thật trên Web và Android SW_Test với tài khoản Parent và BE local, gồm **toast E2E thật** (thêm truyện đã có trên tủ sách). Regression Auth/Kid/PIN/Logout/Intro PASS.
+> - Đọc bằng trình đọc màn hình thật: **NOT VERIFIED**. Sinh truyện AI: BLOCKED (Redis/AI worker).
+> - Không còn CRITICAL, HIGH hay MEDIUM. **Sẵn sàng chuyển R3.** LOW-1 (toast che top bar) xử lý cùng top bar ở R3.
+
+Phạm vi theo [UI_UX_REDESIGN_PLAN.md](UI_UX_REDESIGN_PLAN.md) §5.2 R2. Giữ Design System R1. Không thêm dependency (`@expo/vector-icons` đã có sẵn). Không đổi API, Auth, Intro, Kid Mode hay PIN. Không redesign màn hình. Ảnh: [`qa/r2/`](qa/r2/).
+
+### Đã làm
+
+| File | Thay đổi |
+|---|---|
+| `components/ui/Icon.tsx` *(mới)* | Wrapper Ionicons (`@expo/vector-icons`). Không có `label` → icon trang trí, ẩn khỏi trình đọc màn hình. Có `label` → `role=image` kèm nhãn. Export `ICON_FONTS` để nạp font icon cùng font chữ. |
+| `components/ui/Skeleton.tsx` *(mới)* | `Skeleton` (khối giữ chỗ nhấp nháy) và `SkeletonList` (thẻ ảnh + 2 dòng, `role=progressbar` có nhãn). Dùng `Animated` của RN core. **Đứng yên khi bật Giảm chuyển động.** |
+| `components/ui/Toast.tsx` *(mới)* | `ToastProvider` + `useToast().show(message, tone)`; tone `success`, `info`, `danger`. Nền navy chữ trắng (14:1), tự ẩn sau 3.5s, chạm để ẩn. Đọc qua live region (iOS dùng `announceForAccessibility`). Không dùng `<Modal>` native (bài học CRIT-1). Bỏ hiệu ứng trượt khi bật Giảm chuyển động. |
+| `theme/focus.ts` *(mới)* | `focusRing(state)` cho `Pressable`: viền 2px `Colors.focus` trên Web, **chỉ khi điều hướng bằng bàn phím** (giống `:focus-visible`); chạm hoặc chuột không vẽ viền. |
+| `utils/useReduceMotion.ts` *(mới)* | Đọc cài đặt Giảm chuyển động của hệ thống và theo dõi khi nó thay đổi (`AccessibilityInfo`). Dùng cho animation `Animated` của RN. |
+| `components/ui/HeyButton.tsx` | Variant ngữ nghĩa: `primary`, `secondary`, `tertiary`, `danger`, `kid`, `ghost`; tên cũ là alias (`yellow`, `teal`, `outline`, `sky`). Chuyển `TouchableOpacity` → `Pressable`. Trạng thái nhấn tức thời thay cho spring Reanimated; nút Kid "lún đế". Focus ring trên Web. Prop mới: `iconName` (icon tự lấy màu chữ) và `accessibilityLabel` (nút chỉ có icon). Giữ `View` bọc ngoài nên bố cục các màn không đổi. |
+| `components/ui/HeyChip.tsx` | `Pressable` + focus ring. Có `selected` → `role=radio` + `aria-checked` (sửa LOW-new-1); không có `selected` → button. |
+| `components/ui/HeyInput.tsx` | Dòng lỗi có icon `alert-circle` (không chỉ dựa vào màu). Nút hiện/ẩn mật khẩu là icon `eye`/`eye-off` (trước là emoji), có focus ring. |
+| `components/ui/StateView.tsx` | Icon vector trong vòng màu theo trạng thái (rỗng xanh, lỗi đỏ, chưa hỗ trợ cam), không còn emoji. Variant mới `skeleton`. |
+| `components/ui/ScreenHeader.tsx`, `Sheet.tsx` | Nút quay lại/đóng dùng icon vector (`arrow-back`, `close`), `Pressable`, trạng thái nhấn, focus ring. Giữ vùng chạm 44pt và nhãn. |
+| `components/ui/HeyCard.tsx` | Variant ngữ nghĩa `surface`, `brand`, `accent`, `info`, `muted`, `kid`; tên cũ là alias. |
+| `App.tsx` | Bọc `ToastProvider`; `useFonts` nạp thêm font Ionicons. Luồng Session, Intro, Preview và BackHandler không đổi. |
+| `navigation/ParentTabs.tsx`, `screens/parent/StoryDetailScreen.tsx` | **3 thông báo thành công** (thêm vào tủ sách ×2, đánh dấu xem lại) chuyển từ `Alert` sang toast. Lỗi và câu hỏi xác nhận vẫn dùng `Alert`. |
+| `screens/parent/LibraryScreen.tsx`, `ChildrenScreen.tsx`, `CharactersScreen.tsx` | Mỗi file **một chữ**: `StateView variant="loading"` → `"skeleton"` (màn danh sách, audit G2). |
+
+### Reduce Motion
+
+- **Reanimated 3.16 mặc định đã tôn trọng cài đặt hệ thống** (`ReduceMotion.System`): `withRepeat`, `withTiming` và `withSpring` không chạy hoặc dừng ngay. Trên SW_Test, bật "Xóa hiệu ứng động" thì `OwlMascot` đứng yên và uiautomator đọc được Parent Home; khi tắt cài đặt thì không đọc được ([g05](qa/r2/g05_android_reduce_motion_home.jpg)). → **LOW-new-2 không cần sửa code.** Giới hạn: Reanimated chỉ đọc cài đặt lúc khởi động app.
+- Animation mới của R2 viết bằng RN `Animated` (`Skeleton`, `Toast`) dùng `useReduceMotion`. Đã kiểm tra trên Web với `prefers-reduced-motion`: skeleton giữ opacity 1, khi bình thường dao động 0.46–1.
+- Kid Mode (H2, R4) chưa đụng tới, đúng phạm vi.
+
+### Kiểm thử (BE local, tài khoản test `qa_r1_1d2cf7`)
+
+| Kiểm tra | Web | Android SW_Test |
+|---|---|---|
+| Icon vector hiển thị (quay lại, đóng, lỗi, mắt mật khẩu) | ✅ [r2w06](qa/r2/r2w06_children_header_icon.jpg), [r2w01](qa/r2/r2w01_login_icons.jpg) | ✅ [g03](qa/r2/g03_android_children_back_icon.jpg), [g04](qa/r2/g04_android_sheet_errors.jpg) |
+| Lỗi form: viền đỏ + icon + chữ | ✅ [r2w07](qa/r2/r2w07_sheet_validation.jpg) | ✅ g04 |
+| Focus ring chỉ khi dùng bàn phím (chạm → không; Tab → 2px #C2410C) | ✅ [r2w03a](qa/r2/r2w03a_after_touch_no_ring.jpg), [r2w03](qa/r2/r2w03_focus_ring_keyboard.jpg) | N/A |
+| `HeyChip`: `role=radio`, `aria-checked` đổi đúng khi chọn | ✅ [r2w04](qa/r2/r2w04_library_chips.jpg) | – |
+| Skeleton khi dữ liệu nạp chậm (Tủ truyện) | ✅ [r2w05](qa/r2/r2w05_skeleton_library.jpg) | – |
+| Reduce Motion: skeleton đứng yên / mascot đứng yên | ✅ | ✅ g05 |
+| Toast: hiển thị, `aria-live=polite`, tự ẩn sau 3.5s | ✅ [r2w08](qa/r2/r2w08_toast_success.jpg) (*) | ⚠️ chưa kiểm tra |
+| Regression: đăng nhập, nút hiện mật khẩu, Kid Mode, PIN sai (401) / đúng (200) → Parent, đăng xuất, đăng nhập lại | ✅ | ✅ [g01](qa/r2/g01_android_r2.jpg), [g02](qa/r2/g02_android_parent_home.jpg) |
+| `tsc --noEmit` / `authRace` / `expo install --check` | ✅ 0 / 5/5 / up to date | |
+| `expo export` | ✅ Web 566 module, 1.27 MB (trước 1.14 MB: thêm glyph Ionicons) | ✅ Android 836 module, 2.74 MB; chỉ đóng gói font Ionicons (443 kB) |
+
+(*) Luồng thành công thật (thêm truyện vào tủ sách) **chưa kích hoạt được**: sinh truyện cần Redis và AI worker, cả hai không chạy trên máy này (BE trả 503), nên không có truyện "sẵn sàng". Toast được kiểm tra bằng cách gọi `show()` của `ToastProvider` từ công cụ QA; cả 3 chỗ gọi trong màn hình đã qua TypeScript. Ảnh r2w07 và r2w08 chụp trước khi sửa focus ring, nên nút vừa chạm còn viền cam; bản cuối không còn hiện tượng này (r2w03a).
+
+### Chưa làm trong R2 (đúng phạm vi hoặc để đợt sau)
+
+- **Áp dụng icon vector vào khung điều hướng và màn hình** (tab bar, top bar, menu "Thêm", emoji trong `title` nút): R3 trở đi, dùng `Icon` và `iconName`.
+- **Component Segmented riêng:** chưa tạo. `HeyChip` đã mang ngữ nghĩa radio. Container `radiogroup` thêm khi redesign từng màn.
+- Spinner ở các màn không phải danh sách (Home, EQ, Wallet, Story Detail) giữ nguyên.
+- Phần tử của `HeyTopBar` và `HeyTabBar` vẫn dùng viền focus mặc định của trình duyệt (R3).
+- Toast trên Android và cách TalkBack đọc toast: chưa kiểm tra.
+- Khôi phục Kid Mode (`expo-secure-store`): task riêng K1, không làm trong R2.
+
+---
+
 ## Backlog từ audit — giao cho đợt phù hợp (CHƯA làm)
 
 | Mã audit | Vấn đề | Đợt | File |
@@ -79,17 +142,20 @@ Kết quả QA, ảnh chụp và điều kiện nghiệm thu: [QA_R1_REPORT.md](
 | B1 (màn) | Link màu `primary` trên nền trắng (Reader title, scope-pending) — 2.6:1, cần `brandStrong`. *Login "Đăng ký ngay" ✅ đã sửa (HIGH-3).* | **R7** | `StoryReaderModal.tsx:241` |
 | CRIT-1 ✅ **ĐÃ SỬA** | Modal PIN thoát Kid Mode root 0×0 trên Android New Arch → đã chuyển sang lớp phủ trong cây (QA_R1_REPORT §12) | Xong | `screens/kid/KidModeScreen.tsx` |
 | K1 *(mới, cần duyệt)* | Khôi phục Kid Mode sau restart bằng `GET /kid/me`; native cần storage lưu bền (`expo-secure-store` = dependency mới) | **Chờ người dùng duyệt** — trước hoặc cùng R4 | `stores/*`, `services/storage.ts` |
-| QA-new | Nhãn "Sáng tác" không nhận chạm (R3); thẻ truyện đơn giãn full width (R7); `HeyChip` thiếu `aria-selected` trên Web (R2); chấm PIN màu cũ + nút Xác nhận disabled (R4) | R2 / R3 / R4 / R7 | QA_R1_REPORT §11.7 |
+| QA-new | Nhãn "Sáng tác" không nhận chạm (R3); thẻ truyện đơn giãn full width (R7); ~~`HeyChip` thiếu `aria-selected` trên Web~~ ✅ R2 (radio + `aria-checked`); OwlMascot Reduce Motion ✅ đã được Reanimated tự xử lý (R2 xác minh); chấm PIN màu cũ + nút Xác nhận disabled (R4) | R2 / R3 / R4 / R7 | QA_R1_REPORT §11.7 |
+| R2.1 ✅ **XONG** | MED-1: lỗi dùng `StateView variant="error"` (EQ, Story Detail ×2, Wallet ×3); MED-2: Toast có live region mount sẵn; test `tests/uiStates.test.ts` chặn tái diễn | Xong (QA_R2_REPORT §10) | `EqReportScreen`, `StoryDetailScreen`, `WalletScreen`, `components/ui/Toast.tsx` |
+| QA-R2 LOW | Toast che top bar (LOW-1, xử lý cùng top bar R3); toast bị Sheet đè (LOW-2, quy ước đóng Sheet trước); toast không xếp hàng (LOW-3); ~~toast `clickable=false` với TalkBack (LOW-4)~~ ✅ R2.1; chip radio không chọn bằng Space, chưa có `radiogroup` (LOW-5); Web không áp dụng `hitSlop` (LOW-6, R9); `useReduceMotion` đọc bất đồng bộ (LOW-7) | R3 / R9 / khi chạm tới | QA_R2_REPORT §8 |
+| T1 *(đề xuất)* | Test tự động cho logic component (toast timer, focus modality, chip a11y, button variants, quét `StateView` lỗi): không cần dependency; test render cần duyệt `jest-expo` | Chờ người dùng chọn | QA_R2_REPORT §9 |
 | C2 / E3 / E4 | Tab label 10px, tag 8px, vùng chạm tab ~40pt, credit pill ~24pt, avatar 34pt | **R3** | `HeyTabBar.tsx`, `HeyTopBar.tsx` |
-| D1 | Emoji làm icon điều hướng/menu/nút | **R2** (Icon wrapper) → R3+ áp dụng | toàn app |
+| D1 | Emoji làm icon điều hướng/menu/nút | ✅ R2: `Icon` wrapper + áp dụng trong `components/ui/*` → **R3+** áp dụng vào tab bar, top bar, menu, màn | toàn app |
 | E1 / E2 | Credit tab → Header + Hồ sơ; lối vào Kid Mode | **R3** | `HeyTabBar.tsx`, `navigation/routes.ts`, `MoreScreen.tsx` |
-| G2 / G3 | Skeleton loading; toast thay `Alert.alert` | **R2** | `components/ui/*` |
+| G2 / G3 ✅ **R2** | Skeleton (`StateView variant="skeleton"`, đã dùng ở Tủ truyện, Bé nhà mình, Nhân vật); Toast thay 3 `Alert` thành công | Xong; màn khác áp dụng khi redesign | `components/ui/Skeleton.tsx`, `Toast.tsx` |
 | H1 / H3 | Nút trang Kid, nút "Bỏ qua" 12px, nhãn trợ năng phím PIN | **R4** | `KidModeScreen.tsx`, `KidCheckpointCard.tsx` |
-| H2 | Tôn trọng Reduce Motion | **R4** | `KidModeScreen.tsx` |
+| H2 | Tôn trọng Reduce Motion trong Kid Mode (Reanimated tự xử lý; animation RN `Animated` dùng `useReduceMotion` từ R2) | **R4** | `KidModeScreen.tsx` |
 | I1 | `Dimensions.get` một lần; giới hạn bề rộng Web | **R9** | `HeyTabBar.tsx`, `StoryReaderModal.tsx`, màn Parent |
 | I3 ✅ **ĐÃ SỬA** (R1 QA Fix) | Dải trống **48.8dp** (128px) thừa phía trên mọi màn Android. Đã xác định nguyên nhân trong [QA_R1_REPORT.md](QA_R1_REPORT.md) §4: `Screen` cộng `StatusBar.currentHeight` trong khi hệ thống đã đặt nội dung dưới status bar (không translucent, targetSdk 34). Có sẵn từ HEAD (R1 chỉ đổi màu nền). *(Ghi "~95dp" trước đây là sai, vì đã tính cả chiều cao status bar.)* | **Trước R2** (HIGH-1) | `components/ui/Screen.tsx` |
 | I4 *(mới)* | Expo Go luôn bật New Architecture nhưng `app.json` không khai báo `newArchEnabled` → giao diện trong Expo Go có thể khác bản build thật (vd. `boxShadow` hard-code trong màn). Bật/tắt là quyết định cấu hình build — **cần người dùng quyết** | Quyết định riêng | `app.json` |
 | I2 | `boxShadow` hard-code trong màn/khung (ngoài component dùng chung) | Theo từng màn R3–R8 (dùng `Elevation`) | `HeyTopBar`, `HeyTabBar`, `KidModeScreen`, `LoginScreen`… |
 | J1 | URL máy chủ hiện ở Login cho người dùng cuối | **R5** | `LoginScreen.tsx` |
-| L1 / L2 | Variant ngữ nghĩa cho `HeyButton/HeyCard`, `Pressable`, focus ring Web | **R2** | `components/ui/*` |
+| L1 / L2 ✅ **R2** | Variant ngữ nghĩa `HeyButton`/`HeyCard`, `Pressable`, focus ring Web (chỉ khi dùng bàn phím) cho component dùng chung | Xong; `HeyTopBar`/`HeyTabBar` → R3 | `components/ui/*`, `theme/focus.ts` |
 | — | 157 mã hex hard-code trong màn hình | Theo từng màn R3–R8 | `screens/*` |

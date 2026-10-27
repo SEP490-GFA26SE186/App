@@ -26,6 +26,7 @@ import { authService, storyService } from '../services';
 import { useAuth, useKidSession, useParentData } from '../stores/SessionProvider';
 import { ParentNavigation } from './useParentNavigation';
 import { ROUTES } from './routes';
+import { useToast } from '../components/ui/Toast';
 
 interface ParentTabsProps {
   currentUser: SessionUser;
@@ -42,6 +43,7 @@ export const ParentTabs: React.FC<ParentTabsProps> = ({ currentUser, nav, active
   const auth = useAuth();
   const data = useParentData();
   const kid = useKidSession();
+  const toast = useToast();
   const [selectedStoryToRead, setSelectedStoryToRead] = useState<Story | null>(null);
   const { navigate, goBack } = nav;
   const hasKidPin = !!currentUser.kidModePinHash;
@@ -70,7 +72,7 @@ export const ParentTabs: React.FC<ParentTabsProps> = ({ currentUser, nav, active
     shelfBusy.current = true;
     try {
       await storyService.addToShelf(child.id, story.id);
-      Alert.alert('Đã thêm', `“${story.title}” đã nằm trên tủ sách của ${child.name}.`);
+      toast.show(`Đã thêm “${story.title}” lên tủ sách của ${child.name}.`);
     } catch (e: any) {
       Alert.alert('Chưa thêm được', e?.errors?.[0]?.message || e?.message || 'Vui lòng thử lại.');
     } finally {

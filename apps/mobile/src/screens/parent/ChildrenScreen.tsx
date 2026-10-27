@@ -92,7 +92,7 @@ export const ChildrenScreen: React.FC<ChildrenScreenProps> = ({
       )}
 
       {loading ? (
-        <StateView variant="loading" title="Đang tải hồ sơ bé..." />
+        <StateView variant="skeleton" title="Đang tải hồ sơ bé..." />
       ) : childrenProfiles.length === 0 ? (
         <StateView
           variant="empty"

@@ -6,6 +6,8 @@ import { useFonts } from 'expo-font';
 import { SessionProvider } from './src/stores/SessionProvider';
 import { AppNavigator } from './src/navigation/AppNavigator';
 import { Screen } from './src/components/ui/Screen';
+import { ToastProvider } from './src/components/ui/Toast';
+import { ICON_FONTS } from './src/components/ui/Icon';
 import { IntroScreen } from './src/components/IntroScreen';
 import { Colors, FONT_ASSETS } from './src/theme';
 
@@ -26,8 +28,8 @@ export default function App() {
   // App thật vẫn mount bên dưới overlay (bootstrap phiên chạy song song) nhưng bị ẩn khỏi tương tác/accessibility
   const appHidden = previewOpen || introVisible;
 
-  // Font thương hiệu (theme/typography). Lỗi nạp font chỉ làm chữ dùng font hệ thống.
-  const [fontsLoaded, fontError] = useFonts(FONT_ASSETS);
+  // Font thương hiệu (theme/typography) + font icon. Lỗi nạp font chỉ làm chữ dùng font hệ thống.
+  const [fontsLoaded, fontError] = useFonts({ ...FONT_ASSETS, ...ICON_FONTS });
   const [fontWaitOver, setFontWaitOver] = useState(false);
   useEffect(() => {
     const t = setTimeout(() => setFontWaitOver(true), FONT_WAIT_MS);
@@ -56,24 +58,26 @@ export default function App() {
 
   return (
     <SessionProvider>
-      {/* Preview/Intro mở: ẩn app thật bên dưới khỏi trình đọc màn hình (Android no-hide-descendants, iOS elementsHidden, Web aria-hidden) */}
-      <View
-        style={styles.flex}
-        importantForAccessibility={appHidden ? 'no-hide-descendants' : 'auto'}
-        accessibilityElementsHidden={appHidden}
-        aria-hidden={introVisible || undefined}
-        pointerEvents={introVisible ? 'none' : 'auto'}
-      >
-        <AppNavigator onOpenPreview={KidPreview ? () => setPreviewOpen(true) : undefined} />
-      </View>
-      {KidPreview && previewOpen && (
-        <View style={StyleSheet.absoluteFill}>
-          <Screen>
-            <KidPreview onExit={() => setPreviewOpen(false)} />
-          </Screen>
+      <ToastProvider>
+        {/* Preview/Intro mở: ẩn app thật bên dưới khỏi trình đọc màn hình (Android no-hide-descendants, iOS elementsHidden, Web aria-hidden) */}
+        <View
+          style={styles.flex}
+          importantForAccessibility={appHidden ? 'no-hide-descendants' : 'auto'}
+          accessibilityElementsHidden={appHidden}
+          aria-hidden={introVisible || undefined}
+          pointerEvents={introVisible ? 'none' : 'auto'}
+        >
+          <AppNavigator onOpenPreview={KidPreview ? () => setPreviewOpen(true) : undefined} />
         </View>
-      )}
-      {introVisible && <IntroScreen onFinish={finishIntro} />}
+        {KidPreview && previewOpen && (
+          <View style={StyleSheet.absoluteFill}>
+            <Screen>
+              <KidPreview onExit={() => setPreviewOpen(false)} />
+            </Screen>
+          </View>
+        )}
+        {introVisible && <IntroScreen onFinish={finishIntro} />}
+      </ToastProvider>
     </SessionProvider>
   );
 }

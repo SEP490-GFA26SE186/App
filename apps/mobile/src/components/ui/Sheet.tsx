@@ -1,5 +1,6 @@
 // apps/mobile/src/components/ui/Sheet.tsx
 // Bottom sheet cho form thêm/sửa (thay Modal giữa màn của Web). Tránh bàn phím che nội dung.
+// R2: nút đóng là icon vector, viền focus trên Web.
 import React from 'react';
 import {
   Modal,
@@ -7,6 +8,7 @@ import {
   Text,
   ScrollView,
   TouchableOpacity,
+  Pressable,
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
@@ -15,6 +17,8 @@ import { Colors } from '../../theme/colors';
 import { Elevation } from '../../theme/shadows';
 import { Radius, Touch } from '../../theme/spacing';
 import { Typography } from '../../theme/typography';
+import { focusRing } from '../../theme/focus';
+import { Icon } from './Icon';
 
 interface SheetProps {
   visible: boolean;
@@ -44,9 +48,14 @@ export const Sheet: React.FC<SheetProps> = ({ visible, title, description, onClo
           <Text style={styles.title} accessibilityRole="header">
             {title}
           </Text>
-          <TouchableOpacity onPress={onClose} style={styles.closeBtn} accessibilityRole="button" accessibilityLabel="Đóng">
-            <Text style={styles.close}>✕</Text>
-          </TouchableOpacity>
+          <Pressable
+            onPress={onClose}
+            style={(state) => [styles.closeBtn, state.pressed && styles.closePressed, focusRing(state)]}
+            accessibilityRole="button"
+            accessibilityLabel="Đóng"
+          >
+            <Icon name="close" size={24} color={Colors.textMuted} />
+          </Pressable>
         </View>
         {!!description && <Text style={styles.desc}>{description}</Text>}
         <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
@@ -87,6 +96,6 @@ const styles = StyleSheet.create({
   },
   title: { ...Typography.heading, fontSize: 18, lineHeight: 24, color: Colors.text, flex: 1 },
   closeBtn: { width: Touch.min, height: Touch.min, alignItems: 'center', justifyContent: 'center', marginRight: -10 },
-  close: { fontSize: 18, color: Colors.textMuted },
+  closePressed: { opacity: 0.6 },
   desc: { ...Typography.body, fontSize: 13, lineHeight: 19, color: Colors.textMuted, marginBottom: 8 },
 });

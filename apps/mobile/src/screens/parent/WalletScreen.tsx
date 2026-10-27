@@ -137,7 +137,7 @@ export const WalletScreen: React.FC<WalletScreenProps> = ({ currentUser, onRefre
       <HeyButton title="🔄 Tải lại" variant="outline" size="sm" onPress={refreshAll} style={styles.refresh} />
 
       {sub.status === 'error' && (
-        <StateView variant="empty" title="Chưa tải được gói hiện tại" description={sub.error ?? ''} actionLabel="Thử lại" onAction={() => void sub.reload()} />
+        <StateView variant="error" title="Chưa tải được gói hiện tại" description={sub.error ?? ''} actionLabel="Thử lại" onAction={() => void sub.reload()} />
       )}
       {s && (
         <HeyCard style={styles.card}>
@@ -152,7 +152,7 @@ export const WalletScreen: React.FC<WalletScreenProps> = ({ currentUser, onRefre
       <Text style={styles.sectionTitle}>Các gói dịch vụ</Text>
       {plans.status === 'loading' && <StateView variant="loading" title="Đang tải danh sách gói..." />}
       {plans.status === 'error' && (
-        <StateView variant="empty" title="Chưa tải được danh sách gói" description={plans.error ?? ''} actionLabel="Thử lại" onAction={() => void plans.reload()} />
+        <StateView variant="error" title="Chưa tải được danh sách gói" description={plans.error ?? ''} actionLabel="Thử lại" onAction={() => void plans.reload()} />
       )}
       {plans.data?.map((p) => (
         <PlanRow key={p.code} plan={p} current={p.code === s?.plan.code} />
@@ -174,7 +174,7 @@ export const WalletScreen: React.FC<WalletScreenProps> = ({ currentUser, onRefre
       ))}
       {histStatus === 'loading' && <StateView variant="loading" title="Đang tải lịch sử..." />}
       {histStatus === 'error' && (
-        <StateView variant="empty" title="Chưa tải được lịch sử credit" description={histError} actionLabel="Thử lại" onAction={() => void loadHistory(page + 1)} />
+        <StateView variant="error" title="Chưa tải được lịch sử credit" description={histError} actionLabel="Thử lại" onAction={() => void loadHistory(page + 1)} />
       )}
       {histStatus === 'ready' && page < totalPages && (
         <HeyButton title="Xem thêm" variant="outline" size="sm" onPress={() => void loadHistory(page + 1)} style={styles.refresh} />

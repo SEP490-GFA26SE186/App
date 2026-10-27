@@ -1,9 +1,12 @@
 // apps/mobile/src/components/ui/HeyInput.tsx
+// R2: lỗi = viền đỏ + icon + chữ (không chỉ dựa vào màu); nút hiện/ẩn mật khẩu là icon vector có viền focus trên Web.
 import React, { useState } from 'react';
-import { View, TextInput, Text, TouchableOpacity, StyleSheet, ViewStyle, TextStyle } from 'react-native';
+import { View, TextInput, Text, Pressable, StyleSheet, ViewStyle, TextStyle } from 'react-native';
 import { Colors } from '../../theme/colors';
 import { Radius, Touch } from '../../theme/spacing';
 import { FontFamily, Typography } from '../../theme/typography';
+import { focusRing } from '../../theme/focus';
+import { Icon } from './Icon';
 
 interface HeyInputProps {
   label?: string;
@@ -78,20 +81,23 @@ export const HeyInput: React.FC<HeyInputProps> = ({
         ]}
       />
       {canReveal && (
-        <TouchableOpacity
+        <Pressable
           onPress={() => setRevealed((v) => !v)}
           accessibilityRole="button"
           accessibilityLabel={revealed ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
-          style={styles.reveal}
+          style={(state) => [styles.reveal, focusRing(state)]}
         >
-          <Text style={styles.revealText}>{revealed ? '🙈' : '👁️'}</Text>
-        </TouchableOpacity>
+          <Icon name={revealed ? 'eye-off-outline' : 'eye-outline'} size={22} color={Colors.textMuted} />
+        </Pressable>
       )}
       </View>
       {error ? (
-        <Text style={styles.errorText} accessibilityLiveRegion="polite">
-          {error}
-        </Text>
+        <View style={styles.errorRow}>
+          <Icon name="alert-circle" size={16} color={Colors.danger} style={styles.errorIcon} />
+          <Text style={styles.errorText} accessibilityLiveRegion="polite">
+            {error}
+          </Text>
+        </View>
       ) : hint ? (
         <Text style={styles.hintText}>{hint}</Text>
       ) : null}
@@ -110,7 +116,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  revealText: { fontSize: 18 },
   container: {
     marginBottom: 14,
   },
@@ -140,10 +145,12 @@ const styles = StyleSheet.create({
   inputError: {
     borderColor: Colors.danger,
   },
+  errorRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 4, marginTop: 4 },
+  errorIcon: { marginTop: 1 },
   errorText: {
     ...Typography.caption,
     color: Colors.danger,
-    marginTop: 4,
+    flexShrink: 1,
   },
   hintText: {
     ...Typography.caption,

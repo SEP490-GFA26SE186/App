@@ -59,7 +59,7 @@ export const EqReportScreen: React.FC<EqReportScreenProps> = ({
         <StateView variant="loading" title="Đang tải báo cáo EQ..." />
       ) : res.status === 'error' ? (
         <StateView
-          variant="empty"
+          variant="error"
           title="Chưa tải được báo cáo EQ"
           description={res.error ?? ''}
           actionLabel="Thử lại"

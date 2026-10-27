@@ -9,6 +9,7 @@ import { HeyCard } from '../../components/ui/HeyCard';
 import { HeyButton } from '../../components/ui/HeyButton';
 import { Badge } from '../../components/ui/Badge';
 import { StateView } from '../../components/ui/StateView';
+import { useToast } from '../../components/ui/Toast';
 import { ScreenHeader } from '../../components/ui/ScreenHeader';
 import { StoryCover } from '../../components/ui/StoryCover';
 import { GenerationRunner } from '../../components/parent/GenerationRunner';
@@ -40,6 +41,7 @@ export const StoryDetailScreen: React.FC<StoryDetailScreenProps> = ({
   onCreditsChanged,
   onUnsupported,
 }) => {
+  const toast = useToast();
   const [story, setStory] = useState<StoryView | undefined>(summary?.detailLoaded ? summary : undefined);
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>(summary?.detailLoaded ? 'ready' : 'loading');
   const [loadError, setLoadError] = useState('');
@@ -95,7 +97,7 @@ export const StoryDetailScreen: React.FC<StoryDetailScreenProps> = ({
         // review trả bản đầy đủ; giữ chi tiết đã có nếu thiếu
         setStory(updated);
         onStoryLoaded(updated);
-        Alert.alert('Đã xem lại', 'Truyện đã được đánh dấu xem xong.');
+        toast.show('Đã xem lại: truyện được đánh dấu xem xong.');
       } catch (e: any) {
         if (e?.status === 422 && e.errors?.length) {
           setReviewErrors(e.errors.map((x: { message?: string }) => x.message).filter(Boolean));
@@ -110,7 +112,7 @@ export const StoryDetailScreen: React.FC<StoryDetailScreenProps> = ({
       if (!selectedChild) return;
       try {
         await storyService.addToShelf(selectedChild.id, storyId);
-        Alert.alert('Đã thêm', `Truyện đã nằm trên tủ sách của ${selectedChild.name}.`);
+        toast.show(`Đã thêm truyện lên tủ sách của ${selectedChild.name}.`);
       } catch (e: any) {
         // 422: truyện chưa sẵn sàng cho bé (chưa hoàn tất / thiếu giọng đọc) – BE nêu rõ lý do
         Alert.alert('Chưa thêm được', e?.errors?.[0]?.message || e?.message || 'Vui lòng thử lại.');
@@ -126,7 +128,7 @@ export const StoryDetailScreen: React.FC<StoryDetailScreenProps> = ({
           <StateView variant="loading" title="Đang tải truyện..." />
         ) : (
           <StateView
-            variant="empty"
+            variant="error"
             title="Không tải được truyện"
             description={loadError || 'Truyện có thể đã bị xóa.'}
             actionLabel="Thử lại"
@@ -166,7 +168,7 @@ export const StoryDetailScreen: React.FC<StoryDetailScreenProps> = ({
       {status === 'loading' && <StateView variant="loading" title="Đang tải nội dung..." />}
       {status === 'error' && (
         <StateView
-          variant="empty"
+          variant="error"
           title="Chưa tải được nội dung truyện"
           description={loadError}
           actionLabel="Thử lại"
