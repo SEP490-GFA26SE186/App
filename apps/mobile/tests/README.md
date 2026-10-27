@@ -52,3 +52,9 @@ node %TEMP%/sw-lib-tests/library.test.js
 npx tsc tests/manage.test.ts --outDir %TEMP%/sw-manage-tests --module commonjs --target es2022 --esModuleInterop --skipLibCheck --types node
 node %TEMP%/sw-manage-tests/manage.test.js
 ```
+
+`r9a.test.ts` (R9-A) chặn hồi quy các lỗi đợt hoàn thiện: không còn `Alert.alert` (rỗng trên Web), Dialog Web (Esc, focus, inert, resolve một lần), xóa chỉ sau xác nhận, vùng chạm 44 trên Web, Space cho radio, giới hạn bề rộng 720, J1 ở AuthModal. Chạy từ `apps/mobile`:
+```
+npx tsc tests/r9a.test.ts --outDir %TEMP%/sw-r9a-tests --module commonjs --target es2022 --esModuleInterop --skipLibCheck --types node
+node %TEMP%/sw-r9a-tests/tests/r9a.test.js
+```

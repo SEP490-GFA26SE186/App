@@ -3,7 +3,7 @@
 // yellow → primary, teal → secondary, outline → tertiary, sky (nền info).
 // Vùng chạm >= 44pt (kid >= 56pt); Pressable có trạng thái nhấn tức thời (không animation lò xo) và viền focus trên Web.
 import React from 'react';
-import { Pressable, Text, StyleSheet, ActivityIndicator, ViewStyle, TextStyle, View } from 'react-native';
+import { Platform, Pressable, Text, StyleSheet, ActivityIndicator, ViewStyle, TextStyle, View } from 'react-native';
 import { Colors } from '../../theme/colors';
 import { Elevation } from '../../theme/shadows';
 import { Touch, hitSlopFor } from '../../theme/spacing';
@@ -70,7 +70,8 @@ const VARIANTS: Record<HeyButtonVariant, VariantStyle> = {
 
 // sm hiển thị 36pt và bù hitSlop lên 44pt để không đổi bố cục các màn đang dùng nút nhỏ
 const SIZES = {
-  sm: { minHeight: 36, paddingVertical: 8, paddingHorizontal: 14, text: Typography.buttonSmall, icon: 16 },
+  // Web không áp dụng hitSlop nên nút sm cao đủ 44 thật (R9-A); native giữ 36 + hitSlop 44
+  sm: { minHeight: Platform.OS === 'web' ? Touch.min : 36, paddingVertical: 8, paddingHorizontal: 14, text: Typography.buttonSmall, icon: 16 },
   md: { minHeight: Touch.min + 4, paddingVertical: 12, paddingHorizontal: 20, text: Typography.button, icon: 18 },
   lg: { minHeight: 52, paddingVertical: 14, paddingHorizontal: 24, text: Typography.buttonLarge, icon: 20 },
   xl: { minHeight: 60, paddingVertical: 16, paddingHorizontal: 30, text: Typography.buttonLarge, icon: 22 },

@@ -25,6 +25,7 @@ import { Colors } from '../../theme/colors';
 import { Radius, Spacing, Touch } from '../../theme/spacing';
 import { FontFamily, Typography } from '../../theme/typography';
 import { focusRing } from '../../theme/focus';
+import { spaceActivates } from '../../utils/keyboard';
 import { CharacterView, StoryView } from '../../types/viewModels';
 import {
   AI_LENGTHS,
@@ -61,6 +62,7 @@ const Choice: React.FC<{
 }> = ({ selected, onPress, label, children }) => (
   <Pressable
     onPress={onPress}
+    {...spaceActivates(onPress)}
     accessibilityRole="radio"
     accessibilityState={{ checked: selected }}
     aria-checked={selected}
@@ -393,6 +395,7 @@ export const StoryWizard: React.FC<StoryWizardProps> = ({
                     <View key={c.id} style={[styles.charRow, on && styles.choiceSelected]}>
                       <Pressable
                         onPress={() => toggleCharacter(c.id)}
+                        {...spaceActivates(() => toggleCharacter(c.id))}
                         accessibilityRole="checkbox"
                         accessibilityState={{ checked: on }}
                         aria-checked={on}
@@ -410,6 +413,7 @@ export const StoryWizard: React.FC<StoryWizardProps> = ({
                       {on && (
                         <Pressable
                           onPress={() => setMainId(c.id)}
+                          {...spaceActivates(() => setMainId(c.id))}
                           accessibilityRole="radio"
                           accessibilityState={{ checked: isMain }}
                           aria-checked={isMain}
@@ -444,6 +448,7 @@ export const StoryWizard: React.FC<StoryWizardProps> = ({
                       <Pressable
                         key={l.value}
                         onPress={() => { setLength(l.value); setAnalysis(null); }}
+                        {...spaceActivates(() => { setLength(l.value); setAnalysis(null); })}
                         accessibilityRole="radio"
                         accessibilityState={{ checked: on }}
                         aria-checked={on}

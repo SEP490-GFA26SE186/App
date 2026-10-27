@@ -1,10 +1,11 @@
 // apps/mobile/src/navigation/ParentTabs.tsx
 // Khung giao diện Parent: thanh trên, dải trạng thái dữ liệu, nội dung theo route, thanh tab, modal đọc truyện.
 import React, { useEffect, useRef, useState } from 'react';
-import { Alert, View, Text, StyleSheet, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { Role, Story } from '../types/domain';
 import { SessionUser } from '../types/sessionUser';
 import { Colors } from '../theme/colors';
+import { Layout } from '../theme/spacing';
 import { HeyTopBar } from '../components/parent/HeyTopBar';
 import { HeyTabBar } from '../components/parent/HeyTabBar';
 import { StoryReaderModal } from '../components/parent/StoryReaderModal';
@@ -27,6 +28,7 @@ import { useAuth, useKidSession, useParentData } from '../stores/SessionProvider
 import { ParentNavigation } from './useParentNavigation';
 import { ROUTES } from './routes';
 import { useToast, useToastBottomInset } from '../components/ui/Toast';
+import { useDialog } from '../components/ui/Dialog';
 import { TAB_BAR_FAB_OVERHANG } from '../components/parent/HeyTabBar';
 
 interface ParentTabsProps {
@@ -36,15 +38,15 @@ interface ParentTabsProps {
   setActiveRole: (role: Role) => void;
 }
 
-// Hành động chưa có API thật: báo rõ, không thay đổi dữ liệu
-const notSupported = (what: string) =>
-  Alert.alert('Chưa hỗ trợ', `${what} chưa được hỗ trợ trên ứng dụng (chưa kết nối máy chủ).`);
 
 export const ParentTabs: React.FC<ParentTabsProps> = ({ currentUser, nav, activeRole, setActiveRole }) => {
   const auth = useAuth();
   const data = useParentData();
   const kid = useKidSession();
   const toast = useToast();
+  const dialog = useDialog();
+  // Hành động chưa có API thật: báo rõ, không thay đổi dữ liệu (R9-A: dùng Dialog vì Alert.alert rỗng trên Web)
+  const notSupported = (what: string) => void dialog.notify('Chưa hỗ trợ', `${what} chưa được hỗ trợ trên ứng dụng (chưa kết nối máy chủ).`);
   const [selectedStoryToRead, setSelectedStoryToRead] = useState<Story | null>(null);
   const { navigate, goBack } = nav;
   const hasKidPin = !!currentUser.kidModePinHash;
@@ -75,7 +77,7 @@ export const ParentTabs: React.FC<ParentTabsProps> = ({ currentUser, nav, active
   const addToShelf = async (story: Story) => {
     const child = data.selectedChild;
     if (!child) {
-      Alert.alert('Chưa có hồ sơ bé', 'Ba mẹ cần thêm hồ sơ bé trước khi đưa truyện lên tủ sách.');
+      void dialog.notify('Chưa có hồ sơ bé', 'Ba mẹ cần thêm hồ sơ bé trước khi đưa truyện lên tủ sách.');
       return;
     }
     if (shelfBusy.current) return;
@@ -84,7 +86,7 @@ export const ParentTabs: React.FC<ParentTabsProps> = ({ currentUser, nav, active
       await storyService.addToShelf(child.id, story.id);
       toast.show(`Đã thêm “${story.title}” lên tủ sách của ${child.name}.`);
     } catch (e: any) {
-      Alert.alert('Chưa thêm được', e?.errors?.[0]?.message || e?.message || 'Vui lòng thử lại.');
+      void dialog.notify('Chưa thêm được', e?.errors?.[0]?.message || e?.message || 'Vui lòng thử lại.');
     } finally {
       shelfBusy.current = false;
     }
@@ -296,8 +298,12 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.background,
   },
+  // R9-A: nội dung Parent tối đa 720px và căn giữa trên màn rộng (header/tab bar giữ như R3)
   main: {
     flex: 1,
+    width: '100%',
+    maxWidth: Layout.maxContentWidth,
+    alignSelf: 'center',
   },
   dataBanner: {
     flexDirection: 'row',

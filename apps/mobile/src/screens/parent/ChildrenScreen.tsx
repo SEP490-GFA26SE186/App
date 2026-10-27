@@ -2,13 +2,14 @@
 // B3/C6 – Hồ sơ bé (Web: ChildrenPage). Danh sách + chọn bé + thêm/sửa/xóa hồ sơ qua BE thật.
 // R8: thẻ bé có avatar, "Vào Chế độ Bé" là hành động chính (PIN vẫn do BE xác minh ở Kid Mode), Chọn/Sửa/Xóa là hành động phụ có icon + chữ.
 import React, { useState } from 'react';
-import { Alert, View, Text, ScrollView, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, StyleSheet } from 'react-native';
 import { ChildProfile } from '../../types/domain';
 import { HeyButton } from '../../components/ui/HeyButton';
 import { HeyCard } from '../../components/ui/HeyCard';
 import { Badge } from '../../components/ui/Badge';
 import { StateView } from '../../components/ui/StateView';
 import { ScreenHeader } from '../../components/ui/ScreenHeader';
+import { useDialog } from '../../components/ui/Dialog';
 import { ChildFormSheet } from '../../components/parent/ChildFormSheet';
 import { Colors } from '../../theme/colors';
 import { Spacing } from '../../theme/spacing';
@@ -42,6 +43,7 @@ export const ChildrenScreen: React.FC<ChildrenScreenProps> = ({
   onOpenSettings,
   onBack,
 }) => {
+  const dialog = useDialog();
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<ChildProfile | undefined>(undefined);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -49,30 +51,24 @@ export const ChildrenScreen: React.FC<ChildrenScreenProps> = ({
     setEditing(child);
     setFormOpen(true);
   };
-  const confirmDelete = (child: ChildProfile) => {
+  const confirmDelete = async (child: ChildProfile) => {
     if (deletingId) return;
-    Alert.alert(
-      `Xóa hồ sơ của ${child.name}?`,
-      'Tủ sách và tiến độ đọc của bé sẽ không còn hiển thị. Thao tác này không hoàn tác được.',
-      [
-        { text: 'Hủy', style: 'cancel' },
-        {
-          text: 'Xóa',
-          style: 'destructive',
-          onPress: async () => {
-            setDeletingId(child.id);
-            try {
-              await childService.deleteChild(child.id);
-              onChildDeleted(child.id);
-            } catch (err: any) {
-              Alert.alert('Không xóa được hồ sơ', err?.message || 'Vui lòng thử lại.');
-            } finally {
-              setDeletingId(null);
-            }
-          },
-        },
-      ]
-    );
+    const ok = await dialog.confirm({
+      title: `Xóa hồ sơ của ${child.name}?`,
+      message: 'Tủ sách và tiến độ đọc của bé sẽ không còn hiển thị. Thao tác này không hoàn tác được.',
+      confirmLabel: 'Xóa',
+      destructive: true,
+    });
+    if (!ok) return;
+    setDeletingId(child.id);
+    try {
+      await childService.deleteChild(child.id);
+      onChildDeleted(child.id);
+    } catch (err: any) {
+      void dialog.notify('Không xóa được hồ sơ', err?.message || 'Vui lòng thử lại.');
+    } finally {
+      setDeletingId(null);
+    }
   };
   const loading = dataStatus === 'loading' && childrenProfiles.length === 0;
 

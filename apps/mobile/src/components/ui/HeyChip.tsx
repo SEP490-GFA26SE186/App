@@ -3,7 +3,8 @@
 // Ngữ nghĩa: có `selected` = một lựa chọn trong nhóm chọn-một (radio, đọc "đã chọn"; Web aria-checked);
 // không có `selected` = chip hành động (button); không có `onPress` = nhãn tĩnh.
 import React from 'react';
-import { Pressable, Text, StyleSheet, ViewStyle, TextStyle } from 'react-native';
+import { Platform, Pressable, Text, StyleSheet, ViewStyle, TextStyle } from 'react-native';
+import { spaceActivates } from '../../utils/keyboard';
 import { Colors } from '../../theme/colors';
 import { Radius, hitSlopFor } from '../../theme/spacing';
 import { FontFamily, Typography } from '../../theme/typography';
@@ -18,7 +19,8 @@ interface HeyChipProps {
   icon?: string;
 }
 
-const CHIP_HEIGHT = 36;
+// Web không áp dụng hitSlop nên chip cao đủ 44 thật (R9-A); native giữ 36 + hitSlop 44
+const CHIP_HEIGHT = Platform.OS === 'web' ? 44 : 36;
 
 export const HeyChip: React.FC<HeyChipProps> = ({ label, selected, onPress, style, textStyle, icon }) => {
   const selectable = !!onPress && selected !== undefined;
@@ -28,6 +30,7 @@ export const HeyChip: React.FC<HeyChipProps> = ({ label, selected, onPress, styl
       onPress={onPress}
       disabled={!onPress}
       hitSlop={hitSlopFor(CHIP_HEIGHT)}
+      {...(selectable ? spaceActivates(onPress) : {})}
       accessibilityRole={selectable ? 'radio' : onPress ? 'button' : 'text'}
       accessibilityState={selectable ? { checked: isSelected } : undefined}
       aria-checked={selectable ? isSelected : undefined}

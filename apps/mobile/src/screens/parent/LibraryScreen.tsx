@@ -16,9 +16,10 @@ import { StateView } from '../../components/ui/StateView';
 import { ScreenHeader } from '../../components/ui/ScreenHeader';
 import { ChildSwitcher } from '../../components/parent/ChildSwitcher';
 import { Colors } from '../../theme/colors';
-import { Radius, Spacing, Touch } from '../../theme/spacing';
+import { Layout, Radius, Spacing, Touch } from '../../theme/spacing';
 import { FontFamily, Typography } from '../../theme/typography';
 import { focusRing } from '../../theme/focus';
+import { spaceActivates } from '../../utils/keyboard';
 import { STORY_FILTERS, STORY_STATUS_LABELS } from '../../constants/story';
 import type { DataStatus } from '../../stores/useParentData';
 
@@ -34,7 +35,7 @@ interface LibraryScreenProps {
 }
 
 /** Số cột theo bề ngang cửa sổ (điện thoại 2, máy tính bảng 3, màn rộng 4); khung bề rộng tối đa thuộc R9. */
-const columnsFor = (width: number) => (width >= 1000 ? 4 : width >= 640 ? 3 : 2);
+const columnsFor = (width: number) => (width >= 640 ? 3 : 2);
 const statusTone = (status?: string) => (status === 'READY' ? 'success' : status === 'GENERATING' ? 'info' : 'neutral');
 const statusLabel = (status?: string) => (status && STORY_STATUS_LABELS[status]) || 'Truyện';
 
@@ -49,7 +50,7 @@ export const LibraryScreen: React.FC<LibraryScreenProps> = ({
   onCreateStory,
 }) => {
   const { width } = useWindowDimensions();
-  const cols = columnsFor(width);
+  const cols = columnsFor(Math.min(width, Layout.maxContentWidth));
   const [filter, setFilter] = useState<(typeof STORY_FILTERS)[number]['value']>('ALL');
   const [search, setSearch] = useState('');
   const [menuStory, setMenuStory] = useState<Story | null>(null);
@@ -86,6 +87,7 @@ export const LibraryScreen: React.FC<LibraryScreenProps> = ({
             <Pressable
               key={f.value}
               onPress={() => setFilter(f.value)}
+              {...spaceActivates(() => setFilter(f.value))}
               accessibilityRole="radio"
               accessibilityState={{ checked: on }}
               aria-checked={on}
@@ -212,7 +214,7 @@ const styles = StyleSheet.create({
   column: { gap: Spacing.md },
   card: { flex: 1, minWidth: 0, marginBottom: Spacing.md, borderRadius: Radius.lg, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.outline, overflow: 'hidden' },
   padCell: { flex: 1, minWidth: 0, marginBottom: Spacing.md },
-  cardMain: { gap: Spacing.sm },
+  cardMain: { flex: 1, gap: Spacing.sm },
   cover: { width: '100%', aspectRatio: 1, backgroundColor: Colors.brandTint },
   title: { ...Typography.bodyStrong, fontSize: 14, color: Colors.text, paddingHorizontal: Spacing.md, minHeight: 40 },
   cardFoot: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingLeft: Spacing.md, paddingRight: Spacing.xs, paddingBottom: Spacing.xs },

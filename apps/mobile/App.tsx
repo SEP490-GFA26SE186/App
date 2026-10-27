@@ -7,6 +7,7 @@ import { SessionProvider } from './src/stores/SessionProvider';
 import { AppNavigator } from './src/navigation/AppNavigator';
 import { Screen } from './src/components/ui/Screen';
 import { ToastProvider } from './src/components/ui/Toast';
+import { DialogProvider } from './src/components/ui/Dialog';
 import { ICON_FONTS } from './src/components/ui/Icon';
 import { IntroScreen } from './src/components/IntroScreen';
 import { Colors, FONT_ASSETS } from './src/theme';
@@ -59,6 +60,7 @@ export default function App() {
   return (
     <SessionProvider>
       <ToastProvider>
+       <DialogProvider>
         {/* Preview/Intro mở: ẩn app thật bên dưới khỏi trình đọc màn hình (Android no-hide-descendants, iOS elementsHidden, Web aria-hidden) */}
         <View
           style={styles.flex}
@@ -77,6 +79,7 @@ export default function App() {
           </View>
         )}
         {introVisible && <IntroScreen onFinish={finishIntro} />}
+       </DialogProvider>
       </ToastProvider>
     </SessionProvider>
   );

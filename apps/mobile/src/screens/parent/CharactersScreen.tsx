@@ -3,15 +3,16 @@
 // Không có "role" (rev8). Chân dung AI đang tạm dừng (B5) nên chỉ hiện nhãn trạng thái BE trả.
 // R8: lưới thẻ (2/3/4 cột theo bề ngang) có ảnh/chữ cái đầu, mô tả, nhãn trạng thái; Sửa/Xóa là nút có icon + chữ.
 import React, { useState } from 'react';
-import { Alert, View, Text, Image, ScrollView, StyleSheet, useWindowDimensions } from 'react-native';
+import { View, Text, Image, ScrollView, StyleSheet, useWindowDimensions } from 'react-native';
 import { HeyButton } from '../../components/ui/HeyButton';
 import { HeyCard } from '../../components/ui/HeyCard';
 import { Badge } from '../../components/ui/Badge';
 import { StateView } from '../../components/ui/StateView';
 import { ScreenHeader } from '../../components/ui/ScreenHeader';
+import { useDialog } from '../../components/ui/Dialog';
 import { CharacterFormSheet } from '../../components/parent/CharacterFormSheet';
 import { Colors } from '../../theme/colors';
-import { Radius, Spacing } from '../../theme/spacing';
+import { Layout, Radius, Spacing } from '../../theme/spacing';
 import { Typography } from '../../theme/typography';
 import { CharacterView } from '../../types/viewModels';
 import { characterService } from '../../services';
@@ -33,8 +34,8 @@ interface CharactersScreenProps {
   onBack: () => void;
 }
 
-/** Số cột theo bề ngang cửa sổ */
-const columnsFor = (width: number) => (width >= 1000 ? 4 : width >= 640 ? 3 : 2);
+/** Số cột theo bề ngang nội dung (đã giới hạn 720) */
+const columnsFor = (width: number) => (width >= 640 ? 3 : 2);
 
 export const CharactersScreen: React.FC<CharactersScreenProps> = ({
   characters,
@@ -43,7 +44,9 @@ export const CharactersScreen: React.FC<CharactersScreenProps> = ({
   onCharacterDeleted,
   onBack,
 }) => {
-  const { width } = useWindowDimensions();
+  const dialog = useDialog();
+  const { width: windowWidth } = useWindowDimensions();
+  const width = Math.min(windowWidth, Layout.maxContentWidth);
   const cols = columnsFor(width);
   // Rộng thẻ tính bằng px (trừ lề trang và khe) để đủ cột; phần trăm + khe px sẽ tràn dòng
   const cardW = Math.floor((width - Spacing.page * 2 - Spacing.md * (cols - 1)) / cols);
@@ -54,26 +57,24 @@ export const CharactersScreen: React.FC<CharactersScreenProps> = ({
     setEditing(c);
     setFormOpen(true);
   };
-  const confirmDelete = (c: CharacterView) => {
+  const confirmDelete = async (c: CharacterView) => {
     if (deletingId) return;
-    Alert.alert(`Xóa nhân vật ${c.name}?`, 'Các truyện đã tạo vẫn giữ nguyên.', [
-      { text: 'Hủy', style: 'cancel' },
-      {
-        text: 'Xóa',
-        style: 'destructive',
-        onPress: async () => {
-          setDeletingId(c.id);
-          try {
-            await characterService.deleteCharacter(c.id);
-            onCharacterDeleted(c.id);
-          } catch (err: any) {
-            Alert.alert('Không xóa được nhân vật', err?.message || 'Vui lòng thử lại.');
-          } finally {
-            setDeletingId(null);
-          }
-        },
-      },
-    ]);
+    const ok = await dialog.confirm({
+      title: `Xóa nhân vật ${c.name}?`,
+      message: 'Các truyện đã tạo vẫn giữ nguyên.',
+      confirmLabel: 'Xóa',
+      destructive: true,
+    });
+    if (!ok) return;
+    setDeletingId(c.id);
+    try {
+      await characterService.deleteCharacter(c.id);
+      onCharacterDeleted(c.id);
+    } catch (err: any) {
+      void dialog.notify('Không xóa được nhân vật', err?.message || 'Vui lòng thử lại.');
+    } finally {
+      setDeletingId(null);
+    }
   };
   const loading = dataStatus === 'loading' && characters.length === 0;
 

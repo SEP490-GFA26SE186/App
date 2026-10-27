@@ -3,7 +3,7 @@
 // theo dõi/chạy AI viết, "Hoàn tất xem lại" (POST /review; lỗi 422 hiển thị errors[]), thêm vào tủ sách của bé (POST /bookshelf).
 // Chưa có: sửa chữ từng trang / điểm dừng (PUT /stories/:id/pages|checkpoints) → "Chưa hỗ trợ".
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, View, Text, ScrollView, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, StyleSheet } from 'react-native';
 import { Icon } from '../../components/ui/Icon';
 import { ChildProfile } from '../../types/domain';
 import { HeyCard } from '../../components/ui/HeyCard';
@@ -11,6 +11,7 @@ import { HeyButton } from '../../components/ui/HeyButton';
 import { Badge } from '../../components/ui/Badge';
 import { StateView } from '../../components/ui/StateView';
 import { useToast } from '../../components/ui/Toast';
+import { useDialog } from '../../components/ui/Dialog';
 import { ScreenHeader } from '../../components/ui/ScreenHeader';
 import { StoryCover } from '../../components/ui/StoryCover';
 import { GenerationRunner } from '../../components/parent/GenerationRunner';
@@ -50,6 +51,7 @@ export const StoryDetailScreen: React.FC<StoryDetailScreenProps> = ({
   onUnsupported,
 }) => {
   const toast = useToast();
+  const dialog = useDialog();
   const [story, setStory] = useState<StoryView | undefined>(summary?.detailLoaded ? summary : undefined);
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>(summary?.detailLoaded ? 'ready' : 'loading');
   const [loadError, setLoadError] = useState('');
@@ -110,7 +112,7 @@ export const StoryDetailScreen: React.FC<StoryDetailScreenProps> = ({
         if (e?.status === 422 && e.errors?.length) {
           setReviewErrors(e.errors.map((x: { message?: string }) => x.message).filter(Boolean));
         } else {
-          Alert.alert('Chưa hoàn tất được', e?.message || 'Vui lòng thử lại.');
+          void dialog.notify('Chưa hoàn tất được', e?.message || 'Vui lòng thử lại.');
         }
       }
     });
@@ -123,7 +125,7 @@ export const StoryDetailScreen: React.FC<StoryDetailScreenProps> = ({
         toast.show(`Đã thêm truyện lên tủ sách của ${selectedChild.name}.`);
       } catch (e: any) {
         // 422: truyện chưa sẵn sàng cho bé (chưa hoàn tất / thiếu giọng đọc) – BE nêu rõ lý do
-        Alert.alert('Chưa thêm được', e?.errors?.[0]?.message || e?.message || 'Vui lòng thử lại.');
+        void dialog.notify('Chưa thêm được', e?.errors?.[0]?.message || e?.message || 'Vui lòng thử lại.');
       }
     });
 

@@ -28,8 +28,8 @@ test('Không hex cứng, không emoji/ký tự làm icon chức năng, không To
 
 test('Giữ nguyên lời gọi BE: xóa/sửa bé và nhân vật, báo cáo EQ, gói/credit, đổi mật khẩu, PIN qua BE', () => {
   const must: Record<string, string[]> = {
-    'screens/parent/ChildrenScreen.tsx': ['childService.deleteChild(', 'onOpenKidMode(c)', 'onSelect(c.id)', 'Alert.alert('],
-    'screens/parent/CharactersScreen.tsx': ['characterService.deleteCharacter(', '!c.childId', 'Alert.alert('],
+    'screens/parent/ChildrenScreen.tsx': ['childService.deleteChild(', 'onOpenKidMode(c)', 'onSelect(c.id)', 'dialog.confirm('],
+    'screens/parent/CharactersScreen.tsx': ['characterService.deleteCharacter(', '!c.childId', 'dialog.confirm('],
     'screens/parent/EqReportScreen.tsx': ['childService.getChildEqReport('],
     'screens/parent/WalletScreen.tsx': ['billingService.getSubscription()', 'billingService.getPlans()', 'billingService.getCreditHistory('],
     'screens/parent/SettingsScreen.tsx': ['authService.changePassword(', 'authService.changeKidPin(', 'authService.setKidPin(', "kidModePinHash: '****'"],
