@@ -131,6 +131,35 @@ Phạm vi theo [UI_UX_REDESIGN_PLAN.md](UI_UX_REDESIGN_PLAN.md) §5.2 R2. Giữ 
 
 ---
 
+## R3 – Khung điều hướng Parent — ĐÃ TRIỂN KHAI, CHỜ REVIEW/NGHIỆM THU (2026-10-27)
+
+Báo cáo QA và ảnh: [QA_R3_REPORT.md](QA_R3_REPORT.md), [`qa/r3/`](qa/r3/). Đã chạy thật trên Web và Android SW_Test (BE local, tài khoản Parent có dữ liệu thật). Không còn CRITICAL/HIGH/MEDIUM.
+
+### Đã làm
+
+| File | Thay đổi |
+|---|---|
+| `navigation/routes.ts` | 5 tab: Trang chủ · Tủ truyện · Sáng tác · Tiến độ · **Hồ sơ**; **Ví không còn là tab**. Hàm thuần `navigateStack`, `activeTabFor` (Ví tô sáng Hồ sơ), `backStack` (có test). |
+| `navigation/useParentNavigation.ts` | Dùng hàm trên. Back Android: màn con → màn trước; tab khác Trang chủ → Trang chủ; Trang chủ → thoát app. |
+| `components/parent/HeyTabBar.tsx` | Thanh nổi, icon Ionicons, nhãn 12px, nút `role=button` có `aria-current`/`selected`, vùng chạm ≥ 52px, focus ring chỉ khi dùng bàn phím, nút Sáng tác nổi (nhãn cũng nhận chạm). Không còn animation lò xo. |
+| `components/parent/HeyTopBar.tsx` | Logo (→ Trang chủ), pill **Credit** (số dư thật từ BE, → Ví), avatar (→ Hồ sơ); tất cả 44×44, icon vector, bỏ nhãn 8px và dấu `+`. Số dư dài không bị cắt. |
+| `screens/parent/MoreScreen.tsx` | Thành màn **Hồ sơ** có nhóm Gia đình / Tài khoản / An toàn trẻ em / Hỗ trợ; thêm mục **Ví & Credit** (số dư thật) và **Chế độ Bé** (dùng đúng `openKidMode`). |
+| `screens/parent/WalletScreen.tsx` | Thêm nút quay lại (Ví là màn con). |
+| `navigation/ParentTabs.tsx` | Nối các thay đổi; `openWallet` dùng chung. |
+| `components/ui/Toast.tsx` | **LOW-1:** toast ở đáy, phía trên thanh tab, không che header; `useToastBottomInset`. |
+| `tests/navigation.test.ts` *(mới)* | 11 test điều hướng; `tests/README.md` cập nhật. |
+
+### Kết quả chính (chi tiết ở QA_R3_REPORT)
+
+- ✅ Web + Android: 5 tab, active/inactive, Credit (53 thật) → Ví, Hồ sơ → Ví, Chế độ Bé từ Hồ sơ, PIN sai (BE 401) / đúng (BE 200), đăng xuất, Intro không phát lại.
+- ✅ Bàn phím Web: Tab/Enter/Space; focus ring chỉ khi dùng bàn phím. Màn nhỏ 320px và 360×640dp, desktop 1280px, điều hướng 3 nút Android.
+- ✅ Toast dài không che header, không chặn thanh tab (có COMPONENT TEST trên cả hai nền tảng).
+- Lỗi do R3 tìm thấy và đã sửa trong lúc QA: toast chặn thanh tab (HIGH, FIX-1), pill cắt số dư (FIX-2), nút header Web 40px (FIX-3), header lệch desktop (FIX-4), Back thoát app ở tab Hồ sơ (FIX-5).
+- NOT VERIFIED: trình đọc màn hình thật, iOS, máy Android thật. BLOCKED: Kid Mode với PIN của tài khoản Parent.
+- LOW mở: R3-L1…L5 (QA_R3_REPORT §8).
+
+---
+
 ## Backlog từ audit — giao cho đợt phù hợp (CHƯA làm)
 
 | Mã audit | Vấn đề | Đợt | File |
@@ -146,9 +175,9 @@ Phạm vi theo [UI_UX_REDESIGN_PLAN.md](UI_UX_REDESIGN_PLAN.md) §5.2 R2. Giữ 
 | R2.1 ✅ **XONG** | MED-1: lỗi dùng `StateView variant="error"` (EQ, Story Detail ×2, Wallet ×3); MED-2: Toast có live region mount sẵn; test `tests/uiStates.test.ts` chặn tái diễn | Xong (QA_R2_REPORT §10) | `EqReportScreen`, `StoryDetailScreen`, `WalletScreen`, `components/ui/Toast.tsx` |
 | QA-R2 LOW | Toast che top bar (LOW-1, xử lý cùng top bar R3); toast bị Sheet đè (LOW-2, quy ước đóng Sheet trước); toast không xếp hàng (LOW-3); ~~toast `clickable=false` với TalkBack (LOW-4)~~ ✅ R2.1; chip radio không chọn bằng Space, chưa có `radiogroup` (LOW-5); Web không áp dụng `hitSlop` (LOW-6, R9); `useReduceMotion` đọc bất đồng bộ (LOW-7) | R3 / R9 / khi chạm tới | QA_R2_REPORT §8 |
 | T1 *(đề xuất)* | Test tự động cho logic component (toast timer, focus modality, chip a11y, button variants, quét `StateView` lỗi): không cần dependency; test render cần duyệt `jest-expo` | Chờ người dùng chọn | QA_R2_REPORT §9 |
-| C2 / E3 / E4 | Tab label 10px, tag 8px, vùng chạm tab ~40pt, credit pill ~24pt, avatar 34pt | **R3** | `HeyTabBar.tsx`, `HeyTopBar.tsx` |
+| C2 / E3 / E4 ✅ **R3** | Tab label 10px, tag 8px, vùng chạm tab ~40pt, credit pill ~24pt, avatar 34pt → nhãn 12px, vùng chạm ≥ 44, không còn tag | Xong | `HeyTabBar.tsx`, `HeyTopBar.tsx` |
 | D1 | Emoji làm icon điều hướng/menu/nút | ✅ R2: `Icon` wrapper + áp dụng trong `components/ui/*` → **R3+** áp dụng vào tab bar, top bar, menu, màn | toàn app |
-| E1 / E2 | Credit tab → Header + Hồ sơ; lối vào Kid Mode | **R3** | `HeyTabBar.tsx`, `navigation/routes.ts`, `MoreScreen.tsx` |
+| E1 / E2 ✅ **R3** | Credit tab → Header + Hồ sơ; lối vào Kid Mode (Home, Bé nhà mình và mục mới ở Hồ sơ) | Xong | `HeyTabBar.tsx`, `navigation/routes.ts`, `MoreScreen.tsx` |
 | G2 / G3 ✅ **R2** | Skeleton (`StateView variant="skeleton"`, đã dùng ở Tủ truyện, Bé nhà mình, Nhân vật); Toast thay 3 `Alert` thành công | Xong; màn khác áp dụng khi redesign | `components/ui/Skeleton.tsx`, `Toast.tsx` |
 | H1 / H3 | Nút trang Kid, nút "Bỏ qua" 12px, nhãn trợ năng phím PIN | **R4** | `KidModeScreen.tsx`, `KidCheckpointCard.tsx` |
 | H2 | Tôn trọng Reduce Motion trong Kid Mode (Reanimated tự xử lý; animation RN `Animated` dùng `useReduceMotion` từ R2) | **R4** | `KidModeScreen.tsx` |

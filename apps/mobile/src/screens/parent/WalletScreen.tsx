@@ -19,6 +19,8 @@ interface WalletScreenProps {
   currentUser: SessionUser;
   /** Tải lại số dư (GET /auth/me) */
   onRefreshWallet: () => void;
+  /** Ví không còn là tab (R3): mở từ pill credit hoặc Hồ sơ nên có nút quay lại */
+  onBack?: () => void;
 }
 
 const AI_LABELS: Record<string, string> = {
@@ -60,7 +62,7 @@ const PlanRow: React.FC<{ plan: PlanDto; current: boolean }> = ({ plan, current 
   </HeyCard>
 );
 
-export const WalletScreen: React.FC<WalletScreenProps> = ({ currentUser, onRefreshWallet }) => {
+export const WalletScreen: React.FC<WalletScreenProps> = ({ currentUser, onRefreshWallet, onBack }) => {
   const sub = useAsyncResource(() => billingService.getSubscription(), []);
   const plans = useAsyncResource(() => billingService.getPlans(), []);
 
@@ -114,6 +116,7 @@ export const WalletScreen: React.FC<WalletScreenProps> = ({ currentUser, onRefre
     <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
       <ScreenHeader
         title="Gói dịch vụ & Credit"
+        onBack={onBack}
         subtitle="Mỗi truyện AI viết giúp dùng credit theo độ dài. Truyện tự viết không dùng credit."
       />
 

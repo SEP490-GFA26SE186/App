@@ -1,35 +1,37 @@
 // apps/mobile/src/navigation/useParentNavigation.ts
 // Điều hướng Parent bằng ngăn xếp state: chuyển tab thì làm mới ngăn xếp, mở màn hình con thì đẩy thêm.
-// Nút Back của Android quay lại màn trước; ở màn gốc thì để hệ thống xử lý (thoát app) như trước.
+// Nút Back của Android quay lại màn trước; ở tab khác Trang chủ thì về Trang chủ; ở Trang chủ thì để hệ thống thoát app.
 import { useCallback, useEffect, useState } from 'react';
 import { BackHandler } from 'react-native';
-import { NavState, ROUTES, RouteKey, RouteParams, TAB_ROUTES } from './routes';
+import { NavState, ROUTES, RouteKey, RouteParams, activeTabFor, backStack, navigateStack } from './routes';
 
 export const useParentNavigation = () => {
   const [stack, setStack] = useState<NavState[]>([{ route: ROUTES.HOME }]);
 
   const navigate = useCallback((route: RouteKey, params?: RouteParams) => {
-    setStack((prev) => (TAB_ROUTES.includes(route) ? [{ route, params }] : [...prev, { route, params }]));
+    setStack((prev) => navigateStack(prev, route, params));
   }, []);
 
   const goBack = useCallback(() => {
-    setStack((prev) => (prev.length > 1 ? prev.slice(0, -1) : prev));
+    setStack((prev) => backStack(prev) ?? prev);
   }, []);
 
   const canGoBack = stack.length > 1;
+  // Back của Android: màn con → màn trước; tab khác Trang chủ → Trang chủ; ở Trang chủ thì để hệ thống thoát app
+  const handlesBack = backStack(stack) !== null;
 
   useEffect(() => {
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
-      if (!canGoBack) return false;
+      if (!handlesBack) return false;
       goBack();
       return true;
     });
     return () => sub.remove();
-  }, [canGoBack, goBack]);
+  }, [handlesBack, goBack]);
 
   const current = stack[stack.length - 1];
-  // Tab gốc đang được tô sáng trên thanh tab (phần tử đầu ngăn xếp luôn là tab)
-  const rootTab = stack[0].route;
+  // Tab đang được tô sáng trên thanh tab (phần tử đầu ngăn xếp luôn là tab; Ví tô sáng Hồ sơ)
+  const rootTab = activeTabFor(stack);
 
   return { current, rootTab, navigate, goBack, canGoBack };
 };

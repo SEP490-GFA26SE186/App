@@ -15,3 +15,9 @@ node %TEMP%/sw-tests/tests/authRace.test.js
 npx tsc tests/uiStates.test.ts --outDir %TEMP%/sw-ui-tests --module commonjs --target es2022 --esModuleInterop --skipLibCheck
 node %TEMP%/sw-ui-tests/uiStates.test.js
 ```
+
+`navigation.test.ts` kiểm tra logic điều hướng thuần (`navigation/routes.ts`: `navigateStack`, `activeTabFor`, `backStack`) và các ràng buộc khung điều hướng R3 (Credit không còn là tab, Ví truy cập được từ header và Hồ sơ, số dư header lấy từ BE, toast ở đáy). Chạy từ `apps/mobile`:
+```
+npx tsc tests/navigation.test.ts --outDir %TEMP%/sw-nav-tests --module commonjs --target es2022 --esModuleInterop --skipLibCheck
+node %TEMP%/sw-nav-tests/tests/navigation.test.js
+```

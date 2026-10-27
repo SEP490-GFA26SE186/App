@@ -1,6 +1,8 @@
 // apps/mobile/src/components/ui/Toast.tsx — R2: thông báo nhẹ thay Alert cho kết quả thành công (audit G3).
 // Lỗi và câu hỏi xác nhận vẫn dùng Alert (cần người dùng đọc/chọn). Không dùng <Modal> native (xem QA_R1 CRIT-1).
 // Tự ẩn sau 3.5s, chạm để ẩn sớm; bỏ trượt khi bật Giảm chuyển động.
+// Vị trí (R3, QA_R2 LOW-1): đáy màn hình, phía trên thanh tab (như Snackbar của Android) nên không che header
+// (logo, credit, avatar) hay thanh tab; màn có thanh tab gọi useToastBottomInset để chừa chỗ.
 // Trình đọc màn hình (QA_R2 MED-2): Web đọc qua 2 vùng live LUÔN mount sẵn (status/polite cho success-info, alert/assertive
 // cho danger) vì vùng live chèn vào cùng lúc với chữ thường bị bỏ qua; native dùng announceForAccessibility.
 // Bản toast nhìn thấy không phải live region để không bị đọc hai lần.
@@ -24,6 +26,16 @@ interface ToastApi {
 }
 
 const ToastContext = createContext<ToastApi | null>(null);
+const InsetContext = createContext<((px: number) => void) | null>(null);
+
+/** Chừa khoảng trống ở đáy cho toast (vd. chiều cao thanh tab). Trả về 0 khi component gỡ. */
+export const useToastBottomInset = (px: number) => {
+  const setInset = useContext(InsetContext);
+  useEffect(() => {
+    setInset?.(px);
+  }, [setInset, px]);
+  useEffect(() => () => setInset?.(0), [setInset]);
+};
 
 export const useToast = (): ToastApi => {
   const api = useContext(ToastContext);
@@ -50,6 +62,7 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [toast, setToast] = useState<ToastState | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const seq = useRef(0);
+  const [bottomInset, setBottomInset] = useState(0);
 
   const hide = useCallback(() => {
     if (timer.current) clearTimeout(timer.current);
@@ -72,8 +85,8 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   return (
     <ToastContext.Provider value={api}>
-      {children}
-      {toast && <ToastView key={toast.id} toast={toast} onDismiss={hide} />}
+      <InsetContext.Provider value={setBottomInset}>{children}</InsetContext.Provider>
+      {toast && <ToastView key={toast.id} toast={toast} onDismiss={hide} bottomInset={bottomInset} />}
       {Platform.OS === 'web' && (
         <>
           {/* key đổi theo từng toast → nút chữ mới được chèn vào vùng có sẵn → được đọc, kể cả khi trùng nội dung */}
@@ -89,7 +102,7 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   );
 };
 
-const ToastView: React.FC<{ toast: ToastState; onDismiss: () => void }> = ({ toast, onDismiss }) => {
+const ToastView: React.FC<{ toast: ToastState; onDismiss: () => void; bottomInset: number }> = ({ toast, onDismiss, bottomInset }) => {
   const reduceMotion = useReduceMotion();
   const enter = useRef(new Animated.Value(0)).current;
 
@@ -99,11 +112,12 @@ const ToastView: React.FC<{ toast: ToastState; onDismiss: () => void }> = ({ toa
 
   const icon = TONE_ICON[toast.tone];
   return (
-    <SafeAreaView style={styles.host}>
+    // Dời host lên bằng `bottom` (không dùng margin): vùng margin nằm trong phần tử nhận chạm sẽ chặn thanh tab bên dưới
+    <SafeAreaView style={[styles.host, { bottom: Spacing.sm + bottomInset }]}>
       <Animated.View
         style={{
           opacity: enter,
-          transform: reduceMotion ? [] : [{ translateY: enter.interpolate({ inputRange: [0, 1], outputRange: [-12, 0] }) }],
+          transform: reduceMotion ? [] : [{ translateY: enter.interpolate({ inputRange: [0, 1], outputRange: [12, 0] }) }],
         }}
       >
         <Pressable
@@ -124,7 +138,7 @@ const ToastView: React.FC<{ toast: ToastState; onDismiss: () => void }> = ({ toa
 const styles = StyleSheet.create({
   host: {
     position: 'absolute',
-    top: 0,
+    bottom: 0,
     left: 0,
     right: 0,
     alignItems: 'center',
@@ -134,7 +148,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.sm,
-    marginTop: Spacing.sm,
     marginHorizontal: Spacing.page,
     maxWidth: Layout.maxContentWidth,
     minHeight: 48,
