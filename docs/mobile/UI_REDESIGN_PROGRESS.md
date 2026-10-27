@@ -160,7 +160,7 @@ Báo cáo QA và ảnh: [QA_R3_REPORT.md](QA_R3_REPORT.md), [`qa/r3/`](qa/r3/). 
 
 ---
 
-## R4 – Kid Mode — ĐÃ TRIỂN KHAI, CHỜ REVIEW/NGHIỆM THU (2026-10-27)
+## R4 – Kid Mode — NGHIỆM THU TẠM THỜI (R4.1 hoãn) (2026-10-27)
 
 R3 đã commit (`e2992a2`). Báo cáo QA và ảnh: [QA_R4_REPORT.md](QA_R4_REPORT.md), [`qa/r4/`](qa/r4/). Đã chạy thật trên Web và Android SW_Test (BE local). Không còn CRITICAL/HIGH/MEDIUM.
 
@@ -182,9 +182,21 @@ R3 đã commit (`e2992a2`). Báo cáo QA và ảnh: [QA_R4_REPORT.md](QA_R4_REPO
 - ✅ Web + Android: tủ sách thật, rỗng, lỗi, skeleton, Reduce Motion, khoá PIN (sai → BE 401, đúng → BE 200), Back, đăng xuất, màn nhỏ 360×640dp, desktop 1280px.
 - ✅ Reader + điểm dừng + hết truyện chạy qua **UI Preview (fixture)**, cùng `KidModeScreen`/`useKidReader`.
 - ⛔ **NOT RUN: đọc truyện thật E2E** (mở truyện từ BE, điểm dừng EQ do BE chấm): sinh truyện đang BLOCKED và mở truyện sẽ ghi tiến độ vào dữ liệu thật. Cần xác minh khi có truyện sẵn sàng.
-- **R4.1 (điều tra, QA_R4_REPORT §11):** mọi bước sau tủ sách đều ghi dữ liệu (tạo lượt đọc, lưu trang, ghi câu trả lời EQ, hoàn thành) và demo **không có đường khôi phục**; truyện demo không có ảnh trang/bìa. **Đã chọn phương án D (DB QA cô lập `storyweaver_qa_r41`)**: kế hoạch chuẩn bị ở QA_R4_REPORT §12, **chưa thực thi, chờ bạn duyệt** (cần quyền tạo DB). R4 chưa nghiệm thu hoàn toàn.
+- **R4.1 (Reader ↔ BE E2E) — HOÃN theo quyết định chủ dự án:** mọi bước sau tủ sách đều ghi dữ liệu và demo không có đường khôi phục (QA_R4_REPORT §11). **Không tạo DB QA cô lập nào**; kế hoạch phương án D ở QA_R4_REPORT §12 chỉ là đề xuất lưu trữ, không phải chỉ dẫn hiệu lực. Reader/EQ/tiến độ E2E vẫn **NOT RUN**; phải xong trước demo/bàn giao đồ án, không muộn hơn R9.
 - NOT VERIFIED: trình đọc màn hình thật, iOS, máy thật, ảnh bìa thật, banner mất phiên Kid. BLOCKED: PIN của tài khoản Parent.
 - LOW mở: R4-L1…L4 (QA_R4_REPORT §10). K1 **chưa làm** (task riêng, chưa duyệt).
+
+---
+
+## R5 – Parent Home, Đăng nhập/Đăng ký & mascot — NGHIỆM THU TẠM THỜI, CHỜ CHỦ DỰ ÁN DUYỆT CUỐI (2026-10-27)
+
+R4 đã commit (`9118e7a`). Báo cáo QA và ảnh: [QA_R5_REPORT.md](QA_R5_REPORT.md), [`qa/r5/`](qa/r5/). Chạy thật trên Web và Android SW_Test (BE local, tài khoản test). Không có CRITICAL/HIGH/MEDIUM.
+
+- **Home:** hero bé đang chọn + 3 ô số liệu thật (`/children/:id/overview`; skeleton/lỗi/Thử lại), nút "Sáng tác truyện" lên đầu, lối tắt Tủ truyện/EQ; giữ nguyên props và hành động.
+- **A2 ✅ / A3 ✅ / J1 ✅**, gỡ thêm huy hiệu "Lv.1" bịa. Login/Đăng ký/Boot dùng token, link ≥ 44pt có focus ring, Enter để gửi.
+- **Kiểm tra:** `tsc`, 5 bộ test (mới: `homeAuth` 6 test), `expo install --check`, export web + android đều PASS.
+- **Fixture UI (không phải E2E thật):** hero với số liệu ≠ 0 PASS bằng response `/overview` sửa trong trình duyệt (QA_R5_REPORT §4 W14).
+- **Chưa kiểm chứng:** dữ liệu demo thật, TalkBack/VoiceOver, Reduce Motion bật thật, iOS, J1 ở bản không phải dev (chỉ bằng mã + test). INFO: Android hiện Login sau khi đổi `wm size` (chưa điều tra, chưa rõ nguyên nhân — không giả định K1; không refactor phiên trong R5). R4.1 vẫn hoãn/NOT RUN (xong trước demo, không muộn hơn R9); K1 chưa duyệt.
 
 ---
 
@@ -192,8 +204,8 @@ R3 đã commit (`e2992a2`). Báo cáo QA và ảnh: [QA_R4_REPORT.md](QA_R4_REPO
 
 | Mã audit | Vấn đề | Đợt | File |
 |---|---|---|---|
-| A2 | Tip mascot bịa số liệu "Bé đã thu thập được 12 ⭐ sao rồi!" + tip sai tên nút "Sáng Tác AI" | **R5** | `components/CuteMascot.tsx` |
-| A3 | Âm thanh `playPuppy` (mascot chó cũ) ở cú và nút Chế độ Bé | **R5** (Home) / **R4** (OwlMascot trong Kid) | `utils/sound-fx.ts`, `components/OwlMascot.tsx`, `screens/parent/ParentHomeScreen.tsx` |
+| A2 ✅ **R5** | Tip mascot bịa số liệu "Bé đã thu thập được 12 ⭐ sao rồi!" + tip sai tên nút "Sáng Tác AI" | **R5** | `components/CuteMascot.tsx` |
+| A3 ✅ **R5** | Âm thanh `playPuppy` (mascot chó cũ) ở cú và nút Chế độ Bé | **R5** (Home) / **R4** (OwlMascot trong Kid) | `utils/sound-fx.ts`, `components/OwlMascot.tsx`, `screens/parent/ParentHomeScreen.tsx` |
 | A4 | Asset cú dạng huy hiệu có chữ, vỡ ở 34–42px | Chờ asset tách nền (quyết định #4) | `HeyTopBar`, `LoginScreen`, PIN modal |
 | B1 (màn) | Chữ trắng trên `primary` ở nút giọng đọc Reader (2.6:1) | **R7** | `components/parent/StoryReaderModal.tsx` (`audioBtnTextActive`) |
 | B1 (màn) | Link màu `primary` trên nền trắng (Reader title, scope-pending) — 2.6:1, cần `brandStrong`. *Login "Đăng ký ngay" ✅ đã sửa (HIGH-3).* | **R7** | `StoryReaderModal.tsx:241` |
@@ -213,6 +225,6 @@ R3 đã commit (`e2992a2`). Báo cáo QA và ảnh: [QA_R4_REPORT.md](QA_R4_REPO
 | I3 ✅ **ĐÃ SỬA** (R1 QA Fix) | Dải trống **48.8dp** (128px) thừa phía trên mọi màn Android. Đã xác định nguyên nhân trong [QA_R1_REPORT.md](QA_R1_REPORT.md) §4: `Screen` cộng `StatusBar.currentHeight` trong khi hệ thống đã đặt nội dung dưới status bar (không translucent, targetSdk 34). Có sẵn từ HEAD (R1 chỉ đổi màu nền). *(Ghi "~95dp" trước đây là sai, vì đã tính cả chiều cao status bar.)* | **Trước R2** (HIGH-1) | `components/ui/Screen.tsx` |
 | I4 *(mới)* | Expo Go luôn bật New Architecture nhưng `app.json` không khai báo `newArchEnabled` → giao diện trong Expo Go có thể khác bản build thật (vd. `boxShadow` hard-code trong màn). Bật/tắt là quyết định cấu hình build — **cần người dùng quyết** | Quyết định riêng | `app.json` |
 | I2 | `boxShadow` hard-code trong màn/khung (ngoài component dùng chung) | Theo từng màn R3–R8 (dùng `Elevation`) | `HeyTopBar`, `HeyTabBar`, `KidModeScreen`, `LoginScreen`… |
-| J1 | URL máy chủ hiện ở Login cho người dùng cuối | **R5** | `LoginScreen.tsx` |
+| J1 ✅ **R5** | URL máy chủ hiện ở Login cho người dùng cuối (nay chỉ `__DEV__`; Settings/AuthModal còn hiện) | Xong | `LoginScreen.tsx` |
 | L1 / L2 ✅ **R2** | Variant ngữ nghĩa `HeyButton`/`HeyCard`, `Pressable`, focus ring Web (chỉ khi dùng bàn phím) cho component dùng chung | Xong; `HeyTopBar`/`HeyTabBar` → R3 | `components/ui/*`, `theme/focus.ts` |
 | — | 157 mã hex hard-code trong màn hình | Theo từng màn R3–R8 | `screens/*` |

@@ -5,10 +5,11 @@
 Chạy (không cần dependency mới; dùng `tsc` có sẵn và Node):
 ```
 cd apps/mobile
-npx tsc tests/authRace.test.ts --outDir %TEMP%/sw-tests --module commonjs --target es2022 --esModuleInterop --skipLibCheck --jsx react-jsx
+npx tsc tests/authRace.test.ts --outDir %TEMP%/sw-tests --module commonjs --target es2022 --esModuleInterop --skipLibCheck --jsx react-jsx --types react-native,node
 node %TEMP%/sw-tests/tests/authRace.test.js
 ```
 (Bash: dùng `$TEMP` thay cho `%TEMP%`.)
+(`--types react-native,node` khai báo `__DEV__` và `process` cho `tsc` chạy riêng; `npx tsc --noEmit` của dự án vốn đã có.)
 
 `uiStates.test.ts` quét mã nguồn để chặn tái diễn QA_R2 MED-1 (trạng thái lỗi phải dùng `StateView variant="error"`) và MED-2 (Toast có vùng live mount sẵn, bản nhìn thấy không phải live region). Chạy từ `apps/mobile`:
 ```
@@ -26,4 +27,10 @@ node %TEMP%/sw-nav-tests/tests/navigation.test.js
 ```
 npx tsc tests/kidUi.test.ts --outDir %TEMP%/sw-kid-tests --module commonjs --target es2022 --esModuleInterop --skipLibCheck
 node %TEMP%/sw-kid-tests/kidUi.test.js
+```
+
+`homeAuth.test.ts` (R5) chặn hồi quy Parent Home, mascot và Đăng nhập/Đăng ký: không số liệu/nút bịa trong lời gợi ý (A2), không tiếng cún (A3), địa chỉ máy chủ chỉ hiện ở `__DEV__` (J1), không hex cứng, link >= 44pt có focus ring, Enter để gửi, hero lấy số liệu từ overview BE. Chạy từ `apps/mobile`:
+```
+npx tsc tests/homeAuth.test.ts --outDir %TEMP%/sw-home-tests --module commonjs --target es2022 --esModuleInterop --skipLibCheck
+node %TEMP%/sw-home-tests/homeAuth.test.js
 ```

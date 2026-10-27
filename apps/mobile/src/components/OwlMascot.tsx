@@ -6,10 +6,13 @@ import {
   View,
   Text,
   Image,
-  TouchableOpacity,
+  Pressable,
   StyleSheet,
 } from 'react-native';
 import { soundFX } from '../utils/sound-fx';
+import { Colors } from '../theme/colors';
+import { Elevation } from '../theme/shadows';
+import { focusRing } from '../theme/focus';
 import { MASCOT_IMAGE } from '../constants/mascot';
 import Animated, {
   useSharedValue,
@@ -29,30 +32,17 @@ interface OwlMascotProps {
   size?: number;
   onPress?: () => void;
   showLabel?: boolean;
+  /** Nhãn trợ năng của nút (vd. mô tả điều xảy ra khi chạm). Có `onPress` thì mascot là một nút. */
+  accessibilityLabel?: string;
 }
 
 // Mọi trạng thái dùng ảnh cú; trạng thái thể hiện qua màu nền, animation và chấm trạng thái
 const STATE_VISUALS: Record<MascotState, { bg: string; label: string }> = {
-  idle: {
-    bg: '#FFF8D6',
-    label: 'Lu Lu',
-  },
-  happy: {
-    bg: '#E8F9EB',
-    label: 'Vui vẻ!',
-  },
-  sleeping: {
-    bg: '#F3EDFB',
-    label: 'Đang ngủ...',
-  },
-  celebrate: {
-    bg: '#FFF0D6',
-    label: 'Tuyệt vời!',
-  },
-  thinking: {
-    bg: '#E8F4FD',
-    label: 'Đang nghĩ...',
-  },
+  idle: { bg: Colors.brandTint, label: 'Lu Lu' },
+  happy: { bg: Colors.tealTint, label: 'Vui vẻ!' },
+  sleeping: { bg: Colors.lavenderLight, label: 'Đang ngủ...' },
+  celebrate: { bg: Colors.brandTint, label: 'Tuyệt vời!' },
+  thinking: { bg: Colors.infoTint, label: 'Đang nghĩ...' },
 };
 
 export const OwlMascot: React.FC<OwlMascotProps> = ({
@@ -60,6 +50,7 @@ export const OwlMascot: React.FC<OwlMascotProps> = ({
   size = 80,
   onPress,
   showLabel = false,
+  accessibilityLabel = 'Cú Lu Lu',
 }) => {
   const floatY = useSharedValue(0);
   const scale = useSharedValue(1);
@@ -126,7 +117,8 @@ export const OwlMascot: React.FC<OwlMascotProps> = ({
   }, [state]);
 
   const handlePress = () => {
-    soundFX.playPuppy();
+    // Âm "chíp" nhẹ của app (trước đây là playPuppy — tiếng chó, sai với mascot cú; R5 A3)
+    soundFX.playSparkle();
     // 4-phase bounce: pop → squish → rebound → settle
     scale.value = withSequence(
       withSpring(1.28, { damping: 6, stiffness: 220 }),
@@ -153,7 +145,12 @@ export const OwlMascot: React.FC<OwlMascotProps> = ({
   const circleSize = size;
 
   return (
-    <TouchableOpacity activeOpacity={0.9} onPress={handlePress}>
+    <Pressable
+      onPress={handlePress}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+      style={(st) => [styles.touch, focusRing(st)]}
+    >
       <View style={styles.wrapper}>
         {/* Glow ring behind mascot */}
         <Animated.View
@@ -187,7 +184,8 @@ export const OwlMascot: React.FC<OwlMascotProps> = ({
             source={MASCOT_IMAGE}
             style={{ width: circleSize, height: circleSize, borderRadius: circleSize / 2 }}
             resizeMode="cover"
-            accessibilityLabel="Mascot cú Lu Lu"
+            accessibilityIgnoresInvertColors
+            accessible={false}
           />
 
           {/* State indicator dot */}
@@ -208,11 +206,6 @@ export const OwlMascot: React.FC<OwlMascotProps> = ({
           )}
         </Animated.View>
 
-        {/* Level badge */}
-        <View style={styles.levelBadge}>
-          <Text style={styles.levelText}>Lv.1</Text>
-        </View>
-
         {/* Optional label */}
         {showLabel && (
           <View style={[styles.labelPill, { backgroundColor: visual.bg }]}>
@@ -220,11 +213,12 @@ export const OwlMascot: React.FC<OwlMascotProps> = ({
           </View>
         )}
       </View>
-    </TouchableOpacity>
+    </Pressable>
   );
 };
 
 const styles = StyleSheet.create({
+  touch: { borderRadius: 9999 },
   wrapper: {
     alignItems: 'center',
     justifyContent: 'center',
@@ -238,25 +232,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 1,
-    boxShadow: '0 8px 16px rgba(255, 217, 61, 0.30)',
-  },
-  levelBadge: {
-    position: 'absolute',
-    bottom: -2,
-    right: -2,
-    backgroundColor: '#6BCB77',
-    borderRadius: 10,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderWidth: 2,
-    borderColor: '#FFFFFF',
-    zIndex: 2,
-    boxShadow: '0 2px 4px rgba(77, 184, 90, 0.3)',
-  },
-  levelText: {
-    color: '#FFFFFF',
-    fontSize: 9,
-    fontWeight: '900',
+    ...Elevation.low,
   },
   sleepDot: {
     position: 'absolute',
@@ -270,14 +246,14 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: -8,
     right: -4,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.surface,
     borderRadius: 8,
     paddingHorizontal: 4,
   },
   thinkDots: {
     fontSize: 10,
     fontWeight: '900',
-    color: '#7F8C8D',
+    color: Colors.textMuted,
     letterSpacing: 1,
   },
   labelPill: {
@@ -289,6 +265,6 @@ const styles = StyleSheet.create({
   labelText: {
     fontSize: 11,
     fontWeight: '800',
-    color: '#2C3E50',
+    color: Colors.text,
   },
 });

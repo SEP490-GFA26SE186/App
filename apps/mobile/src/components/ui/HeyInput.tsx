@@ -27,6 +27,9 @@ interface HeyInputProps {
   editable?: boolean;
   /** Hiện nút hiện/ẩn cho ô mật khẩu (secureTextEntry) */
   revealable?: boolean;
+  /** Enter / nút "Xong" trên bàn phím (vd. gửi form ở ô cuối) */
+  onSubmitEditing?: () => void;
+  returnKeyType?: 'done' | 'go' | 'next' | 'send';
 }
 
 export const HeyInput: React.FC<HeyInputProps> = ({
@@ -46,6 +49,8 @@ export const HeyInput: React.FC<HeyInputProps> = ({
   autoCorrect,
   editable,
   revealable = false,
+  onSubmitEditing,
+  returnKeyType,
 }) => {
   const [revealed, setRevealed] = useState(false);
   const [focused, setFocused] = useState(false);
@@ -70,6 +75,8 @@ export const HeyInput: React.FC<HeyInputProps> = ({
         autoCapitalize={autoCapitalize}
         autoCorrect={autoCorrect}
         editable={editable}
+        onSubmitEditing={onSubmitEditing}
+        returnKeyType={returnKeyType}
         style={[
           styles.input,
           multiline && { height: 24 * numberOfLines + 20, textAlignVertical: 'top' },

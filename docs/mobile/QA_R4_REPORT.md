@@ -193,12 +193,14 @@ Không có CRITICAL, HIGH hay MEDIUM.
 
 ### 11.5 Trạng thái nghiệm thu R4
 - **Giao diện và PIN:** đã kiểm (xem §4–§7).
-- **Reader thật E2E:** **NOT RUN**, chờ bạn chọn phương án ở §11.4. R4 **chưa** đủ điều kiện nghiệm thu hoàn toàn.
+- **Reader thật E2E (R4.1):** **NOT RUN — DEFERRED** theo quyết định mới nhất của chủ dự án (xem khối "Quyết định chủ dự án" ở §12). R4 UI/UX **được nghiệm thu tạm thời**; R4.1 phải xong trước demo/bàn giao đồ án, không muộn hơn R9.
 
 ---
 
-## 12. R4.1 — Kế hoạch QA trên DB cô lập (phương án D) — CHƯA THỰC THI
+## 12. R4.1 — Kế hoạch QA trên DB cô lập (phương án D) — ĐỀ XUẤT LƯU TRỮ, KHÔNG THỰC THI
 
+> **Quyết định chủ dự án (mới nhất, ghi 2026-10-27):** R4 UI/UX được nghiệm thu tạm thời. **R4.1 (Reader ↔ Backend E2E) được HOÃN.** **Không tạo DB QA cô lập nào** (`storyweaver_qa_r41` chưa từng được tạo). Kế hoạch sao chép DB dưới đây chỉ là **đề xuất lưu trữ để tham khảo, KHÔNG phải chỉ dẫn đang hiệu lực** — không thực thi nếu chưa có chỉ đạo mới. Reader/EQ/tiến độ E2E vẫn **NOT RUN**; phải hoàn tất trước demo/bàn giao đồ án, không muộn hơn R9.
+>
 > Mục này là **kế hoạch chuẩn bị**. Chưa tạo, chưa sao chép, chưa sửa bất kỳ database nào. Mọi test E2E bên dưới đều **NOT RUN**.
 
 ### 12.1 Khả năng thực hiện: **khả thi, có 1 điều kiện**
