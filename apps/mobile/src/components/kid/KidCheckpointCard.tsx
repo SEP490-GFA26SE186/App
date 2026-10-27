@@ -1,8 +1,14 @@
 // apps/mobile/src/components/kid/KidCheckpointCard.tsx
 // Điểm dừng EQ trong lúc bé đọc (5 kiểu theo BE). Component thuần hiển thị: BE chấm đúng/sai, trả gợi ý và đáp án.
+// R4: nút cảm xúc/đáp án lớn (>= 56pt, có nhãn trợ năng), "Bỏ qua" là nút thật rõ ràng, màu theo token.
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, Text, Pressable, StyleSheet, ActivityIndicator } from 'react-native';
 import { Colors } from '../../theme/colors';
+import { Radius, Spacing, Touch } from '../../theme/spacing';
+import { FontFamily, Typography } from '../../theme/typography';
+import { focusRing } from '../../theme/focus';
+import { HeyButton } from '../ui/HeyButton';
+import { Icon } from '../ui/Icon';
 import { KID_EMOTIONS, emotionLabel } from '../../constants/kid';
 import type { KidAnswerResultDto, KidCheckpointDto } from '../../types/api';
 
@@ -26,12 +32,17 @@ export const KidCheckpointCard: React.FC<Props> = ({ checkpoint, result, submitt
 
   return (
     <View style={styles.card}>
-      <Text style={styles.question}>{checkpoint.question || 'Bé nghĩ sao nhỉ? 🌟'}</Text>
+      <Text style={styles.question} accessibilityRole="header">
+        {checkpoint.question || 'Bé nghĩ sao nhỉ? 🌟'}
+      </Text>
 
       {!!result && !done && !!result.hint && (
-        <View style={styles.hintBox}>
-          <Text style={styles.hintText}>💡 {result.hint}</Text>
-          <Text style={styles.hintSub}>Bé chọn lại một lần nữa nhé!</Text>
+        <View style={styles.hintBox} accessibilityLiveRegion="polite">
+          <Icon name="bulb" size={22} color={Colors.brandStrong} />
+          <View style={styles.hintTexts}>
+            <Text style={styles.hintText}>{result.hint}</Text>
+            <Text style={styles.hintSub}>Bé chọn lại một lần nữa nhé!</Text>
+          </View>
         </View>
       )}
 
@@ -51,89 +62,109 @@ export const KidCheckpointCard: React.FC<Props> = ({ checkpoint, result, submitt
             <Text style={styles.outcomeText}>Bé đã trả lời xong 💛</Text>
           )}
           {!!result?.feedback && <Text style={styles.feedback}>{result.feedback}</Text>}
-          <TouchableOpacity style={styles.primary} onPress={onContinue} activeOpacity={0.85}>
-            <Text style={styles.primaryText}>Tiếp tục ➜</Text>
-          </TouchableOpacity>
+          <HeyButton title="Tiếp tục" iconName="arrow-forward" variant="kid" size="xl" onPress={onContinue} />
         </View>
       ) : (
-        <View>
+        <View style={styles.choices}>
           {isEmotion && (
             <View style={styles.emotionRow}>
               {KID_EMOTIONS.map((e) => (
-                <TouchableOpacity
+                <Pressable
                   key={e.value}
                   disabled={submitting}
-                  style={[styles.emotionBtn, submitting && styles.disabled]}
-                  activeOpacity={0.85}
                   onPress={() => onChoose({ emotion: e.value })}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Cảm xúc ${e.label}`}
+                  accessibilityState={{ disabled: submitting }}
+                  style={(s) => [styles.emotionBtn, submitting && styles.disabled, s.pressed && styles.pressed, focusRing(s)]}
                 >
-                  <Text style={styles.emotionEmoji}>{e.emoji}</Text>
+                  <Text style={styles.emotionEmoji} accessibilityElementsHidden importantForAccessibility="no">
+                    {e.emoji}
+                  </Text>
                   <Text style={styles.emotionLabel}>{e.label}</Text>
-                </TouchableOpacity>
+                </Pressable>
               ))}
             </View>
           )}
 
-          {!isEmotion && !isReflection &&
+          {!isEmotion &&
+            !isReflection &&
             checkpoint.options.map((o, i) => (
-              <TouchableOpacity
+              <Pressable
                 key={o.id}
                 disabled={submitting}
-                style={[styles.option, i % 2 === 0 ? styles.optionA : styles.optionB, submitting && styles.disabled]}
-                activeOpacity={0.85}
                 onPress={() => onChoose({ optionId: o.id })}
+                accessibilityRole="button"
+                accessibilityState={{ disabled: submitting }}
+                style={(s) => [styles.option, i % 2 === 0 ? styles.optionA : styles.optionB, submitting && styles.disabled, s.pressed && styles.pressed, focusRing(s)]}
               >
                 <Text style={styles.optionText}>{o.text}</Text>
-              </TouchableOpacity>
+              </Pressable>
             ))}
 
           {isReflection && (
-            <TouchableOpacity
-              disabled={submitting}
-              style={[styles.primary, submitting && styles.disabled]}
-              activeOpacity={0.85}
-              onPress={() => onChoose({})}
-            >
-              <Text style={styles.primaryText}>Bé đã nghĩ xong rồi ✔</Text>
-            </TouchableOpacity>
+            <HeyButton title="Bé đã nghĩ xong rồi" iconName="checkmark-circle" variant="kid" size="xl" disabled={submitting} onPress={() => onChoose({})} />
           )}
 
           {!isReflection && !result && (
-            <TouchableOpacity disabled={submitting} style={styles.skip} onPress={onSkip}>
+            <Pressable
+              disabled={submitting}
+              onPress={onSkip}
+              accessibilityRole="button"
+              accessibilityLabel="Bỏ qua câu này"
+              style={(s) => [styles.skip, s.pressed && styles.pressed, focusRing(s)]}
+            >
               <Text style={styles.skipText}>Bỏ qua câu này</Text>
-            </TouchableOpacity>
+            </Pressable>
           )}
         </View>
       )}
 
-      {submitting && <ActivityIndicator style={styles.spinner} color={Colors.primary} />}
-      {!!error && <Text style={styles.error}>{error}</Text>}
+      {submitting && <ActivityIndicator style={styles.spinner} color={Colors.brandStrong} accessibilityLabel="Đang gửi" />}
+      {!!error && (
+        <Text style={styles.error} accessibilityRole="alert">
+          {error}
+        </Text>
+      )}
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  card: { backgroundColor: '#FFFFFF', borderRadius: 22, padding: 18, marginBottom: 14 },
-  question: { fontSize: 18, fontWeight: '800', lineHeight: 26, color: Colors.textPrimary, textAlign: 'center', marginBottom: 14 },
-  hintBox: { backgroundColor: '#FFF9E0', borderRadius: 16, padding: 12, marginBottom: 12 },
-  hintText: { fontSize: 15, fontWeight: '700', color: Colors.textPrimary, lineHeight: 22 },
-  hintSub: { fontSize: 12, color: Colors.textSecondary, marginTop: 4 },
-  emotionRow: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 10 },
-  emotionBtn: { alignItems: 'center', backgroundColor: '#F0FDF4', borderRadius: 18, paddingVertical: 10, paddingHorizontal: 12, minWidth: 84 },
-  emotionEmoji: { fontSize: 34 },
-  emotionLabel: { fontSize: 12, fontWeight: '800', color: Colors.textPrimary, marginTop: 2 },
-  option: { borderRadius: 18, padding: 14, marginBottom: 10 },
+  card: { backgroundColor: Colors.surface, borderRadius: Radius.xxl, borderWidth: 1.5, borderColor: Colors.borderSunshine, padding: Spacing.xl, gap: Spacing.md },
+  question: { ...Typography.kidHeading, color: Colors.text, textAlign: 'center' },
+  hintBox: { flexDirection: 'row', gap: Spacing.md, alignItems: 'flex-start', backgroundColor: Colors.brandTint, borderRadius: Radius.lg, padding: Spacing.md },
+  hintTexts: { flex: 1, gap: 2 },
+  hintText: { ...Typography.bodyStrong, color: Colors.text },
+  hintSub: { ...Typography.caption, color: Colors.textMuted },
+  choices: { gap: Spacing.sm },
+  emotionRow: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: Spacing.sm },
+  emotionBtn: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 92,
+    minHeight: 88,
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.md,
+    borderRadius: Radius.xl,
+    backgroundColor: Colors.tealTint,
+    borderWidth: 1.5,
+    borderColor: Colors.outline,
+  },
+  emotionEmoji: { fontSize: 36, lineHeight: 44 },
+  emotionLabel: { fontFamily: FontFamily.extraBold, fontSize: 15, color: Colors.text, marginTop: 2 },
+  option: { minHeight: Touch.kid, justifyContent: 'center', borderRadius: Radius.xl, paddingVertical: Spacing.md, paddingHorizontal: Spacing.lg, borderWidth: 1.5, borderColor: Colors.outline },
   optionA: { backgroundColor: Colors.lavenderLight },
-  optionB: { backgroundColor: Colors.mintLight },
-  optionText: { fontSize: 15, fontWeight: '800', color: Colors.textPrimary, textAlign: 'center', lineHeight: 21 },
+  optionB: { backgroundColor: Colors.tealTint },
+  optionText: { ...Typography.kidBody, fontSize: 17, lineHeight: 24, color: Colors.text, textAlign: 'center' },
   disabled: { opacity: 0.5 },
-  primary: { backgroundColor: Colors.secondary, borderRadius: 18, paddingVertical: 14, alignItems: 'center', marginTop: 6 },
-  primaryText: { color: '#FFFFFF', fontSize: 15, fontWeight: '900' },
-  skip: { alignSelf: 'center', paddingVertical: 10, paddingHorizontal: 16, marginTop: 4 },
-  skipText: { fontSize: 12, fontWeight: '700', color: Colors.textSecondary },
-  outcome: { alignItems: 'stretch' },
-  outcomeText: { fontSize: 16, fontWeight: '800', color: Colors.textPrimary, textAlign: 'center', marginBottom: 8 },
-  feedback: { fontSize: 14, color: Colors.textSecondary, textAlign: 'center', lineHeight: 21, marginBottom: 8 },
-  spinner: { marginTop: 8 },
-  error: { marginTop: 10, color: '#B91C1C', fontSize: 13, fontWeight: '700', textAlign: 'center' },
+  pressed: { transform: [{ scale: 0.97 }] },
+  // Nút thật, rõ ràng (trước: chữ xám 12px): viền + chữ navy, cao >= 56pt
+  skip: { alignSelf: 'center', minHeight: Touch.kid, justifyContent: 'center', paddingHorizontal: Spacing.xl, borderRadius: Radius.full, borderWidth: 1.5, borderColor: Colors.outlineStrong, marginTop: Spacing.xs },
+  skipText: { fontFamily: FontFamily.extraBold, fontSize: 16, color: Colors.text },
+  outcome: { gap: Spacing.sm },
+  outcomeText: { ...Typography.kidHeading, color: Colors.text, textAlign: 'center' },
+  feedback: { ...Typography.body, color: Colors.textMuted, textAlign: 'center' },
+  spinner: { marginTop: Spacing.sm },
+  error: { ...Typography.label, color: Colors.danger, textAlign: 'center' },
 });

@@ -160,6 +160,34 @@ Báo cáo QA và ảnh: [QA_R3_REPORT.md](QA_R3_REPORT.md), [`qa/r3/`](qa/r3/). 
 
 ---
 
+## R4 – Kid Mode — ĐÃ TRIỂN KHAI, CHỜ REVIEW/NGHIỆM THU (2026-10-27)
+
+R3 đã commit (`e2992a2`). Báo cáo QA và ảnh: [QA_R4_REPORT.md](QA_R4_REPORT.md), [`qa/r4/`](qa/r4/). Đã chạy thật trên Web và Android SW_Test (BE local). Không còn CRITICAL/HIGH/MEDIUM.
+
+### Đã làm
+
+| File | Thay đổi |
+|---|---|
+| `screens/kid/KidModeScreen.tsx` | 1007 → ~200 dòng; giữ nguyên state + logic PIN (BE), Back, phiên Kid; header mới (nút Thoát 48px có nhãn trợ năng); bỏ Reanimated và mây emoji. |
+| `components/kid/KidShelf.tsx` *(mới)* | Kid Home: "Đọc tiếp" (tiến độ thật từ BE) → lưới bìa 2–3 cột; loading = skeleton; lỗi; rỗng. |
+| `components/kid/KidReader.tsx` *(mới)* | Reader: tranh lớn, chữ nền giấy, nút trang 64pt icon + nhãn ngắn, tự cuộn tới điểm dừng, màn hoàn thành. |
+| `components/kid/KidCheckpointCard.tsx` | Phím cảm xúc/đáp án ≥ 56pt, "Bỏ qua" thành nút thật, nhãn trợ năng, token. |
+| `components/kid/KidPinOverlay.tsx` *(mới)* | Khoá PIN chỉ hiển thị (vẫn lớp phủ trong cây, không `<Modal>`); phím có nhãn, chấm PIN có nhãn "Đã nhập n số", `aria-modal`. |
+| `components/kid/KidState.tsx` *(mới)* | Rỗng/lỗi/hoàn thành với icon vector. |
+| `tests/kidUi.test.ts` *(mới)*, `tests/README.md` | 5 test chặn hồi quy Kid (không Modal/Reanimated, không hex, PIN a11y, Back/PIN, kích thước nút). |
+| `CLAUDE.md` | Cập nhật quy tắc làm việc, ngôn ngữ, kiểm thử, hiệu quả ngữ cảnh; sửa thông tin lỗi thời. |
+
+### Kết quả chính
+
+- ✅ Web + Android: tủ sách thật, rỗng, lỗi, skeleton, Reduce Motion, khoá PIN (sai → BE 401, đúng → BE 200), Back, đăng xuất, màn nhỏ 360×640dp, desktop 1280px.
+- ✅ Reader + điểm dừng + hết truyện chạy qua **UI Preview (fixture)**, cùng `KidModeScreen`/`useKidReader`.
+- ⛔ **NOT RUN: đọc truyện thật E2E** (mở truyện từ BE, điểm dừng EQ do BE chấm): sinh truyện đang BLOCKED và mở truyện sẽ ghi tiến độ vào dữ liệu thật. Cần xác minh khi có truyện sẵn sàng.
+- **R4.1 (điều tra, QA_R4_REPORT §11):** mọi bước sau tủ sách đều ghi dữ liệu (tạo lượt đọc, lưu trang, ghi câu trả lời EQ, hoàn thành) và demo **không có đường khôi phục**; truyện demo không có ảnh trang/bìa. **Đã chọn phương án D (DB QA cô lập `storyweaver_qa_r41`)**: kế hoạch chuẩn bị ở QA_R4_REPORT §12, **chưa thực thi, chờ bạn duyệt** (cần quyền tạo DB). R4 chưa nghiệm thu hoàn toàn.
+- NOT VERIFIED: trình đọc màn hình thật, iOS, máy thật, ảnh bìa thật, banner mất phiên Kid. BLOCKED: PIN của tài khoản Parent.
+- LOW mở: R4-L1…L4 (QA_R4_REPORT §10). K1 **chưa làm** (task riêng, chưa duyệt).
+
+---
+
 ## Backlog từ audit — giao cho đợt phù hợp (CHƯA làm)
 
 | Mã audit | Vấn đề | Đợt | File |
@@ -179,8 +207,8 @@ Báo cáo QA và ảnh: [QA_R3_REPORT.md](QA_R3_REPORT.md), [`qa/r3/`](qa/r3/). 
 | D1 | Emoji làm icon điều hướng/menu/nút | ✅ R2: `Icon` wrapper + áp dụng trong `components/ui/*` → **R3+** áp dụng vào tab bar, top bar, menu, màn | toàn app |
 | E1 / E2 ✅ **R3** | Credit tab → Header + Hồ sơ; lối vào Kid Mode (Home, Bé nhà mình và mục mới ở Hồ sơ) | Xong | `HeyTabBar.tsx`, `navigation/routes.ts`, `MoreScreen.tsx` |
 | G2 / G3 ✅ **R2** | Skeleton (`StateView variant="skeleton"`, đã dùng ở Tủ truyện, Bé nhà mình, Nhân vật); Toast thay 3 `Alert` thành công | Xong; màn khác áp dụng khi redesign | `components/ui/Skeleton.tsx`, `Toast.tsx` |
-| H1 / H3 | Nút trang Kid, nút "Bỏ qua" 12px, nhãn trợ năng phím PIN | **R4** | `KidModeScreen.tsx`, `KidCheckpointCard.tsx` |
-| H2 | Tôn trọng Reduce Motion trong Kid Mode (Reanimated tự xử lý; animation RN `Animated` dùng `useReduceMotion` từ R2) | **R4** | `KidModeScreen.tsx` |
+| H1 / H3 ✅ **R4** | Nút trang Kid 64pt icon + nhãn ngắn, "Bỏ qua" thành nút 56pt, nhãn trợ năng phím PIN | Xong | `components/kid/*` |
+| H2 ✅ **R4** | Reduce Motion trong Kid Mode: bỏ animation stagger/Reanimated; skeleton và tự cuộn dùng `useReduceMotion` | Xong | `components/kid/*` |
 | I1 | `Dimensions.get` một lần; giới hạn bề rộng Web | **R9** | `HeyTabBar.tsx`, `StoryReaderModal.tsx`, màn Parent |
 | I3 ✅ **ĐÃ SỬA** (R1 QA Fix) | Dải trống **48.8dp** (128px) thừa phía trên mọi màn Android. Đã xác định nguyên nhân trong [QA_R1_REPORT.md](QA_R1_REPORT.md) §4: `Screen` cộng `StatusBar.currentHeight` trong khi hệ thống đã đặt nội dung dưới status bar (không translucent, targetSdk 34). Có sẵn từ HEAD (R1 chỉ đổi màu nền). *(Ghi "~95dp" trước đây là sai, vì đã tính cả chiều cao status bar.)* | **Trước R2** (HIGH-1) | `components/ui/Screen.tsx` |
 | I4 *(mới)* | Expo Go luôn bật New Architecture nhưng `app.json` không khai báo `newArchEnabled` → giao diện trong Expo Go có thể khác bản build thật (vd. `boxShadow` hard-code trong màn). Bật/tắt là quyết định cấu hình build — **cần người dùng quyết** | Quyết định riêng | `app.json` |

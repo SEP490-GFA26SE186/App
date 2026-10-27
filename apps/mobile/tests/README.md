@@ -21,3 +21,9 @@ node %TEMP%/sw-ui-tests/uiStates.test.js
 npx tsc tests/navigation.test.ts --outDir %TEMP%/sw-nav-tests --module commonjs --target es2022 --esModuleInterop --skipLibCheck
 node %TEMP%/sw-nav-tests/tests/navigation.test.js
 ```
+
+`kidUi.test.ts` (R4) chặn hồi quy giao diện Kid Mode: không `<Modal>`/Reanimated (CRIT-1), không hex cứng, nhãn trợ năng PIN không lộ mã, thoát luôn qua khoá PIN và Back, kích thước nút Kid. Chạy từ `apps/mobile`:
+```
+npx tsc tests/kidUi.test.ts --outDir %TEMP%/sw-kid-tests --module commonjs --target es2022 --esModuleInterop --skipLibCheck
+node %TEMP%/sw-kid-tests/kidUi.test.js
+```

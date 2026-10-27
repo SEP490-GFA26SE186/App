@@ -221,3 +221,5 @@ export const useKidReader = (source: KidDataSource) => {
     retryComplete: complete,
   };
 };
+
+export type KidReaderState = ReturnType<typeof useKidReader>;
