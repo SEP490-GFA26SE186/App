@@ -1,10 +1,14 @@
 // apps/mobile/src/screens/parent/HelpScreen.tsx
-// B11 – Trợ giúp (Web: HelpPage): câu hỏi thường gặp dạng mở/đóng.
+// B11 – Trợ giúp (Web: HelpPage): câu hỏi thường gặp dạng mở/đóng. R8: hàng là nút ≥ 44pt có trạng thái mở/đóng cho trình đọc màn hình.
 import React, { useState } from 'react';
-import { Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, Pressable, StyleSheet } from 'react-native';
 import { HeyCard } from '../../components/ui/HeyCard';
+import { Icon } from '../../components/ui/Icon';
 import { ScreenHeader } from '../../components/ui/ScreenHeader';
 import { Colors } from '../../theme/colors';
+import { Radius, Spacing, Touch } from '../../theme/spacing';
+import { Typography } from '../../theme/typography';
+import { focusRing } from '../../theme/focus';
 import { FAQS } from '../../constants/faq';
 
 export const HelpScreen: React.FC<{ onBack: () => void }> = ({ onBack }) => {
@@ -15,15 +19,23 @@ export const HelpScreen: React.FC<{ onBack: () => void }> = ({ onBack }) => {
       {FAQS.map((f, i) => {
         const open = openIndex === i;
         return (
-          <TouchableOpacity key={f.q} activeOpacity={0.85} onPress={() => setOpenIndex(open ? null : i)}>
-            <HeyCard style={styles.card}>
-              <Text style={styles.q}>
-                {open ? '▾ ' : '▸ '}
-                {f.q}
-              </Text>
-              {open && <Text style={styles.a}>{f.a}</Text>}
-            </HeyCard>
-          </TouchableOpacity>
+          <HeyCard key={f.q} style={styles.card}>
+            <Pressable
+              onPress={() => setOpenIndex(open ? null : i)}
+              accessibilityRole="button"
+              accessibilityState={{ expanded: open }}
+              aria-expanded={open}
+              style={(s) => [styles.head, s.pressed && styles.pressed, focusRing(s)]}
+            >
+              <Text style={styles.q}>{f.q}</Text>
+              <Icon name={open ? 'chevron-up' : 'chevron-down'} size={22} color={Colors.textMuted} />
+            </Pressable>
+            {open && (
+              <View>
+                <Text style={styles.a}>{f.a}</Text>
+              </View>
+            )}
+          </HeyCard>
         );
       })}
     </ScrollView>
@@ -31,8 +43,10 @@ export const HelpScreen: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 };
 
 const styles = StyleSheet.create({
-  content: { padding: 16, paddingBottom: 32 },
-  card: { marginBottom: 10, gap: 8 },
-  q: { fontSize: 14, fontWeight: '800', color: Colors.textPrimary },
-  a: { fontSize: 13, color: Colors.textSecondary, lineHeight: 19 },
+  content: { padding: Spacing.page, paddingBottom: Spacing.xxxl, gap: Spacing.sm },
+  card: { gap: Spacing.sm },
+  head: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, minHeight: Touch.min, borderRadius: Radius.md },
+  pressed: { opacity: 0.7 },
+  q: { ...Typography.bodyStrong, color: Colors.text, flex: 1 },
+  a: { ...Typography.body, fontSize: 14, color: Colors.text },
 });

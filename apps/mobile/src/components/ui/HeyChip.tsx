@@ -1,7 +1,14 @@
-// apps/mobile/src/components/ui/HeyChip.tsx
+// apps/mobile/src/components/ui/HeyChip.tsx — R2 Warm Storybook Guardian
+// Hiển thị 36pt, bù hitSlop lên 44pt; trạng thái chọn có cả màu nền, viền và chữ (không chỉ dựa vào màu chữ).
+// Ngữ nghĩa: có `selected` = một lựa chọn trong nhóm chọn-một (radio, đọc "đã chọn"; Web aria-checked);
+// không có `selected` = chip hành động (button); không có `onPress` = nhãn tĩnh.
 import React from 'react';
-import { TouchableOpacity, Text, StyleSheet, ViewStyle, TextStyle } from 'react-native';
+import { Platform, Pressable, Text, StyleSheet, ViewStyle, TextStyle } from 'react-native';
+import { spaceActivates } from '../../utils/keyboard';
 import { Colors } from '../../theme/colors';
+import { Radius, hitSlopFor } from '../../theme/spacing';
+import { FontFamily, Typography } from '../../theme/typography';
+import { focusRing } from '../../theme/focus';
 
 interface HeyChipProps {
   label: string;
@@ -12,66 +19,69 @@ interface HeyChipProps {
   icon?: string;
 }
 
-export const HeyChip: React.FC<HeyChipProps> = ({
-  label,
-  selected = false,
-  onPress,
-  style,
-  textStyle,
-  icon,
-}) => {
+// Web không áp dụng hitSlop nên chip cao đủ 44 thật (R9-A); native giữ 36 + hitSlop 44
+const CHIP_HEIGHT = Platform.OS === 'web' ? 44 : 36;
+
+export const HeyChip: React.FC<HeyChipProps> = ({ label, selected, onPress, style, textStyle, icon }) => {
+  const selectable = !!onPress && selected !== undefined;
+  const isSelected = !!selected;
   return (
-    <TouchableOpacity
-      activeOpacity={0.7}
+    <Pressable
       onPress={onPress}
       disabled={!onPress}
-      style={[
+      hitSlop={hitSlopFor(CHIP_HEIGHT)}
+      {...(selectable ? spaceActivates(onPress) : {})}
+      accessibilityRole={selectable ? 'radio' : onPress ? 'button' : 'text'}
+      accessibilityState={selectable ? { checked: isSelected } : undefined}
+      aria-checked={selectable ? isSelected : undefined}
+      style={(state) => [
         styles.chip,
-        selected ? styles.chipSelected : styles.chipUnselected,
+        isSelected ? styles.chipSelected : styles.chipUnselected,
+        state.pressed && styles.pressed,
+        focusRing(state),
         style,
       ]}
     >
-      <Text
-        style={[
-          styles.text,
-          selected ? styles.textSelected : styles.textUnselected,
-          textStyle,
-        ]}
-      >
+      <Text style={[styles.text, isSelected ? styles.textSelected : styles.textUnselected, textStyle]}>
         {icon ? `${icon} ` : ''}
         {label}
       </Text>
-    </TouchableOpacity>
+    </Pressable>
   );
 };
 
 const styles = StyleSheet.create({
   chip: {
-    paddingHorizontal: 12,
+    minHeight: CHIP_HEIGHT,
+    justifyContent: 'center',
+    paddingHorizontal: 14,
     paddingVertical: 6,
-    borderRadius: 9999,
+    borderRadius: Radius.full,
     borderWidth: 1.5,
     marginRight: 6,
     marginBottom: 6,
     alignSelf: 'flex-start',
   },
   chipUnselected: {
-    backgroundColor: '#FFFFFF',
-    borderColor: Colors.border,
+    backgroundColor: Colors.surface,
+    borderColor: Colors.outline,
   },
   chipSelected: {
-    backgroundColor: Colors.primaryLight,
-    borderColor: Colors.primary,
+    backgroundColor: Colors.brandTint,
+    borderColor: Colors.brandStrong,
   },
+  pressed: { opacity: 0.7 },
   text: {
+    ...Typography.label,
     fontSize: 13,
-    fontWeight: '600',
+    lineHeight: 18,
   },
   textUnselected: {
     color: Colors.textMuted,
   },
+  // brandInk trên brandTint 12:1 (cam 500 trên nền sáng chỉ 2.6:1)
   textSelected: {
-    color: Colors.primary,
-    fontWeight: '700',
+    fontFamily: FontFamily.extraBold,
+    color: Colors.brandInk,
   },
 });

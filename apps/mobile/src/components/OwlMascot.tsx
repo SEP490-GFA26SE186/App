@@ -1,14 +1,19 @@
-// apps/mobile/src/components/ShibaMascot.tsx
-// Mascot Shiba Inu với 5 trạng thái cảm xúc + floating animation
+// apps/mobile/src/components/OwlMascot.tsx
+// Mascot cú phù thủy với 5 trạng thái cảm xúc + floating animation
 // Không cần Lottie — dùng pure React Native + Reanimated v2/v3
 import React, { useEffect } from 'react';
 import {
   View,
   Text,
-  TouchableOpacity,
+  Image,
+  Pressable,
   StyleSheet,
 } from 'react-native';
 import { soundFX } from '../utils/sound-fx';
+import { Colors } from '../theme/colors';
+import { Elevation } from '../theme/shadows';
+import { focusRing } from '../theme/focus';
+import { MASCOT_IMAGE } from '../constants/mascot';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -20,49 +25,32 @@ import Animated, {
   Easing,
 } from 'react-native-reanimated';
 
-export type ShibaState = 'idle' | 'happy' | 'sleeping' | 'celebrate' | 'thinking';
+export type MascotState = 'idle' | 'happy' | 'sleeping' | 'celebrate' | 'thinking';
 
-interface ShibaMascotProps {
-  state?: ShibaState;
+interface OwlMascotProps {
+  state?: MascotState;
   size?: number;
   onPress?: () => void;
   showLabel?: boolean;
+  /** Nhãn trợ năng của nút (vd. mô tả điều xảy ra khi chạm). Có `onPress` thì mascot là một nút. */
+  accessibilityLabel?: string;
 }
 
-// Emoji biểu diễn trạng thái (thay thế tạm trước khi có Lottie)
-const STATE_VISUALS: Record<ShibaState, { emoji: string; bg: string; label: string }> = {
-  idle: {
-    emoji: '🐕',
-    bg: '#FFF8D6',
-    label: 'Lu Lu',
-  },
-  happy: {
-    emoji: '🐶',
-    bg: '#E8F9EB',
-    label: 'Vui vẻ!',
-  },
-  sleeping: {
-    emoji: '😴',
-    bg: '#F3EDFB',
-    label: 'Đang ngủ...',
-  },
-  celebrate: {
-    emoji: '🎉',
-    bg: '#FFF0D6',
-    label: 'Tuyệt vời!',
-  },
-  thinking: {
-    emoji: '🤔',
-    bg: '#E8F4FD',
-    label: 'Đang nghĩ...',
-  },
+// Mọi trạng thái dùng ảnh cú; trạng thái thể hiện qua màu nền, animation và chấm trạng thái
+const STATE_VISUALS: Record<MascotState, { bg: string; label: string }> = {
+  idle: { bg: Colors.brandTint, label: 'Lu Lu' },
+  happy: { bg: Colors.tealTint, label: 'Vui vẻ!' },
+  sleeping: { bg: Colors.lavenderLight, label: 'Đang ngủ...' },
+  celebrate: { bg: Colors.brandTint, label: 'Tuyệt vời!' },
+  thinking: { bg: Colors.infoTint, label: 'Đang nghĩ...' },
 };
 
-export const ShibaMascot: React.FC<ShibaMascotProps> = ({
+export const OwlMascot: React.FC<OwlMascotProps> = ({
   state = 'idle',
   size = 80,
   onPress,
   showLabel = false,
+  accessibilityLabel = 'Cú Lu Lu',
 }) => {
   const floatY = useSharedValue(0);
   const scale = useSharedValue(1);
@@ -129,7 +117,8 @@ export const ShibaMascot: React.FC<ShibaMascotProps> = ({
   }, [state]);
 
   const handlePress = () => {
-    soundFX.playPuppy();
+    // Âm "chíp" nhẹ của app (trước đây là playPuppy — tiếng chó, sai với mascot cú; R5 A3)
+    soundFX.playSparkle();
     // 4-phase bounce: pop → squish → rebound → settle
     scale.value = withSequence(
       withSpring(1.28, { damping: 6, stiffness: 220 }),
@@ -154,10 +143,14 @@ export const ShibaMascot: React.FC<ShibaMascotProps> = ({
 
   const visual = STATE_VISUALS[state];
   const circleSize = size;
-  const emojiSize = size * 0.52;
 
   return (
-    <TouchableOpacity activeOpacity={0.9} onPress={handlePress}>
+    <Pressable
+      onPress={handlePress}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+      style={(st) => [styles.touch, focusRing(st)]}
+    >
       <View style={styles.wrapper}>
         {/* Glow ring behind mascot */}
         <Animated.View
@@ -187,11 +180,20 @@ export const ShibaMascot: React.FC<ShibaMascotProps> = ({
             },
           ]}
         >
-          <Text style={[styles.mascotEmoji, { fontSize: emojiSize }]}>
-            {visual.emoji}
-          </Text>
+          <Image
+            source={MASCOT_IMAGE}
+            style={{ width: circleSize, height: circleSize, borderRadius: circleSize / 2 }}
+            resizeMode="cover"
+            accessibilityIgnoresInvertColors
+            accessible={false}
+          />
 
           {/* State indicator dot */}
+          {state === 'celebrate' && (
+            <View style={styles.sleepDot}>
+              <Text style={styles.sleepZzz}>🎉</Text>
+            </View>
+          )}
           {state === 'sleeping' && (
             <View style={styles.sleepDot}>
               <Text style={styles.sleepZzz}>💤</Text>
@@ -204,11 +206,6 @@ export const ShibaMascot: React.FC<ShibaMascotProps> = ({
           )}
         </Animated.View>
 
-        {/* Level badge */}
-        <View style={styles.levelBadge}>
-          <Text style={styles.levelText}>Lv.1</Text>
-        </View>
-
         {/* Optional label */}
         {showLabel && (
           <View style={[styles.labelPill, { backgroundColor: visual.bg }]}>
@@ -216,11 +213,12 @@ export const ShibaMascot: React.FC<ShibaMascotProps> = ({
           </View>
         )}
       </View>
-    </TouchableOpacity>
+    </Pressable>
   );
 };
 
 const styles = StyleSheet.create({
+  touch: { borderRadius: 9999 },
   wrapper: {
     alignItems: 'center',
     justifyContent: 'center',
@@ -234,28 +232,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 1,
-    boxShadow: '0 8px 16px rgba(255, 217, 61, 0.30)',
-  },
-  mascotEmoji: {
-    lineHeight: undefined,
-  },
-  levelBadge: {
-    position: 'absolute',
-    bottom: -2,
-    right: -2,
-    backgroundColor: '#6BCB77',
-    borderRadius: 10,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderWidth: 2,
-    borderColor: '#FFFFFF',
-    zIndex: 2,
-    boxShadow: '0 2px 4px rgba(77, 184, 90, 0.3)',
-  },
-  levelText: {
-    color: '#FFFFFF',
-    fontSize: 9,
-    fontWeight: '900',
+    ...Elevation.low,
   },
   sleepDot: {
     position: 'absolute',
@@ -269,14 +246,14 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: -8,
     right: -4,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.surface,
     borderRadius: 8,
     paddingHorizontal: 4,
   },
   thinkDots: {
     fontSize: 10,
     fontWeight: '900',
-    color: '#7F8C8D',
+    color: Colors.textMuted,
     letterSpacing: 1,
   },
   labelPill: {
@@ -288,6 +265,6 @@ const styles = StyleSheet.create({
   labelText: {
     fontSize: 11,
     fontWeight: '800',
-    color: '#2C3E50',
+    color: Colors.text,
   },
 });

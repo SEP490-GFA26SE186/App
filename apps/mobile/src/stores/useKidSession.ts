@@ -1,7 +1,7 @@
 // apps/mobile/src/stores/useKidSession.ts
 // Trạng thái Kid Mode, tách khỏi phiên Parent. Chỉ vào/thoát khi BE xác nhận (S0.1/S0.2/S0.3d).
 import { useCallback, useRef, useState } from 'react';
-import { Alert } from 'react-native';
+import { notifyDialog } from '../components/ui/Dialog';
 import { ChildProfile } from '../types/domain';
 import { authService } from '../services';
 
@@ -23,7 +23,7 @@ export const useKidSessionState = ({ selectedChild, onExited }: Options) => {
     if (enteringRef.current || isKidMode) return;
     const target = child || selectedChild;
     if (!target) {
-      Alert.alert('Chưa có hồ sơ bé', 'Ba mẹ cần thêm hồ sơ bé trước khi vào Chế độ Bé.');
+      notifyDialog('Chưa có hồ sơ bé', 'Ba mẹ cần thêm hồ sơ bé trước khi vào Chế độ Bé.');
       return;
     }
     enteringRef.current = true;
@@ -32,7 +32,7 @@ export const useKidSessionState = ({ selectedChild, onExited }: Options) => {
       setKidChild(target);
       setIsKidMode(true);
     } catch (err: any) {
-      Alert.alert('Không thể vào Chế độ Bé', err?.message || 'Vui lòng thử lại.');
+      notifyDialog('Không thể vào Chế độ Bé', err?.message || 'Vui lòng thử lại.');
     } finally {
       enteringRef.current = false;
     }

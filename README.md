@@ -9,4 +9,4 @@ npm install
 npx expo start
 ```
 
-Tài liệu: `docs/mobile/` (kiến trúc, API mapping, tiến độ các phase, `ARCHITECTURE_CLEANUP_REPORT.md`).
+Tài liệu: `docs/mobile/` (mục lục `docs/mobile/README.md`; hiện trạng `MOBILE_STATUS.md`; API mapping; kế hoạch test R9-B).

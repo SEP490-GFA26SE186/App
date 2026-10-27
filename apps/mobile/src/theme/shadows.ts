@@ -1,51 +1,46 @@
-// apps/mobile/src/theme/shadows.ts — Fairy Glow Shadows
-// Quy tắc: KHÔNG BAO GIỜ dùng shadow đen thô kệch
-// Mọi shadow đều có màu tương ứng với nội dung element và dùng modern boxShadow
-import { ViewStyle } from 'react-native';
+// apps/mobile/src/theme/shadows.ts — Độ nổi (elevation) đa nền tảng (R1, UI_UX_REDESIGN_PLAN §3 I2)
+// boxShadow chỉ được RN 0.76 vẽ khi bật New Architecture (app.json chưa khai báo newArchEnabled),
+// nên mỗi nền tảng dùng cơ chế riêng:
+//   Web     → boxShadow (CSS, giống --shadow-* của Web)
+//   Android → elevation (+ shadowColor, có tác dụng từ Android 9)
+//   iOS     → shadowColor/Offset/Opacity/Radius
+// Bóng chỉ là phụ: thẻ luôn có viền `Colors.outline` để vẫn có cạnh khi máy không vẽ bóng.
+// Lưu ý Android: elevation cần backgroundColor đặc trên cùng View.
+import { Platform, ViewStyle } from 'react-native';
 
-export const Shadows: Record<string, any> = {
-  // Card thông thường — shadow xanh lá nhẹ
-  card: {
-    boxShadow: '0 6px 16px rgba(107, 203, 119, 0.12)',
-  },
+const SHADOW_INK = '#1E293B';
 
-  // Story card — shadow vàng ấm
-  storyCard: {
-    boxShadow: '0 8px 20px rgba(255, 217, 61, 0.20)',
-  },
+const make = (web: string, elevation: number, ios: { y: number; radius: number; opacity: number }): ViewStyle =>
+  Platform.select<ViewStyle>({
+    web: { boxShadow: web } as ViewStyle,
+    android: { elevation, shadowColor: SHADOW_INK },
+    default: {
+      shadowColor: SHADOW_INK,
+      shadowOffset: { width: 0, height: ios.y },
+      shadowOpacity: ios.opacity,
+      shadowRadius: ios.radius,
+    },
+  });
 
-  // Floating CTA button
-  ctaButton: {
-    boxShadow: '0 6px 14px rgba(245, 196, 0, 0.38)',
-  },
+export const Elevation = {
+  none: {} as ViewStyle,
+  /** Thẻ, ô nhập nổi nhẹ */
+  low: make('0 4px 16px -2px rgba(30, 41, 59, 0.06), 0 2px 6px -1px rgba(255, 122, 0, 0.04)', 2, { y: 2, radius: 6, opacity: 0.06 }),
+  /** Nút chính, thẻ được chọn, tab bar */
+  mid: make('0 12px 28px -4px rgba(30, 41, 59, 0.10), 0 4px 12px -2px rgba(255, 122, 0, 0.08)', 4, { y: 6, radius: 12, opacity: 0.1 }),
+  /** Sheet, modal, FAB */
+  high: make('0 20px 40px -6px rgba(30, 41, 59, 0.14), 0 8px 16px -2px rgba(255, 122, 0, 0.10)', 8, { y: 10, radius: 20, opacity: 0.14 }),
+};
 
-  // Floating pill tab bar
-  tabBar: {
-    boxShadow: '0 -4px 20px rgba(184, 196, 216, 0.25)',
-  },
-
-  // Mascot / Hero element
-  hero: {
-    boxShadow: '0 10px 24px rgba(255, 217, 61, 0.25)',
-  },
-
-  // Modal / Overlay card
-  modal: {
-    boxShadow: '0 12px 28px rgba(107, 203, 119, 0.20)',
-  },
-
-  // Small badge / chip
-  badge: {
-    boxShadow: '0 2px 6px rgba(255, 217, 61, 0.22)',
-  },
-
-  // Header bar
-  header: {
-    boxShadow: '0 4px 12px rgba(107, 203, 119, 0.12)',
-  },
-
-  // Sky accent elements
-  sky: {
-    boxShadow: '0 6px 16px rgba(77, 171, 247, 0.18)',
-  },
+/** Alias tên cũ (Fairy Glow) → mức độ nổi mới; giữ để không vỡ import cũ. */
+export const Shadows: Record<string, ViewStyle> = {
+  card: Elevation.low,
+  storyCard: Elevation.low,
+  ctaButton: Elevation.mid,
+  tabBar: Elevation.mid,
+  hero: Elevation.mid,
+  modal: Elevation.high,
+  badge: Elevation.none,
+  header: Elevation.low,
+  sky: Elevation.low,
 };

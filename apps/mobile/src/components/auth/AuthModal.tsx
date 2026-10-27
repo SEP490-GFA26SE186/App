@@ -256,9 +256,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   ? 'Máy chủ API'
                   : 'Đăng nhập StoryWeaver'}
               </Text>
-              <Text style={styles.envSubText}>
-                API: <Text style={{ fontWeight: '700', color: Colors.primary }}>{apiBaseUrl ?? 'Chưa cấu hình'}</Text>
-              </Text>
+              {__DEV__ && (
+                <Text style={styles.envSubText}>
+                  API: <Text style={{ fontWeight: '700', color: Colors.primary }}>{apiBaseUrl ?? 'Chưa cấu hình'}</Text>
+                </Text>
+              )}
             </View>
             <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
               <Text style={styles.closeText}>✕</Text>
@@ -480,9 +482,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             {tab === 'SERVER' && (
               <View>
                 <Text style={styles.descText}>
-                  {apiBaseUrl
-                    ? `Địa chỉ máy chủ hiện tại: ${apiBaseUrl}. Địa chỉ được đặt bằng biến môi trường EXPO_PUBLIC_API_URL khi chạy ứng dụng.`
-                    : API_NOT_CONFIGURED_MESSAGE}
+                  {!apiBaseUrl
+                    ? API_NOT_CONFIGURED_MESSAGE
+                    : __DEV__
+                      ? `Địa chỉ máy chủ hiện tại: ${apiBaseUrl}. Địa chỉ được đặt bằng biến môi trường EXPO_PUBLIC_API_URL khi chạy ứng dụng.`
+                      : 'Ứng dụng đã được cấu hình kết nối máy chủ.'}
                 </Text>
 
                 {__DEV__ && (

@@ -1,10 +1,11 @@
 // apps/mobile/src/navigation/ParentTabs.tsx
 // Khung giao diện Parent: thanh trên, dải trạng thái dữ liệu, nội dung theo route, thanh tab, modal đọc truyện.
 import React, { useEffect, useRef, useState } from 'react';
-import { Alert, View, Text, StyleSheet, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { Role, Story } from '../types/domain';
 import { SessionUser } from '../types/sessionUser';
 import { Colors } from '../theme/colors';
+import { Layout } from '../theme/spacing';
 import { HeyTopBar } from '../components/parent/HeyTopBar';
 import { HeyTabBar } from '../components/parent/HeyTabBar';
 import { StoryReaderModal } from '../components/parent/StoryReaderModal';
@@ -26,6 +27,9 @@ import { authService, storyService } from '../services';
 import { useAuth, useKidSession, useParentData } from '../stores/SessionProvider';
 import { ParentNavigation } from './useParentNavigation';
 import { ROUTES } from './routes';
+import { useToast, useToastBottomInset } from '../components/ui/Toast';
+import { useDialog } from '../components/ui/Dialog';
+import { TAB_BAR_FAB_OVERHANG } from '../components/parent/HeyTabBar';
 
 interface ParentTabsProps {
   currentUser: SessionUser;
@@ -34,17 +38,27 @@ interface ParentTabsProps {
   setActiveRole: (role: Role) => void;
 }
 
-// Hành động chưa có API thật: báo rõ, không thay đổi dữ liệu
-const notSupported = (what: string) =>
-  Alert.alert('Chưa hỗ trợ', `${what} chưa được hỗ trợ trên ứng dụng (chưa kết nối máy chủ).`);
 
 export const ParentTabs: React.FC<ParentTabsProps> = ({ currentUser, nav, activeRole, setActiveRole }) => {
   const auth = useAuth();
   const data = useParentData();
   const kid = useKidSession();
+  const toast = useToast();
+  const dialog = useDialog();
+  // Hành động chưa có API thật: báo rõ, không thay đổi dữ liệu (R9-A: dùng Dialog vì Alert.alert rỗng trên Web)
+  const notSupported = (what: string) => void dialog.notify('Chưa hỗ trợ', `${what} chưa được hỗ trợ trên ứng dụng (chưa kết nối máy chủ).`);
   const [selectedStoryToRead, setSelectedStoryToRead] = useState<Story | null>(null);
   const { navigate, goBack } = nav;
   const hasKidPin = !!currentUser.kidModePinHash;
+  // R7: trình đọc phụ huynh phủ toàn màn, thanh tab ẩn khi đang đọc (thanh tab có elevation nên trên Android nổi lên trên lớp phủ)
+  const tabBarVisible = activeRole === 'PARENT' && nav.current.route !== ROUTES.CREATE && !selectedStoryToRead;
+
+  // Toast nằm phía trên thanh tab (đo chiều cao thật) để không che thanh tab hay nút Sáng tác
+  const [tabBarHeight, setTabBarHeight] = useState(0);
+  useToastBottomInset(tabBarVisible ? tabBarHeight + TAB_BAR_FAB_OVERHANG : 0);
+
+  // Ví không còn là tab: mở bằng pill credit (header) hoặc mục trong Hồ sơ; navigateStack bỏ qua chạm lặp vào Ví
+  const openWallet = () => navigate(ROUTES.WALLET);
 
   // Làm mới số dư credit từ BE (GET /auth/me); lỗi thì giữ số cũ, không đoán
   const mounted = useRef(true);
@@ -63,29 +77,35 @@ export const ParentTabs: React.FC<ParentTabsProps> = ({ currentUser, nav, active
   const addToShelf = async (story: Story) => {
     const child = data.selectedChild;
     if (!child) {
-      Alert.alert('Chưa có hồ sơ bé', 'Ba mẹ cần thêm hồ sơ bé trước khi đưa truyện lên tủ sách.');
+      void dialog.notify('Chưa có hồ sơ bé', 'Ba mẹ cần thêm hồ sơ bé trước khi đưa truyện lên tủ sách.');
       return;
     }
     if (shelfBusy.current) return;
     shelfBusy.current = true;
     try {
       await storyService.addToShelf(child.id, story.id);
-      Alert.alert('Đã thêm', `“${story.title}” đã nằm trên tủ sách của ${child.name}.`);
+      toast.show(`Đã thêm “${story.title}” lên tủ sách của ${child.name}.`);
     } catch (e: any) {
-      Alert.alert('Chưa thêm được', e?.errors?.[0]?.message || e?.message || 'Vui lòng thử lại.');
+      void dialog.notify('Chưa thêm được', e?.errors?.[0]?.message || e?.message || 'Vui lòng thử lại.');
     } finally {
       shelfBusy.current = false;
     }
   };
 
   // SCOPE PENDING (D5): lối vào Chợ truyện chỉ hiện ở __DEV__, ẩn khỏi production
+  const balance = currentUser.creditBalance;
   const moreItems: MoreMenuItem[] = [
-    { key: 'children', icon: '👶', title: 'Bé nhà mình', description: 'Hồ sơ từng bé', onPress: () => navigate(ROUTES.CHILDREN) },
-    { key: 'characters', icon: '👨‍👩‍👧', title: 'Nhân vật gia đình', description: 'Người thân xuất hiện trong truyện', onPress: () => navigate(ROUTES.CHARACTERS) },
-    { key: 'settings', icon: '⚙️', title: 'Cài đặt', description: 'Tài khoản, mã PIN Chế độ Trẻ Em, máy chủ', onPress: () => navigate(ROUTES.SETTINGS) },
-    { key: 'help', icon: '❓', title: 'Trợ giúp', description: 'Câu hỏi thường gặp', onPress: () => navigate(ROUTES.HELP) },
-    { key: 'market', icon: '🛒', title: 'Chợ truyện', description: 'Chưa kết nối máy chủ', badge: 'Đang chờ quyết định phạm vi', onPress: () => navigate(ROUTES.MARKET) },
-  ].filter((item) => __DEV__ || item.key !== 'market');
+    { key: 'children', group: 'Gia đình', icon: 'people-outline', title: 'Bé nhà mình', description: 'Hồ sơ từng bé', onPress: () => navigate(ROUTES.CHILDREN) },
+    { key: 'characters', group: 'Gia đình', icon: 'happy-outline', title: 'Nhân vật gia đình', description: 'Người thân xuất hiện trong truyện', onPress: () => navigate(ROUTES.CHARACTERS) },
+    // Số dư chỉ lấy từ BE (GET /auth/me); chưa tải được thì không hiện số
+    { key: 'wallet', group: 'Tài khoản', icon: 'diamond-outline', title: 'Ví & Credit', description: balance == null ? 'Gói dịch vụ và lịch sử credit' : `Số dư ${balance} credit · gói dịch vụ, lịch sử`, onPress: openWallet },
+    { key: 'settings', group: 'Tài khoản', icon: 'settings-outline', title: 'Cài đặt', description: 'Tài khoản, mã PIN Chế độ Trẻ Em, máy chủ', onPress: () => navigate(ROUTES.SETTINGS) },
+    // Vào Kid Mode dùng đúng đường cũ (openKidMode → BE xác nhận); không đổi xác thực hay PIN
+    { key: 'kid', group: 'An toàn trẻ em', icon: 'happy', title: 'Chế độ Bé', description: data.selectedChild ? `Cho ${data.selectedChild.name} đọc truyện, thoát bằng mã PIN` : 'Thêm hồ sơ bé trước khi vào Chế độ Bé', highlight: true, onPress: () => kid.openKidMode() },
+    { key: 'help', group: 'Hỗ trợ', icon: 'help-circle-outline', title: 'Trợ giúp', description: 'Câu hỏi thường gặp', onPress: () => navigate(ROUTES.HELP) },
+    { key: 'market', group: 'Hỗ trợ', icon: 'cart-outline', title: 'Chợ truyện', description: 'Chưa kết nối máy chủ', badge: 'Đang chờ quyết định phạm vi', onPress: () => navigate(ROUTES.MARKET) },
+  ];
+  const visibleMoreItems = moreItems.filter((item) => __DEV__ || item.key !== 'market');
 
   const renderRoute = () => {
     switch (nav.current.route) {
@@ -159,9 +179,9 @@ export const ParentTabs: React.FC<ParentTabsProps> = ({ currentUser, nav, active
           />
         );
       case ROUTES.WALLET:
-        return <WalletScreen currentUser={currentUser} onRefreshWallet={() => void data.reload()} />;
+        return <WalletScreen currentUser={currentUser} onRefreshWallet={() => void data.reload()} onBack={goBack} />;
       case ROUTES.MORE:
-        return <MoreScreen currentUser={currentUser} items={moreItems} onLogout={auth.logout} onBack={goBack} />;
+        return <MoreScreen currentUser={currentUser} items={visibleMoreItems} onLogout={auth.logout} />;
       case ROUTES.CHILDREN:
         return (
           <ChildrenScreen
@@ -225,8 +245,8 @@ export const ParentTabs: React.FC<ParentTabsProps> = ({ currentUser, nav, active
         activeRole={activeRole}
         onRoleChange={setActiveRole}
         onOpenMenu={() => navigate(ROUTES.MORE)}
-        onOpenWallet={() => navigate(ROUTES.WALLET)}
-        onOpenKidMode={() => kid.openKidMode()}
+        onOpenWallet={openWallet}
+        onGoHome={() => navigate(ROUTES.HOME)}
       />
 
       {data.dataStatus === 'loading' && (
@@ -251,7 +271,7 @@ export const ParentTabs: React.FC<ParentTabsProps> = ({ currentUser, nav, active
             currentUser={currentUser}
             stories={data.stories}
             onOpenStoryWizard={() => navigate(ROUTES.CREATE)}
-            onOpenWallet={() => navigate(ROUTES.WALLET)}
+            onOpenWallet={openWallet}
             onSubmitForReview={() => notSupported('Gửi duyệt truyện')}
           />
         ) : activeRole === 'MODERATOR' || activeRole === 'ADMIN' ? (
@@ -262,9 +282,7 @@ export const ParentTabs: React.FC<ParentTabsProps> = ({ currentUser, nav, active
       </View>
 
       {/* Bottom Tab Bar (for Parent role) */}
-      {activeRole === 'PARENT' && nav.current.route !== ROUTES.CREATE && (
-        <HeyTabBar currentTab={nav.rootTab} onSelectTab={navigate} onOpenKidMode={() => kid.openKidMode()} />
-      )}
+      {tabBarVisible && <HeyTabBar currentTab={nav.rootTab} onSelectTab={navigate} onLayoutHeight={setTabBarHeight} />}
 
       <StoryReaderModal
         story={selectedStoryToRead}
@@ -280,8 +298,12 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.background,
   },
+  // R9-A: nội dung Parent tối đa 720px và căn giữa trên màn rộng (header/tab bar giữ như R3)
   main: {
     flex: 1,
+    width: '100%',
+    maxWidth: Layout.maxContentWidth,
+    alignSelf: 'center',
   },
   dataBanner: {
     flexDirection: 'row',

@@ -3,13 +3,16 @@
 // Trạng thái hiển thị là trạng thái BE trả; không có tiến độ/timer giả. Mất mạng khi poll không phải "thất bại":
 // báo lỗi kết nối và cho thử lại, vì job vẫn chạy phía BE.
 import React, { useEffect, useRef, useState } from 'react';
-import { Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { HeyButton } from '../ui/HeyButton';
 import { HeyCard } from '../ui/HeyCard';
 import { GenerationPanel } from './GenerationPanel';
 import { storyService } from '../../services';
 import { GenerationStatus } from '../../constants/story';
+import { Icon } from '../ui/Icon';
 import { Colors } from '../../theme/colors';
+import { Spacing } from '../../theme/spacing';
+import { Typography } from '../../theme/typography';
 
 const POLL_MS = 3000;
 /** Sau chừng này lần poll lỗi liên tiếp thì dừng và hỏi người dùng */
@@ -110,10 +113,13 @@ export const GenerationRunner: React.FC<Props> = ({ storyId, start, onSucceeded,
 
   if (fatal) {
     return (
-      <HeyCard variant="yellow" style={styles.card}>
-        <Text style={styles.title}>⚠️ {fatal}</Text>
-        <HeyButton title="Thử lại" size="sm" onPress={() => setAttempt((a) => a + 1)} />
-        <HeyButton title="← Quay lại" variant="outline" size="sm" onPress={onBack} />
+      <HeyCard variant="brand" style={styles.card}>
+        <View style={styles.fatalRow} accessibilityRole="alert">
+          <Icon name="alert-circle" size={20} color={Colors.danger} />
+          <Text style={styles.title}>{fatal}</Text>
+        </View>
+        <HeyButton title="Thử lại" iconName="refresh" size="sm" onPress={() => setAttempt((a) => a + 1)} />
+        <HeyButton title="Quay lại" iconName="arrow-back" variant="tertiary" size="sm" onPress={onBack} />
       </HeyCard>
     );
   }
@@ -126,14 +132,15 @@ export const GenerationRunner: React.FC<Props> = ({ storyId, start, onSucceeded,
         onRetry={() => setAttempt((a) => a + 1)}
       />
       {(status === 'failed' || status === 'blocked') && (
-        <HeyButton title="← Quay lại" variant="outline" size="sm" onPress={onBack} style={styles.back} />
+        <HeyButton title="Quay lại" iconName="arrow-back" variant="tertiary" size="sm" onPress={onBack} style={styles.back} />
       )}
     </>
   );
 };
 
 const styles = StyleSheet.create({
-  card: { gap: 10, marginTop: 12 },
-  title: { fontSize: 14, fontWeight: '800', color: Colors.primaryText, lineHeight: 20 },
-  back: { marginTop: 8, alignSelf: 'flex-start' },
+  card: { gap: Spacing.md, marginTop: Spacing.md },
+  fatalRow: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.sm },
+  title: { ...Typography.bodyStrong, color: Colors.text, flex: 1 },
+  back: { marginTop: Spacing.sm, alignSelf: 'flex-start' },
 });

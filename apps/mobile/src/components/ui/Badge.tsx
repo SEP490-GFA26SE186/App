@@ -1,16 +1,18 @@
-// apps/mobile/src/components/ui/Badge.tsx
+// apps/mobile/src/components/ui/Badge.tsx — R1: màu theo token, mọi cặp chữ/nền >= 4.5:1, chữ tối thiểu 12.
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Colors } from '../../theme/colors';
+import { Radius } from '../../theme/spacing';
+import { Typography } from '../../theme/typography';
 
 export type BadgeTone = 'neutral' | 'success' | 'warning' | 'danger' | 'info';
 
 const TONES: Record<BadgeTone, { bg: string; fg: string }> = {
-  neutral: { bg: '#F1F5F9', fg: '#475569' },
-  success: { bg: Colors.secondaryLight, fg: Colors.textOnGreen },
-  warning: { bg: Colors.peachLight, fg: Colors.primaryText },
-  danger: { bg: '#FEE2E2', fg: '#B91C1C' },
-  info: { bg: Colors.accentLight, fg: Colors.accentDark },
+  neutral: { bg: Colors.surfaceMuted, fg: Colors.textMuted },
+  success: { bg: Colors.successTint, fg: Colors.successText },
+  warning: { bg: Colors.warningTint, fg: Colors.brandInk },
+  danger: { bg: Colors.dangerTint, fg: Colors.danger },
+  info: { bg: Colors.infoTint, fg: Colors.infoText },
 };
 
 export const Badge: React.FC<{ label: string; tone?: BadgeTone }> = ({ label, tone = 'neutral' }) => (
@@ -24,10 +26,9 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
     paddingHorizontal: 10,
     paddingVertical: 3,
-    borderRadius: 999,
+    borderRadius: Radius.full,
   },
   text: {
-    fontSize: 11,
-    fontWeight: '800',
+    ...Typography.caption,
   },
 });

@@ -78,15 +78,15 @@ config/     env/base URL
 ---
 # Điều chỉnh roadmap 2026-10-26 (ADR-014 → ADR-020)
 
-> **Trạng thái: ĐÃ PHÊ DUYỆT CÓ ĐIỀU KIỆN (2026-10-26).** Các điều kiện đã được ghi trong từng ADR dưới đây và trong `IMPLEMENTATION_PLAN.md` §0. Chưa bắt đầu coding; task kế tiếp chờ lệnh: S0.1.
+> **Trạng thái: ĐÃ PHÊ DUYỆT CÓ ĐIỀU KIỆN (2026-10-26).** Các điều kiện đã được ghi trong từng ADR dưới đây và trong `IMPLEMENTATION_PLAN.md` §0 (đã xóa khỏi thư mục, xem lịch sử Git `a9160a7`). Chưa bắt đầu coding; task kế tiếp chờ lệnh: S0.1.
 
 ## ADR-014 – Thứ tự triển khai v2 và Safety Gate
-- **Quyết định (đã duyệt):** thứ tự **Safety tối thiểu → A → B → C → D → E**: A Refactor cấu trúc theo App_v2 · B Đồng bộ UI/nghiệp vụ với Web · C Tích hợp API thật · D Gỡ mock/fake/demo · E Kiểm thử & hoàn thiện. Chi tiết task ở `IMPLEMENTATION_PLAN.md`.
+- **Quyết định (đã duyệt):** thứ tự **Safety tối thiểu → A → B → C → D → E**: A Refactor cấu trúc theo App_v2 · B Đồng bộ UI/nghiệp vụ với Web · C Tích hợp API thật · D Gỡ mock/fake/demo · E Kiểm thử & hoàn thiện. Chi tiết task ở `IMPLEMENTATION_PLAN.md` (lịch sử Git `a9160a7`).
 - **Không bắt buộc hoàn thành toàn bộ S0.1–S0.7 trước khi bắt đầu A.** Chỉ **S-min** làm trước A:
   1. **S0.1** – loại bỏ bypass PIN `1234` và so sánh PIN cục bộ;
   2. **S0.2** – không vào/thoát Kid Mode bằng xác thực giả hoặc khi xác minh thật thất bại;
   3. **S0.4 + S0.5a** – không để thao tác ghi nhạy cảm, thanh toán hoặc credit giả báo thành công như BE thật.
-- **Hoãn có blocker, xử lý tại milestone:** S0.3 → A3 · S0.5b → B5/C8 · S0.5c → B3/B11 (U8) · S0.6 → A8/B · S0.7 → A2. Phần cần refactor lớn hoặc phụ thuộc API chưa có được ghi rõ blocker trong `IMPLEMENTATION_PLAN.md` §0.1.
+- **Hoãn có blocker, xử lý tại milestone:** S0.3 → A3 · S0.5b → B5/C8 · S0.5c → B3/B11 (U8) · S0.6 → A8/B · S0.7 → A2. Phần cần refactor lớn hoặc phụ thuộc API chưa có được ghi rõ blocker trong `IMPLEMENTATION_PLAN.md` §0 (đã xóa khỏi thư mục, xem lịch sử Git `a9160a7`).1.
 - **G-DEMO vẫn bắt buộc** trước mọi buổi demo/bàn giao có đăng nhập, Kid Mode hoặc tiền/credit; hoãn S đồng nghĩa chưa được demo luồng liên quan.
 - **Hệ quả:** không task gốc nào bị xóa; chỉ gán lại phase. Quy tắc "mỗi lần một task nhỏ, dừng chờ review" giữ nguyên.
 
@@ -143,12 +143,12 @@ dev/demo/     dữ liệu demo tạm thời (ADR-016) – chỉ import qua demoG
 - **SCOPE PENDING:** giữ nguyên màn hiện có, không phát triển thêm (ADR-003).
 
 ## ADR-019 – Bốn trục trạng thái tính năng & Definition of Done
-- Mỗi tính năng (F1–F15 và SCOPE PENDING) được theo dõi bằng **4 trục độc lập**: `UI COMPLETE` · `API INTEGRATED` · `RUNTIME TESTED` · `MOCK REMOVED`; ký hiệu ✅ ◐ ❌ —. Định nghĩa và bằng chứng yêu cầu ở `IMPLEMENTATION_PLAN.md` §1.2; ma trận hiện tại ở §1.3.
+- Mỗi tính năng (F1–F15 và SCOPE PENDING) được theo dõi bằng **4 trục độc lập**: `UI COMPLETE` · `API INTEGRATED` · `RUNTIME TESTED` · `MOCK REMOVED`; ký hiệu ✅ ◐ ❌ —. Định nghĩa và bằng chứng yêu cầu ở `IMPLEMENTATION_PLAN.md` §1.2 (lịch sử Git `a9160a7`); ma trận hiện tại ở §1.3.
 - **Quy tắc:**
   - `UI COMPLETE` được chứng minh bằng dữ liệu mẫu trong UI Preview tách biệt (ADR-020); **không** suy ra `API INTEGRATED`.
   - `API INTEGRATED` chỉ chứng minh code đúng contract; **không** suy ra chạy được.
   - `RUNTIME TESTED` chỉ đánh ✅ khi đã chạy thật với BE thật và ghi Nhật ký (ngày, commit BE/App, thiết bị, ca test, kết quả). Không có bằng chứng → ❌ hoặc "CHƯA CHẠY".
-  - `MOCK REMOVED` chỉ đánh ✅ khi grep cổng của tính năng sạch (IMPLEMENTATION_PLAN §6).
+  - `MOCK REMOVED` chỉ đánh ✅ khi grep cổng của tính năng sạch (Phụ lục cổng grep cuối file).
 - **Trạng thái task** tách riêng: `NOT STARTED → IN PROGRESS → DONE-STATIC → ACCEPTED` (+ `BLOCKED`). `ACCEPTED` chỉ do người dùng xác nhận.
 - **Áp dụng hiện tại:** T1.3 = `DONE-STATIC`, RUNTIME TESTED = ❌ cho tới khi chạy cùng BE.
 
@@ -163,8 +163,14 @@ dev/demo/     dữ liệu demo tạm thời (ADR-016) – chỉ import qua demoG
   5. **Không** lưu dữ liệu mẫu như dữ liệu người dùng thật (không ghi vào `safeStorage`/SecureStore, không đẩy vào store phiên).
   6. Hiển thị rõ "UI Preview – dữ liệu mẫu".
   7. **Không tồn tại đường truy cập preview trong production.**
-- **Cách kiểm chứng:** cổng grep G11 (`IMPLEMENTATION_PLAN.md` §6): `dev/preview` chỉ xuất hiện trong nhánh `__DEV__`; `src/dev/**` không import `apiClient`, `safeStorage`, `authService`, `kidService`. Kiểm tra bản build production không có lối vào ở phase E.
+- **Cách kiểm chứng:** cổng grep G11 (Phụ lục cổng grep cuối file): `dev/preview` chỉ xuất hiện trong nhánh `__DEV__`; `src/dev/**` không import `apiClient`, `safeStorage`, `authService`, `kidService`. Kiểm tra bản build production không có lối vào ở phase E.
 - **Phân biệt với phiên thật:** preview **không phải** Kid Mode; thoát preview không dùng PIN và không đổi phiên. Vào Kid Mode thật vẫn bắt buộc qua `/auth/kid-mode/enter` (S0.2).
+
+## ADR-021 – Intro Video khi mở app (2026-10-26)
+- **Đã duyệt** khôi phục `IntroScreen` và cài duy nhất `expo-video ~2.0.6` (bản bundled của SDK 52, qua `npx expo install`; `app.json` thêm config plugin `expo-video`). **Không dùng `expo-av`.** Không ảnh hưởng ADR-010 (Audio vẫn PENDING).
+- Web giữ thẻ `<video src="/intro.mp4">` (file tĩnh `public/`) vì `expo-video` web không báo lỗi autoplay bị chặn; native dùng `useVideoPlayer` + `VideoView` với `require('public/intro.mp4')` (Metro bundle asset).
+- `App.tsx` giữ `introVisible` → intro phát **một lần mỗi lần khởi động** (App không remount khi đổi tab/logout). `AppNavigator` vẫn mount bên dưới để bootstrap phiên chạy song song, nhưng bị `pointerEvents="none"` + ẩn accessibility khi intro mở.
+- Kết thúc intro (một lần duy nhất): Bỏ qua, hết video, lỗi video (chuyển ngay), Back Android (bỏ qua, không thoát app), quá 14 giây (video dài ~10 giây). Player được release khi unmount.
 
 ## Ghi chú – các quyết định còn PENDING (không tự quyết)
 - **Độ dài PIN:** theo validation thực tế của BE. Đã xác minh (đọc BE, không sửa): `BE/api/src/modules/auth/auth.validation.js` – `setKidPin`, `changeKidPin.newPin`, `exitKidMode.pin` đều `^\d{4,6}$`. UI hiện cố định 4 số → điều chỉnh ở T3.2/T3.3; chi tiết giao diện do người dùng duyệt (ADR-007, U6).
@@ -172,7 +178,7 @@ dev/demo/     dữ liệu demo tạm thời (ADR-016) – chỉ import qua demoG
 - **Seller, Specialist, Admin, Marketplace, Payment:** SCOPE PENDING (ADR-003, ADR-011). Không tự xóa màn hình hiện có khi nhóm chưa thống nhất loại bỏ.
 
 ## Ghi chú hiện thực hóa Phase A (2026-10-26)
-- **ADR-015 đã áp dụng** (cấu trúc thực tế: `PHASE_A_PROGRESS.md`): `navigation/` (ROUTES typed, giữ điều hướng bằng state), `screens/{auth,parent,kid,scope-pending}`, `components/{ui,auth,parent}`, `dev/demo/`. Thư mục `components/kid/`, `hooks/`, `constants/`, `config/` **chưa tạo** vì chưa có module nào cần.
+- **ADR-015 đã áp dụng** (cấu trúc thực tế: bản ghi Phase A trong lịch sử Git, `a9160a7:docs/mobile/PHASE_A_PROGRESS.md`): `navigation/` (ROUTES typed, giữ điều hướng bằng state), `screens/{auth,parent,kid,scope-pending}`, `components/{ui,auth,parent}`, `dev/demo/`. Thư mục `components/kid/`, `hooks/`, `constants/`, `config/` **chưa tạo** vì chưa có module nào cần.
 - **ADR-017 đã áp dụng:** `stores/` gồm 3 hook state + `SessionProvider` (3 context riêng: phiên Parent, dữ liệu Parent, Kid session). Không thêm thư viện.
 - **Cấu hình API (A0.2, thay thế phần "URL hardcode" của ADR-004):** địa chỉ lấy từ `EXPO_PUBLIC_API_URL` (công khai, không bí mật), chuẩn hóa về `…/api/v1`; thiếu cấu hình → lỗi rõ ràng, không dùng URL mặc định. Hướng dẫn: `docs/mobile/ENVIRONMENT.md`. Địa chỉ production chỉ cấu hình khi nhóm BE xác nhận.
 - **ADR-016:** fixture đã tách vào `src/dev/demo/`; không file nào ngoài `src/dev/` import chúng.
@@ -189,7 +195,7 @@ dev/demo/     dữ liệu demo tạm thời (ADR-016) – chỉ import qua demoG
 - `AuthModal` đã DEPRECATED (không mount), chờ duyệt xóa.
 
 ## Ghi chú hiện thực hóa Phase C (2026-10-26)
-- **Nguồn contract:** đọc trực tiếp source BE (`routes` + zod `*.validation.js` + `*.controller.js` + `*.service.js`/`lib/*format*.js`). Khi lệch tài liệu cũ, BE thắng (danh sách ở PHASE_C_PROGRESS).
+- **Nguồn contract:** đọc trực tiếp source BE (`routes` + zod `*.validation.js` + `*.controller.js` + `*.service.js`/`lib/*format*.js`). Khi lệch tài liệu cũ, BE thắng (danh sách ở bản ghi Phase C trong lịch sử Git, `a9160a7:docs/mobile/PHASE_C_PROGRESS.md`).
 - **ADR-008 (service throw):** mọi service mới (`billingService`, `kidService`, `storyService`, ...) throw `ApiError` khi lỗi/sai hình dạng (502 cho response 2xx sai contract); không `catch` trả giả.
 - **API client:** thêm timeout 20 s và tùy chọn `raw` (nguyên envelope) để đọc `pagination`; `ApiError.errors` giữ trường phụ (`attemptsLeft`, `retryAfterSeconds`, `narration`).
 - **Kid Mode dùng nguồn dữ liệu tiêm vào (`KidDataSource`):** `KidModeScreen` nhận `source`; thật = `kidService`, UI Preview = fixture trong `src/dev/preview`. Kiểu `KidDataSource` nằm ở `types/` để `src/dev` không import service (G11). Một đường UI duy nhất cho cả hai.
@@ -198,3 +204,22 @@ dev/demo/     dữ liệu demo tạm thời (ADR-016) – chỉ import qua demoG
 - **Story view model:** `StoryView = Story & {...}`; danh sách là bản tóm tắt (`detailLoaded=false`), chi tiết nạp theo yêu cầu ở `StoryDetailScreen`. Ảnh trang lấy từ `scenes[].imageUrl`; không có ảnh → khung giữ chỗ.
 - **Generation:** `GenerationRunner` poll `GET /stories/:id/generation` mỗi 3 s, hiển thị đúng trạng thái BE (không tiến độ giả); dừng khi unmount, job tiếp tục ở BE.
 - **Còn chờ duyệt:** `expo-secure-store` (C2), thư viện phát audio (C11); lối "Tự viết" và trình sửa trang/điểm dừng (C8) chưa làm.
+
+## Phụ lục – Cổng kiểm tra (grep) G1–G11
+
+_(Chuyển từ `IMPLEMENTATION_PLAN.md` §6 khi dọn tài liệu 2026-10-27; G-DEMO/D7/E5/A7/B9-P là mã task lịch sử.)_
+Chạy tại `App/apps/mobile`. Kỳ vọng "0 kết quả" trừ khi ghi chú.
+| # | Mục tiêu | Lệnh gợi ý | Khi nào bắt buộc |
+|---|---|---|---|
+| G1 | PIN cục bộ/backdoor | `grep -rn "'1234'\|correctPin" App.tsx src` | G-DEMO |
+| G2 | Token/phiên giả | `grep -rn "mock_\|demo_mock\|DEMO_PARENT_USER" App.tsx src` (ngoài `dev/demo/`) | G-DEMO |
+| G3 | Mock env/nút demo | `grep -rn "'mock'\|Offline Demo\|DEMO_CREDENTIALS\|onSkip" App.tsx src` | G-DEMO (đã sạch sau T1.3, comment trong `config.ts` được phép) |
+| G4 | Ví/credit giả | `grep -rn "creditBalance *[-+]\|sellerAvailableBalance *[-+]\|Đã nạp thành công" App.tsx src` | G-DEMO |
+| G5 | Fake success trong catch | rà `catch` ở `services/*`, `App.tsx`, `components/AuthModal.tsx`, `screens/StoryWizard.tsx` — không `return true`/object giả | G-DEMO, D7 |
+| G6 | Endpoint không tồn tại | `grep -rn "ai-generate" src` | G-DEMO |
+| G7 | Demo data vào runtime | `grep -rn "DEMO_\|demoData\|dev/demo" App.tsx src` | D4/D7 (G-DEMO: chỉ trong `src/dev/**` hoặc lớp chuyển tiếp có nhãn `__DEV__`) |
+| G8 | Marker demo | `grep -rn "TEMP-DEMO" App.tsx src` | G-DEMO: đủ banner; D3: chỉ SCOPE PENDING |
+| G9 | Import legacy | `grep -rn "\.\./\.\./\.\./\.\./src" App.tsx src` | A7 |
+| G10 | Secret/URL hardcode | `grep -rn "localhost\|10.0.2.2\|api.storyweaver" src App.tsx` | A0.2 |
+| G11 | Cô lập UI Preview | (a) `grep -rn "dev/preview" App.tsx src --include=*.ts*` — chỉ xuất hiện trong nhánh `__DEV__`; (b) `grep -rn "apiClient\|safeStorage\|authService\|kidService" src/dev` = 0 (preview không chạm API/token/storage) | B9-P, G-DEMO |
+Luôn kèm: `npx tsc --noEmit`, `git diff --check`.

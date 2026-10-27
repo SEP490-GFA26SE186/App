@@ -4,10 +4,12 @@ import React from 'react';
 import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
 import { HeyButton } from '../../components/ui/HeyButton';
 import { Colors } from '../../theme/colors';
+import { Spacing } from '../../theme/spacing';
+import { Typography } from '../../theme/typography';
 
 export const BootScreen: React.FC = () => (
-  <View style={styles.centerBox}>
-    <ActivityIndicator size="large" color={Colors.primary} />
+  <View style={styles.centerBox} accessibilityRole="progressbar" accessibilityLabel="Đang kiểm tra phiên đăng nhập">
+    <ActivityIndicator size="large" color={Colors.brandStrong} />
     <Text style={styles.centerText}>Đang kiểm tra phiên đăng nhập...</Text>
   </View>
 );
@@ -18,36 +20,22 @@ export const BootErrorScreen: React.FC<{
   onLogout: () => void;
 }> = ({ message, onRetry, onLogout }) => (
   <View style={styles.centerBox}>
-    <Text style={styles.centerTitle}>Không thể xác minh phiên đăng nhập</Text>
-    <Text style={styles.centerText}>{message}</Text>
+    <Text style={styles.centerTitle} accessibilityRole="header">
+      Không thể xác minh phiên đăng nhập
+    </Text>
+    {!!message && (
+      <Text style={styles.centerText} accessibilityRole="alert">
+        {message}
+      </Text>
+    )}
     <HeyButton title="Thử lại" onPress={onRetry} style={styles.centerBtn} />
-    <HeyButton title="Đăng xuất" variant="outline" onPress={onLogout} style={styles.centerBtn} />
+    <HeyButton title="Đăng xuất" variant="tertiary" onPress={onLogout} style={styles.centerBtn} />
   </View>
 );
 
 const styles = StyleSheet.create({
-  centerBox: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 24,
-  },
-  centerTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: Colors.textDark,
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  centerText: {
-    fontSize: 14,
-    color: Colors.textDark,
-    marginTop: 12,
-    marginBottom: 16,
-    textAlign: 'center',
-  },
-  centerBtn: {
-    alignSelf: 'stretch',
-    marginTop: 8,
-  },
+  centerBox: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: Spacing.xxl, backgroundColor: Colors.canvas },
+  centerTitle: { ...Typography.heading, color: Colors.text, marginBottom: Spacing.sm, textAlign: 'center' },
+  centerText: { ...Typography.body, fontSize: 14, color: Colors.text, marginTop: Spacing.md, marginBottom: Spacing.lg, textAlign: 'center' },
+  centerBtn: { alignSelf: 'stretch', marginTop: Spacing.sm },
 });

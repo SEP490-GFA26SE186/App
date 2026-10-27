@@ -1,223 +1,162 @@
-// apps/mobile/src/components/HeyTabBar.tsx — v2.0 Floating Pill Design
+// apps/mobile/src/components/parent/HeyTabBar.tsx — R3: thanh tab nổi dạng pill, icon vector (UI kit R2).
+// 5 mục: Trang chủ · Tủ truyện · [Sáng tác] · Tiến độ · Hồ sơ. Credit đã chuyển lên pill ở header và vào Hồ sơ.
+// Mỗi mục là một nút (role=button) có trạng thái chọn: Enter/Space hoạt động trên Web, vùng chạm >= 44pt,
+// viền focus chỉ khi dùng bàn phím. Không còn animation lò xo (trạng thái nhấn tức thời) nên không phụ thuộc Reduce Motion.
 import React from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  Dimensions,
-} from 'react-native';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-} from 'react-native-reanimated';
+import { View, Text, Pressable, StyleSheet, LayoutChangeEvent } from 'react-native';
 import { Colors } from '../../theme/colors';
+import { Elevation } from '../../theme/shadows';
+import { Layout, Radius, Touch } from '../../theme/spacing';
+import { FontFamily, Typography } from '../../theme/typography';
+import { focusRing } from '../../theme/focus';
 import { soundFX } from '../../utils/sound-fx';
 import { ROUTES, RouteKey } from '../../navigation/routes';
-
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+import { Icon, IconName } from '../ui/Icon';
 
 interface HeyTabBarProps {
   currentTab: RouteKey;
   onSelectTab: (tab: RouteKey) => void;
-  onOpenKidMode: () => void;
+  /** Đo chiều cao thực của thanh tab (để Toast nằm phía trên, không che thanh tab) */
+  onLayoutHeight?: (height: number) => void;
 }
 
-const tabs = [
-  { id: ROUTES.HOME,   label: 'Trang chủ', icon: '🌱' },
-  { id: ROUTES.LIBRARY, label: 'Tủ truyện', icon: '📚' },
-  { id: ROUTES.CREATE, label: 'Sáng tác',  icon: '🪄', highlight: true },
-  { id: ROUTES.EQ,     label: 'Tiến độ',   icon: '⭐' },
-  { id: ROUTES.WALLET, label: 'Credit',    icon: '💎' },
+interface TabDef {
+  id: RouteKey;
+  label: string;
+  icon: IconName;
+  iconActive: IconName;
+  highlight?: boolean;
+}
+
+const TABS: TabDef[] = [
+  { id: ROUTES.HOME, label: 'Trang chủ', icon: 'home-outline', iconActive: 'home' },
+  { id: ROUTES.LIBRARY, label: 'Tủ truyện', icon: 'library-outline', iconActive: 'library' },
+  { id: ROUTES.CREATE, label: 'Sáng tác', icon: 'sparkles-outline', iconActive: 'sparkles', highlight: true },
+  { id: ROUTES.EQ, label: 'Tiến độ', icon: 'stats-chart-outline', iconActive: 'stats-chart' },
+  { id: ROUTES.MORE, label: 'Hồ sơ', icon: 'person-circle-outline', iconActive: 'person-circle' },
 ];
 
-const AnimatedTabItem: React.FC<{
-  tab: typeof tabs[0];
-  isActive: boolean;
-  onPress: () => void;
-}> = ({ tab, isActive, onPress }) => {
-  const scale = useSharedValue(1);
+/** Phần nút Sáng tác nhô lên trên mép thanh tab (px) — Toast cần chừa thêm khoảng này */
+export const TAB_BAR_FAB_OVERHANG = 22;
 
+const TabItem: React.FC<{ tab: TabDef; active: boolean; onPress: () => void }> = ({ tab, active, onPress }) => {
   const handlePress = () => {
     soundFX.playPop();
-    scale.value = withSpring(0.88, { damping: 8, stiffness: 220 }, () => {
-      scale.value = withSpring(1, { damping: 12, stiffness: 160 });
-    });
     onPress();
   };
-
-  const animStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-  }));
-
   return (
-    <TouchableOpacity
-      activeOpacity={1}
+    <Pressable
       onPress={handlePress}
-      style={styles.tabItem}
+      accessibilityRole="button"
+      accessibilityLabel={tab.label}
+      accessibilityState={{ selected: active }}
+      aria-current={active ? 'page' : undefined}
+      style={(state) => [styles.item, state.pressed && styles.pressed, focusRing(state)]}
     >
-      <Animated.View style={[styles.tabInner, animStyle]}>
-        {/* Active indicator pill */}
-        {isActive && <View style={styles.activeIndicator} />}
-
-        <Text style={[styles.tabIcon, isActive && styles.tabIconActive]}>
-          {tab.icon}
-        </Text>
-        <Text style={[styles.tabLabel, isActive ? styles.tabLabelActive : styles.tabLabelInactive]}>
-          {tab.label}
-        </Text>
-      </Animated.View>
-    </TouchableOpacity>
-  );
-};
-
-export const HeyTabBar: React.FC<HeyTabBarProps> = ({
-  currentTab,
-  onSelectTab,
-  onOpenKidMode,
-}) => {
-  return (
-    <View style={styles.outerWrapper}>
-      {/* Floating pill tab bar */}
-      <View style={styles.tabBar}>
-        {tabs.map((tab) => {
-          const isActive = currentTab === tab.id;
-
-          if (tab.highlight) {
-            // CTA floating button — vươn lên trên tab bar
-            return (
-              <View key={tab.id} style={styles.highlightWrapper}>
-                <TouchableOpacity
-                  activeOpacity={0.85}
-                  onPress={() => {
-                    soundFX.playSparkle();
-                    onSelectTab(tab.id);
-                  }}
-                  style={[
-                    styles.highlightCircle,
-                    isActive && styles.highlightCircleActive,
-                  ]}
-                >
-                  <Text style={styles.highlightIcon}>{tab.icon}</Text>
-                </TouchableOpacity>
-                <Text style={[
-                  styles.highlightLabel,
-                  isActive && styles.highlightLabelActive,
-                ]}>
-                  {tab.label}
-                </Text>
-              </View>
-            );
-          }
-
-          return (
-            <AnimatedTabItem
-              key={tab.id}
-              tab={tab}
-              isActive={isActive}
-              onPress={() => onSelectTab(tab.id)}
-            />
-          );
-        })}
+      <View style={[styles.pill, active && styles.pillActive]}>
+        <Icon name={active ? tab.iconActive : tab.icon} size={24} color={active ? Colors.brandStrong : Colors.textMuted} />
       </View>
-    </View>
+      <Text style={[styles.label, active ? styles.labelActive : styles.labelInactive]} numberOfLines={1}>
+        {tab.label}
+      </Text>
+    </Pressable>
   );
 };
+
+const CreateButton: React.FC<{ tab: TabDef; active: boolean; onPress: () => void }> = ({ tab, active, onPress }) => {
+  const handlePress = () => {
+    soundFX.playSparkle();
+    onPress();
+  };
+  // Cả nút tròn lẫn nhãn nằm trong cùng một vùng chạm (trước đây nhãn "Sáng tác" không nhận chạm)
+  return (
+    <Pressable
+      onPress={handlePress}
+      accessibilityRole="button"
+      accessibilityLabel={tab.label}
+      accessibilityState={{ selected: active }}
+      aria-current={active ? 'page' : undefined}
+      style={(state) => [styles.item, styles.createItem, state.pressed && styles.pressed, focusRing(state)]}
+    >
+      <View style={[styles.fab, active && styles.fabActive]}>
+        <Icon name={active ? tab.iconActive : tab.icon} size={28} color={Colors.onBrand} />
+      </View>
+      <Text style={[styles.label, active ? styles.labelActive : styles.labelInactive]} numberOfLines={1}>
+        {tab.label}
+      </Text>
+    </Pressable>
+  );
+};
+
+export const HeyTabBar: React.FC<HeyTabBarProps> = ({ currentTab, onSelectTab, onLayoutHeight }) => (
+  <View
+    style={styles.outer}
+    onLayout={onLayoutHeight ? (e: LayoutChangeEvent) => onLayoutHeight(e.nativeEvent.layout.height) : undefined}
+  >
+    <View role="navigation" aria-label="Điều hướng chính" style={styles.bar}>
+      {TABS.map((tab) =>
+        tab.highlight ? (
+          <CreateButton key={tab.id} tab={tab} active={currentTab === tab.id} onPress={() => onSelectTab(tab.id)} />
+        ) : (
+          <TabItem key={tab.id} tab={tab} active={currentTab === tab.id} onPress={() => onSelectTab(tab.id)} />
+        )
+      )}
+    </View>
+  </View>
+);
 
 const styles = StyleSheet.create({
-  outerWrapper: {
-    // Padding để tab bar không chạm sát cạnh màn hình
-    paddingHorizontal: 12,
-    paddingBottom: 10,
-    backgroundColor: 'transparent',
-  },
-  tabBar: {
+  // Padding để thanh nổi không chạm sát mép màn hình; trên màn rộng thì thu gọn và căn giữa
+  outer: { paddingHorizontal: 12, paddingBottom: 10, alignItems: 'center' },
+  bar: {
+    width: '100%',
+    maxWidth: Layout.maxContentWidth,
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-end',
     justifyContent: 'space-around',
-    backgroundColor: '#FFFFFF',
-    // Floating pill design — KHÔNG có borderTopWidth
-    borderRadius: 32,
-    paddingTop: 8,
-    paddingBottom: 8,
+    backgroundColor: Colors.surface,
+    borderRadius: Radius.xxxl,
+    borderWidth: 1,
+    borderColor: Colors.outline,
+    paddingTop: 6,
+    paddingBottom: 6,
     paddingHorizontal: 4,
-    boxShadow: '0 -4px 20px rgba(184, 196, 216, 0.18)',
+    ...Elevation.mid,
   },
-  tabItem: {
+  item: {
     flex: 1,
+    minHeight: Touch.min + 8,
     alignItems: 'center',
+    justifyContent: 'flex-end',
+    borderRadius: Radius.md,
+    gap: 2,
   },
-  tabInner: {
-    alignItems: 'center',
-    paddingVertical: 4,
-    paddingHorizontal: 6,
-    borderRadius: 16,
-    minWidth: 50,
-    position: 'relative',
-  },
-  activeIndicator: {
-    position: 'absolute',
-    top: 0,
-    left: 4,
-    right: 4,
-    bottom: 0,
-    backgroundColor: Colors.primaryLight,
-    borderRadius: 14,
-    zIndex: 0,
-  },
-  tabIcon: {
-    fontSize: 19,
-    marginBottom: 2,
-    zIndex: 1,
-  },
-  tabIconActive: {
-    // Scale up icon khi active
-  },
-  tabLabel: {
-    fontSize: 10,
-    fontWeight: '600',
-    zIndex: 1,
-  },
-  tabLabelActive: {
-    color: Colors.primaryText,
-    fontWeight: '900',
-    fontSize: 10,
-  },
-  tabLabelInactive: {
-    color: Colors.textSecondary,
-  },
-
-  // Highlight "Sáng tác" button — floating above
-  highlightWrapper: {
-    alignItems: 'center',
-    marginTop: -22, // Nổi lên phía trên tab bar
-  },
-  highlightCircle: {
-    width: 54,
-    height: 54,
-    borderRadius: 27,
-    backgroundColor: Colors.primary,
+  pressed: { opacity: 0.7 },
+  pill: {
+    minWidth: 56,
+    height: 32,
+    borderRadius: Radius.full,
     alignItems: 'center',
     justifyContent: 'center',
-    boxShadow: '0 6px 12px rgba(245, 196, 0, 0.40)',
+  },
+  pillActive: { backgroundColor: Colors.brandTint },
+  label: { ...Typography.caption, fontSize: 12, lineHeight: 16 },
+  // textMuted 6.3:1; brandInk trên nền kem/trắng > 12:1
+  labelInactive: { color: Colors.textMuted },
+  labelActive: { color: Colors.brandInk, fontFamily: FontFamily.extraBold },
+
+  createItem: { marginTop: -TAB_BAR_FAB_OVERHANG },
+  fab: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: Colors.brand,
     borderWidth: 3,
-    borderColor: '#FFFFFF',
+    borderColor: Colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...Elevation.high,
   },
-  highlightCircleActive: {
-    backgroundColor: Colors.primaryDark,
-    transform: [{ scale: 1.06 }],
-  },
-  highlightIcon: {
-    fontSize: 24,
-  },
-  highlightLabel: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: Colors.textSecondary,
-    marginTop: 3,
-  },
-  highlightLabelActive: {
-    color: Colors.primaryText,
-  },
+  // Đang ở màn Sáng tác: viền đậm quanh nút (chữ/icon navy trên nền cam giữ 5.6:1; không đổi nền sang cam đậm)
+  fabActive: { borderColor: Colors.brandStrong },
 });
