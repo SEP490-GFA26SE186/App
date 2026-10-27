@@ -3,19 +3,29 @@
 // theo dõi/chạy AI viết, "Hoàn tất xem lại" (POST /review; lỗi 422 hiển thị errors[]), thêm vào tủ sách của bé (POST /bookshelf).
 // Chưa có: sửa chữ từng trang / điểm dừng (PUT /stories/:id/pages|checkpoints) → "Chưa hỗ trợ".
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, View, Text, ScrollView, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, StyleSheet } from 'react-native';
+import { Icon } from '../../components/ui/Icon';
 import { ChildProfile } from '../../types/domain';
 import { HeyCard } from '../../components/ui/HeyCard';
 import { HeyButton } from '../../components/ui/HeyButton';
 import { Badge } from '../../components/ui/Badge';
 import { StateView } from '../../components/ui/StateView';
+import { useToast } from '../../components/ui/Toast';
+import { useDialog } from '../../components/ui/Dialog';
 import { ScreenHeader } from '../../components/ui/ScreenHeader';
 import { StoryCover } from '../../components/ui/StoryCover';
 import { GenerationRunner } from '../../components/parent/GenerationRunner';
 import { Colors } from '../../theme/colors';
+import { Radius, Spacing } from '../../theme/spacing';
+import { Typography } from '../../theme/typography';
 import { CHECKPOINT_TYPES, STORY_STATUS_LABELS } from '../../constants/story';
 import { storyService } from '../../services';
 import { StoryView } from '../../types/viewModels';
+
+/** Lý do BE trả (mã) → câu tiếng Việt; mã lạ giữ nguyên chữ BE trả. */
+const READINESS_REASONS: Record<string, string> = {
+  not_reviewed: 'ba mẹ cần bấm “Hoàn tất xem lại” trước.',
+};
 
 interface StoryDetailScreenProps {
   storyId: string;
@@ -40,6 +50,8 @@ export const StoryDetailScreen: React.FC<StoryDetailScreenProps> = ({
   onCreditsChanged,
   onUnsupported,
 }) => {
+  const toast = useToast();
+  const dialog = useDialog();
   const [story, setStory] = useState<StoryView | undefined>(summary?.detailLoaded ? summary : undefined);
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>(summary?.detailLoaded ? 'ready' : 'loading');
   const [loadError, setLoadError] = useState('');
@@ -95,12 +107,12 @@ export const StoryDetailScreen: React.FC<StoryDetailScreenProps> = ({
         // review trả bản đầy đủ; giữ chi tiết đã có nếu thiếu
         setStory(updated);
         onStoryLoaded(updated);
-        Alert.alert('Đã xem lại', 'Truyện đã được đánh dấu xem xong.');
+        toast.show('Đã xem lại: truyện được đánh dấu xem xong.');
       } catch (e: any) {
         if (e?.status === 422 && e.errors?.length) {
           setReviewErrors(e.errors.map((x: { message?: string }) => x.message).filter(Boolean));
         } else {
-          Alert.alert('Chưa hoàn tất được', e?.message || 'Vui lòng thử lại.');
+          void dialog.notify('Chưa hoàn tất được', e?.message || 'Vui lòng thử lại.');
         }
       }
     });
@@ -110,10 +122,10 @@ export const StoryDetailScreen: React.FC<StoryDetailScreenProps> = ({
       if (!selectedChild) return;
       try {
         await storyService.addToShelf(selectedChild.id, storyId);
-        Alert.alert('Đã thêm', `Truyện đã nằm trên tủ sách của ${selectedChild.name}.`);
+        toast.show(`Đã thêm truyện lên tủ sách của ${selectedChild.name}.`);
       } catch (e: any) {
         // 422: truyện chưa sẵn sàng cho bé (chưa hoàn tất / thiếu giọng đọc) – BE nêu rõ lý do
-        Alert.alert('Chưa thêm được', e?.errors?.[0]?.message || e?.message || 'Vui lòng thử lại.');
+        void dialog.notify('Chưa thêm được', e?.errors?.[0]?.message || e?.message || 'Vui lòng thử lại.');
       }
     });
 
@@ -126,7 +138,7 @@ export const StoryDetailScreen: React.FC<StoryDetailScreenProps> = ({
           <StateView variant="loading" title="Đang tải truyện..." />
         ) : (
           <StateView
-            variant="empty"
+            variant="error"
             title="Không tải được truyện"
             description={loadError || 'Truyện có thể đã bị xóa.'}
             actionLabel="Thử lại"
@@ -159,14 +171,14 @@ export const StoryDetailScreen: React.FC<StoryDetailScreenProps> = ({
       {!!shown.momentSummary && <Text style={styles.summary}>{shown.momentSummary}</Text>}
       {!!shown.characters?.length && (
         <Text style={styles.summary}>
-          Nhân vật: {shown.characters.map((c) => `${c.name ?? '?'}${c.isMain ? ' ⭐' : ''}`).join(', ')}
+          Nhân vật: {shown.characters.map((c) => `${c.name ?? '?'}${c.isMain ? ' (chính)' : ''}`).join(', ')}
         </Text>
       )}
 
       {status === 'loading' && <StateView variant="loading" title="Đang tải nội dung..." />}
       {status === 'error' && (
         <StateView
-          variant="empty"
+          variant="error"
           title="Chưa tải được nội dung truyện"
           description={loadError}
           actionLabel="Thử lại"
@@ -192,26 +204,14 @@ export const StoryDetailScreen: React.FC<StoryDetailScreenProps> = ({
 
       {status === 'ready' && !generating && (
         <View style={styles.actions}>
-          {notWritten && (
-            <HeyButton title="🪄 Cho AI viết" size="sm" onPress={() => setRunner('start')} style={styles.actionBtn} />
-          )}
-          {pages.length > 0 && story && (
-            <HeyButton title="📖 Đọc thử" size="sm" onPress={() => onRead(story)} style={styles.actionBtn} />
-          )}
-          {pages.length > 0 && (
-            <HeyButton
-              title="✏️ Chỉnh sửa"
-              variant="outline"
-              size="sm"
-              onPress={() => onUnsupported('Chỉnh sửa chữ từng trang')}
-              style={styles.actionBtn}
-            />
-          )}
+          {notWritten && <HeyButton title="Cho AI viết" iconName="sparkles" onPress={() => setRunner('start')} style={styles.actionBtn} />}
+          {pages.length > 0 && story && <HeyButton title="Đọc thử" iconName="book" onPress={() => onRead(story)} style={styles.actionBtn} />}
           {pages.length > 0 && !shown.reviewedAt && (
             <HeyButton
-              title={busy === 'review' ? '⏳ Đang lưu...' : '✅ Hoàn tất xem lại'}
-              variant="teal"
-              size="sm"
+              title="Hoàn tất xem lại"
+              iconName="checkmark-circle-outline"
+              variant="secondary"
+              loading={busy === 'review'}
               disabled={!!busy}
               onPress={review}
               style={styles.actionBtn}
@@ -219,11 +219,21 @@ export const StoryDetailScreen: React.FC<StoryDetailScreenProps> = ({
           )}
           {pages.length > 0 && !!selectedChild && (
             <HeyButton
-              title={busy === 'shelf' ? '⏳ Đang thêm...' : `📚 Thêm vào tủ sách của ${selectedChild.name}`}
-              variant="yellow"
-              size="sm"
+              title={`Thêm vào tủ sách của ${selectedChild.name}`}
+              iconName="bookmark-outline"
+              variant="tertiary"
+              loading={busy === 'shelf'}
               disabled={!!busy}
               onPress={addToShelf}
+              style={styles.actionBtn}
+            />
+          )}
+          {pages.length > 0 && (
+            <HeyButton
+              title="Chỉnh sửa (chưa hỗ trợ)"
+              iconName="create-outline"
+              variant="tertiary"
+              onPress={() => onUnsupported('Chỉnh sửa chữ từng trang')}
               style={styles.actionBtn}
             />
           )}
@@ -231,12 +241,17 @@ export const StoryDetailScreen: React.FC<StoryDetailScreenProps> = ({
       )}
 
       {status === 'ready' && !!story?.readiness && !story.readiness.ready && !!story.readiness.reason && (
-        <Text style={styles.summary}>ℹ️ Chưa lên tủ sách bé được: {story.readiness.reason}</Text>
+        <View style={styles.note}>
+          <Icon name="information-circle-outline" size={18} color={Colors.text} />
+          <Text style={styles.noteText}>Chưa lên tủ sách bé được: {READINESS_REASONS[story.readiness.reason] ?? story.readiness.reason}</Text>
+        </View>
       )}
 
       {!!reviewErrors.length && (
-        <HeyCard variant="coral" style={styles.errors}>
-          <Text style={styles.errorsTitle}>Truyện chưa đủ điều kiện hoàn tất:</Text>
+        <HeyCard variant="brand" style={styles.errors}>
+          <Text style={styles.errorsTitle} accessibilityRole="alert">
+            Truyện chưa đủ điều kiện hoàn tất:
+          </Text>
           {reviewErrors.map((e, i) => (
             <Text key={`${i}-${e}`} style={styles.errorsItem}>
               • {e}
@@ -274,7 +289,10 @@ export const StoryDetailScreen: React.FC<StoryDetailScreenProps> = ({
                   <Text style={styles.pageText}>{c.question || '(chưa có câu hỏi)'}</Text>
                 </HeyCard>
               ))}
-              <Text style={styles.footnote}>🔒 Điểm dừng câu hỏi do khung sư phạm quy định, không chỉnh trực tiếp.</Text>
+              <View style={styles.footnoteRow}>
+                <Icon name="lock-closed-outline" size={14} color={Colors.textMuted} />
+                <Text style={styles.footnote}>Điểm dừng câu hỏi do khung sư phạm quy định, không chỉnh trực tiếp.</Text>
+              </View>
             </>
           )}
         </>
@@ -284,18 +302,21 @@ export const StoryDetailScreen: React.FC<StoryDetailScreenProps> = ({
 };
 
 const styles = StyleSheet.create({
-  content: { padding: 16, paddingBottom: 32 },
-  cover: { width: '100%', aspectRatio: 16 / 9, borderRadius: 16, backgroundColor: '#F1F5F9' },
-  badges: { flexDirection: 'row', gap: 8, marginTop: 12, flexWrap: 'wrap' },
-  summary: { fontSize: 13, color: Colors.textSecondary, lineHeight: 19, marginTop: 10 },
-  actions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginVertical: 14 },
-  actionBtn: { flexGrow: 1 },
-  errors: { marginBottom: 12, gap: 4 },
-  errorsTitle: { fontSize: 13, fontWeight: '800', color: '#B91C1C' },
-  errorsItem: { fontSize: 12, color: '#B91C1C' },
-  sectionTitle: { fontSize: 15, fontWeight: '900', color: Colors.textPrimary, marginBottom: 8, marginTop: 6 },
-  pageCard: { marginBottom: 10, gap: 4 },
-  pageLabel: { fontSize: 11, fontWeight: '800', color: Colors.textSecondary },
-  pageText: { fontSize: 14, color: Colors.textPrimary, lineHeight: 21 },
-  footnote: { fontSize: 11, color: Colors.textSecondary, textAlign: 'center', marginTop: 8 },
+  content: { padding: Spacing.page, paddingBottom: Spacing.xxxl },
+  cover: { width: '100%', aspectRatio: 16 / 9, borderRadius: Radius.xl, backgroundColor: Colors.brandTint },
+  badges: { flexDirection: 'row', gap: Spacing.sm, marginTop: Spacing.md, flexWrap: 'wrap' },
+  summary: { ...Typography.body, color: Colors.text, marginTop: Spacing.md },
+  actions: { gap: Spacing.sm, marginVertical: Spacing.lg },
+  actionBtn: { alignSelf: 'stretch' },
+  note: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.sm, marginTop: Spacing.sm },
+  noteText: { ...Typography.label, color: Colors.text, flex: 1 },
+  errors: { marginBottom: Spacing.md, gap: Spacing.xs },
+  errorsTitle: { ...Typography.bodyStrong, color: Colors.danger },
+  errorsItem: { ...Typography.label, color: Colors.danger },
+  sectionTitle: { ...Typography.heading, color: Colors.text, marginBottom: Spacing.sm, marginTop: Spacing.md },
+  pageCard: { marginBottom: Spacing.sm, gap: Spacing.xs },
+  pageLabel: { ...Typography.caption, color: Colors.textMuted },
+  pageText: { ...Typography.body, color: Colors.text },
+  footnoteRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing.xs, marginTop: Spacing.sm },
+  footnote: { ...Typography.caption, color: Colors.textMuted, flexShrink: 1, textAlign: 'center' },
 });

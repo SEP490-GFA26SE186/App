@@ -2,10 +2,13 @@
 // Form thêm/sửa nhân vật gia đình (POST/PUT /characters): name ≤100, appearance 3–1000, KHÔNG có role (rev8).
 // Nhân vật đại diện của bé (có childId): BE không cho đổi tên ở đây → chỉ sửa mô tả.
 import React, { useEffect, useRef, useState } from 'react';
-import { Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { Sheet } from '../ui/Sheet';
 import { HeyInput } from '../ui/HeyInput';
 import { HeyButton } from '../ui/HeyButton';
+import { Icon } from '../ui/Icon';
+import { Colors } from '../../theme/colors';
+import { Typography } from '../../theme/typography';
 import { characterService } from '../../services';
 import { CharacterView } from '../../types/viewModels';
 import { APPEARANCE_MAX, APPEARANCE_MIN, CHARACTER_NAME_MAX } from '../../utils/validation';
@@ -105,11 +108,16 @@ export const CharacterFormSheet: React.FC<CharacterFormSheetProps> = ({ visible,
         multiline
         numberOfLines={4}
       />
-      {!!formError && <Text style={styles.formError}>⚠️ {formError}</Text>}
+      {!!formError && (
+        <View style={styles.formErrorBox} accessibilityRole="alert">
+          <Icon name="alert-circle" size={18} color={Colors.danger} />
+          <Text style={styles.formError}>{formError}</Text>
+        </View>
+      )}
       <HeyButton
-        title={submitting ? '⏳ Đang lưu...' : editing ? 'Lưu thay đổi' : 'Thêm nhân vật'}
+        title={editing ? 'Lưu thay đổi' : 'Thêm nhân vật'}
         onPress={submit}
-        disabled={submitting}
+        loading={submitting}
         style={styles.btn}
       />
     </Sheet>
@@ -117,6 +125,7 @@ export const CharacterFormSheet: React.FC<CharacterFormSheetProps> = ({ visible,
 };
 
 const styles = StyleSheet.create({
-  formError: { color: '#B91C1C', fontSize: 13, fontWeight: '700', marginBottom: 8 },
+  formErrorBox: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, backgroundColor: Colors.dangerTint, padding: 12, borderRadius: 12, marginBottom: 8 },
+  formError: { ...Typography.label, color: Colors.danger, flex: 1 },
   btn: { marginTop: 4, marginBottom: 8 },
 });

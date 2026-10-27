@@ -1,145 +1,232 @@
 // apps/mobile/src/components/IntroScreen.tsx
-import React, { useEffect, useRef, useState } from 'react';
+// Video intro khi mở app (một lần mỗi lần khởi động; App.tsx giữ trạng thái).
+// Web: thẻ <video> phát /intro.mp4 (public/). Native: expo-video phát asset được bundle.
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
+  Image,
   TouchableOpacity,
   StyleSheet,
   Platform,
-  Dimensions,
+  BackHandler,
 } from 'react-native';
+import { useVideoPlayer, VideoView } from 'expo-video';
+import { MASCOT_IMAGE } from '../constants/mascot';
 
 interface IntroScreenProps {
   onFinish: () => void;
 }
 
-export const IntroScreen: React.FC<IntroScreenProps> = ({ onFinish }) => {
+// Video dài ~10 giây; quá thời gian này mà chưa xong (kẹt tải/phát) thì tự chuyển tiếp
+const FALLBACK_MS = 14000;
+const WEB_FADE_MS = 700;
+const NATIVE_FADE_MS = 600;
+
+// Asset native do Metro bundle; Web dùng file tĩnh /intro.mp4 nên không require ở Web
+const NATIVE_SOURCE = Platform.OS === 'web' ? null : require('../../public/intro.mp4');
+
+/** Kết thúc intro đúng một lần (Bỏ qua / hết video / lỗi / Back / quá giờ), dọn timer khi unmount. */
+function useFinishOnce(onFinish: () => void, fadeMs: number) {
   const [fading, setFading] = useState(false);
+  const doneRef = useRef(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const onFinishRef = useRef(onFinish);
+  onFinishRef.current = onFinish;
+
+  const finish = useCallback(
+    (immediate = false) => {
+      if (doneRef.current) return;
+      doneRef.current = true;
+      if (immediate) {
+        onFinishRef.current();
+        return;
+      }
+      setFading(true);
+      timerRef.current = setTimeout(() => onFinishRef.current(), fadeMs);
+    },
+    [fadeMs]
+  );
+
+  useEffect(
+    () => () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    },
+    []
+  );
+
+  return { fading, finish };
+}
+
+export const IntroScreen: React.FC<IntroScreenProps> = ({ onFinish }) =>
+  Platform.OS === 'web' ? <WebIntro onFinish={onFinish} /> : <NativeIntro onFinish={onFinish} />;
+
+const WebIntro: React.FC<IntroScreenProps> = ({ onFinish }) => {
+  const { fading, finish } = useFinishOnce(onFinish, WEB_FADE_MS);
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
   useEffect(() => {
-    if (Platform.OS === 'web') {
-      const vid = videoRef.current;
-      if (!vid) return;
+    const vid = videoRef.current;
+    if (!vid) return;
 
-      const handleEnd = () => {
-        setFading(true);
-        setTimeout(onFinish, 700);
-      };
+    const handleEnd = () => finish();
+    const handleError = () => finish(true);
+    const fallback = setTimeout(() => finish(), FALLBACK_MS);
 
-      const fallback = setTimeout(() => {
-        setFading(true);
-        setTimeout(onFinish, 700);
-      }, 14000);
+    vid.addEventListener('ended', handleEnd);
+    vid.addEventListener('error', handleError);
 
-      vid.addEventListener('ended', handleEnd);
+    // Trình duyệt có thể chặn autoplay có tiếng → thử lại khi tắt tiếng; vẫn bị chặn thì vào app
+    vid.muted = false;
+    vid.play().catch(() => {
+      if (!videoRef.current) return;
+      vid.muted = true;
+      vid.play().catch(() => finish(true));
+    });
 
-      vid.muted = false;
-      vid.play().catch(() => {
-        vid.muted = true;
-        vid.play().catch(() => {
-          clearTimeout(fallback);
-          onFinish();
-        });
-      });
+    return () => {
+      vid.removeEventListener('ended', handleEnd);
+      vid.removeEventListener('error', handleError);
+      clearTimeout(fallback);
+      vid.pause();
+      videoRef.current = null;
+    };
+  }, [finish]);
 
-      return () => {
-        vid.removeEventListener('ended', handleEnd);
-        clearTimeout(fallback);
-      };
-    } else {
-      // Native auto-skip fallback timer
-      const timer = setTimeout(() => {
-        setFading(true);
-        setTimeout(onFinish, 600);
-      }, 3500);
-      return () => clearTimeout(timer);
-    }
-  }, [onFinish]);
+  return (
+    <div
+      onClick={() => {
+        if (videoRef.current) videoRef.current.muted = false;
+      }}
+      style={{
+        position: 'fixed',
+        inset: 0,
+        zIndex: 99999,
+        background: '#0a0a0a',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        transition: 'opacity 0.7s ease',
+        opacity: fading ? 0 : 1,
+        pointerEvents: fading ? 'none' : 'auto',
+      }}
+    >
+      <video
+        ref={videoRef}
+        src="/intro.mp4"
+        style={{
+          width: '100%',
+          height: '100%',
+          objectFit: 'cover',
+        }}
+        playsInline
+        autoPlay
+      />
 
-  const handleSkip = () => {
-    setFading(true);
-    setTimeout(onFinish, 600);
-  };
-
-  if (Platform.OS === 'web') {
-    return (
-      <div
-        onClick={() => {
-          if (videoRef.current) videoRef.current.muted = false;
+      {/* Clean Skip button */}
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          videoRef.current?.pause();
+          finish();
         }}
         style={{
-          position: 'fixed',
-          inset: 0,
-          zIndex: 99999,
-          background: '#0a0a0a',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          transition: 'opacity 0.7s ease',
-          opacity: fading ? 0 : 1,
-          pointerEvents: fading ? 'none' : 'auto',
+          position: 'absolute',
+          bottom: 32,
+          right: 24,
+          background: 'rgba(255,255,255,0.25)',
+          backdropFilter: 'blur(10px)',
+          WebkitBackdropFilter: 'blur(10px)',
+          border: '1px solid rgba(255,255,255,0.5)',
+          borderRadius: 9999,
+          color: '#fff',
+          fontSize: 14,
+          fontWeight: 800,
+          padding: '10px 22px',
+          cursor: 'pointer',
+          letterSpacing: 0.5,
+          boxShadow: '0 4px 16px rgba(0,0,0,0.4)',
+          zIndex: 100000,
         }}
       >
-        <video
-          ref={videoRef}
-          src="/intro.mp4"
-          style={{
-            width: '100%',
-            height: '100%',
-            objectFit: 'cover',
-          }}
-          playsInline
-          autoPlay
-        />
+        Bỏ qua ›
+      </button>
+    </div>
+  );
+};
 
-        {/* Clean Skip button */}
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            handleSkip();
-          }}
-          style={{
-            position: 'absolute',
-            bottom: 32,
-            right: 24,
-            background: 'rgba(255,255,255,0.25)',
-            backdropFilter: 'blur(10px)',
-            WebkitBackdropFilter: 'blur(10px)',
-            border: '1px solid rgba(255,255,255,0.5)',
-            borderRadius: 9999,
-            color: '#fff',
-            fontSize: 14,
-            fontWeight: 800,
-            padding: '10px 22px',
-            cursor: 'pointer',
-            letterSpacing: 0.5,
-            boxShadow: '0 4px 16px rgba(0,0,0,0.4)',
-            zIndex: 100000,
-          }}
-        >
-          Bỏ qua ›
-        </button>
-      </div>
-    );
-  }
+const NativeIntro: React.FC<IntroScreenProps> = ({ onFinish }) => {
+  const { fading, finish } = useFinishOnce(onFinish, NATIVE_FADE_MS);
+  const [ready, setReady] = useState(false);
+  // useVideoPlayer tự release player khi component unmount
+  const player = useVideoPlayer(NATIVE_SOURCE, (p) => {
+    p.loop = false;
+    p.play();
+  });
 
-  // Native fallback splash
+  const skip = useCallback(() => {
+    try {
+      player.pause();
+    } catch {
+      // player có thể đã được release
+    }
+    finish();
+  }, [player, finish]);
+
+  useEffect(() => {
+    const endSub = player.addListener('playToEnd', () => finish());
+    const statusSub = player.addListener('statusChange', ({ status }) => {
+      if (status === 'readyToPlay') setReady(true);
+      if (status === 'error') finish(true);
+    });
+    const fallback = setTimeout(() => finish(), FALLBACK_MS);
+    return () => {
+      endSub.remove();
+      statusSub.remove();
+      clearTimeout(fallback);
+    };
+  }, [player, finish]);
+
+  // Back của Android bỏ qua intro thay vì thoát app
+  useEffect(() => {
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      skip();
+      return true;
+    });
+    return () => sub.remove();
+  }, [skip]);
+
   return (
     <View style={[styles.nativeContainer, fading && styles.fading]}>
-      <Text style={styles.nativeEmoji}>✨📖✨</Text>
-      <Text style={styles.nativeTitle}>StoryWeaver</Text>
-      <Text style={styles.nativeSubtitle}>Cổ tích diệu kỳ của bé 🌸</Text>
+      {/* Splash chữ hiện trong lúc video đang tải */}
+      {!ready && (
+        <View style={styles.placeholder}>
+          <Image source={MASCOT_IMAGE} style={styles.nativeMascot} accessibilityLabel="Mascot cú StoryWeaver" />
+          <Text style={styles.nativeTitle}>StoryWeaver</Text>
+          <Text style={styles.nativeSubtitle}>Cổ tích diệu kỳ của bé 🌸</Text>
+        </View>
+      )}
+      <VideoView
+        player={player}
+        style={StyleSheet.absoluteFill}
+        contentFit="cover"
+        nativeControls={false}
+        allowsFullscreen={false}
+        allowsPictureInPicture={false}
+      />
 
-      <TouchableOpacity onPress={handleSkip} style={styles.nativeSkipBtn}>
+      <TouchableOpacity
+        onPress={skip}
+        style={styles.nativeSkipBtn}
+        accessibilityRole="button"
+        accessibilityLabel="Bỏ qua video giới thiệu"
+      >
         <Text style={styles.nativeSkipText}>Bỏ qua ›</Text>
       </TouchableOpacity>
     </View>
   );
 };
-
-const { width, height } = Dimensions.get('window');
 
 const styles = StyleSheet.create({
   nativeContainer: {
@@ -152,8 +239,15 @@ const styles = StyleSheet.create({
   fading: {
     opacity: 0,
   },
-  nativeEmoji: {
-    fontSize: 56,
+  placeholder: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  nativeMascot: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
     marginBottom: 16,
   },
   nativeTitle: {

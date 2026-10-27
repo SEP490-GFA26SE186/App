@@ -1,19 +1,15 @@
 // apps/mobile/src/screens/auth/LoginScreen.tsx
 import React, { useEffect, useRef, useState } from 'react';
-import {
-  View,
-  Text,
-  ScrollView,
-  TouchableOpacity,
-  StyleSheet,
-  ActivityIndicator,
-  Image,
-  KeyboardAvoidingView,
-  Platform,
-} from 'react-native';
+import { View, Text, ScrollView, Pressable, StyleSheet, Image, KeyboardAvoidingView, Platform } from 'react-native';
+import { MASCOT_IMAGE } from '../../constants/mascot';
 import { HeyButton } from '../../components/ui/HeyButton';
 import { HeyInput } from '../../components/ui/HeyInput';
+import { Icon } from '../../components/ui/Icon';
 import { Colors } from '../../theme/colors';
+import { Elevation } from '../../theme/shadows';
+import { Radius, Spacing, Touch } from '../../theme/spacing';
+import { FontFamily, Typography } from '../../theme/typography';
+import { focusRing } from '../../theme/focus';
 import {
   authService,
   getApiBaseUrl,
@@ -86,266 +82,144 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
   };
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.scrollContent}
-      showsVerticalScrollIndicator={false}
-      keyboardShouldPersistTaps="handled"
-    >
-      {/* Brand Header */}
-      <View style={styles.brandHero}>
-        <View style={styles.logoBadge}>
-          <Text style={styles.logoEmoji}>🐶</Text>
-        </View>
-
-        <Text style={styles.brandTitle}>StoryWeaver</Text>
-        <View style={styles.taglinePill}>
-          <Text style={styles.taglineText}>🌸 VƯỜN CỔ TÍCH DIỆU KỲ CHO BÉ 🌸</Text>
-        </View>
-
-        {/* Mascot Speech Bubble */}
-        <View style={styles.mascotSpeech}>
-          <Text style={styles.speechText}>Gâu gâu! Chào mừng ba mẹ và bé yêu nhé! 👋</Text>
-        </View>
-      </View>
-
-      {/* Main Login Card */}
-      <View style={styles.formCard}>
-        <Text style={styles.formTitle}>Đăng nhập tài khoản</Text>
-        <Text style={styles.formSubtitle}>Cùng bé bước vào thế giới truyện tranh tương tác EQ</Text>
-
-        {errorMsg && (
-          <View style={styles.errorBox}>
-            <Text style={styles.errorText}>⚠️ {errorMsg}</Text>
+    <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        {/* Thương hiệu: cú + tên + một câu chào (R5: bỏ tagline in hoa 10px và bong bóng thứ hai) */}
+        <View style={styles.brandHero}>
+          <View style={styles.logoWrap}>
+            <Image source={MASCOT_IMAGE} style={styles.logoImage} accessibilityIgnoresInvertColors accessible={false} />
           </View>
-        )}
-
-        <HeyInput
-          label="Email hoặc Tên đăng nhập"
-          placeholder="email@example.com"
-          value={email}
-          onChangeText={(t) => {
-            setEmail(t);
-            setFieldErrors((e) => ({ ...e, identity: undefined }));
-            setErrorMsg(null);
-          }}
-          error={fieldErrors.identity}
-          keyboardType="email-address"
-          autoCapitalize="none"
-          autoCorrect={false}
-        />
-
-        <HeyInput
-          label="Mật khẩu"
-          placeholder="••••••"
-          value={password}
-          onChangeText={(t) => {
-            setPassword(t);
-            setFieldErrors((e) => ({ ...e, password: undefined }));
-            setErrorMsg(null);
-          }}
-          error={fieldErrors.password}
-          secureTextEntry
-          revealable
-          autoCapitalize="none"
-          autoCorrect={false}
-        />
-
-        <HeyButton
-          title={loading ? '⏳ Đang đăng nhập...' : '🚀 Đăng nhập ngay'}
-          onPress={handleLogin}
-          style={styles.loginBtn}
-          size="lg"
-          disabled={loading}
-        />
-
-        {/* Register Link */}
-        <View style={styles.registerRow}>
-          <Text style={styles.registerText}>Chưa có tài khoản? </Text>
-          <TouchableOpacity onPress={onGoRegister}>
-            <Text style={styles.registerLink}>Đăng ký ngay ➔</Text>
-          </TouchableOpacity>
-        </View>
-
-        {__DEV__ && !!onOpenPreview && (
-          <TouchableOpacity onPress={onOpenPreview} style={{ alignSelf: 'center', marginTop: 14 }}>
-            <Text style={styles.registerText}>🧪 UI Preview (dev) – dữ liệu mẫu</Text>
-          </TouchableOpacity>
-        )}
-
-        {/* Địa chỉ máy chủ lấy từ cấu hình (EXPO_PUBLIC_API_URL), chỉ hiển thị */}
-        <View style={styles.envBar}>
-          <Text style={styles.envTriggerText}>
-            {apiBaseUrl
-              ? `⚙️ Máy chủ: ${apiBaseUrl}`
-              : `⚠️ ${API_NOT_CONFIGURED_MESSAGE}`}
+          <Text style={styles.brandTitle} accessibilityRole="header">
+            StoryWeaver
           </Text>
+          <Text style={styles.brandTagline}>Vườn cổ tích diệu kỳ cho bé</Text>
         </View>
-      </View>
-    </ScrollView>
+
+        <View style={styles.formCard}>
+          <Text style={styles.formTitle}>Đăng nhập</Text>
+          <Text style={styles.formSubtitle}>Cùng bé bước vào thế giới truyện tranh tương tác EQ</Text>
+
+          {!!errorMsg && (
+            <View style={styles.errorBox} accessibilityRole="alert">
+              <Icon name="alert-circle" size={18} color={Colors.danger} />
+              <Text style={styles.errorText}>{errorMsg}</Text>
+            </View>
+          )}
+
+          <HeyInput
+            label="Email hoặc Tên đăng nhập"
+            placeholder="email@example.com"
+            value={email}
+            onChangeText={(t) => {
+              setEmail(t);
+              setFieldErrors((e) => ({ ...e, identity: undefined }));
+              setErrorMsg(null);
+            }}
+            error={fieldErrors.identity}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoCorrect={false}
+            returnKeyType="next"
+          />
+
+          <HeyInput
+            label="Mật khẩu"
+            placeholder="••••••"
+            value={password}
+            onChangeText={(t) => {
+              setPassword(t);
+              setFieldErrors((e) => ({ ...e, password: undefined }));
+              setErrorMsg(null);
+            }}
+            error={fieldErrors.password}
+            secureTextEntry
+            revealable
+            autoCapitalize="none"
+            autoCorrect={false}
+            returnKeyType="go"
+            onSubmitEditing={handleLogin}
+          />
+
+          <HeyButton title="Đăng nhập" iconName="log-in-outline" onPress={handleLogin} style={styles.loginBtn} size="lg" loading={loading} />
+
+          <View style={styles.registerRow}>
+            <Text style={styles.registerText}>Chưa có tài khoản?</Text>
+            <Pressable
+              onPress={onGoRegister}
+              accessibilityRole="button"
+              accessibilityLabel="Đăng ký tài khoản mới"
+              style={(s) => [styles.registerBtn, s.pressed && styles.pressed, focusRing(s)]}
+            >
+              <Text style={styles.registerLink}>Đăng ký ngay</Text>
+            </Pressable>
+          </View>
+
+          {__DEV__ && !!onOpenPreview && (
+            <Pressable
+              onPress={onOpenPreview}
+              accessibilityRole="button"
+              accessibilityLabel="UI Preview (chỉ khi phát triển), dữ liệu mẫu"
+              style={(s) => [styles.previewBtn, s.pressed && styles.pressed, focusRing(s)]}
+            >
+              <Text style={styles.registerText}>🧪 UI Preview (dev) – dữ liệu mẫu</Text>
+            </Pressable>
+          )}
+
+          {/* J1: địa chỉ máy chủ chỉ hiện ở bản phát triển (__DEV__); bản thường chỉ báo khi CHƯA cấu hình (không lộ địa chỉ) */}
+          {__DEV__ && !!apiBaseUrl && (
+            <View style={styles.envBar}>
+              <Text style={styles.envText}>Máy chủ (dev): {apiBaseUrl}</Text>
+            </View>
+          )}
+          {!apiBaseUrl && (
+            <View style={styles.envBar} accessibilityRole="alert">
+              <Text style={styles.envWarn}>{API_NOT_CONFIGURED_MESSAGE}</Text>
+            </View>
+          )}
+        </View>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#FAFFFE',
-  },
-  scrollContent: {
-    paddingHorizontal: 20,
-    paddingTop: 36,
-    paddingBottom: 40,
-    alignItems: 'center',
-  },
-  brandHero: {
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  logoBadge: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: '#FFE57F',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: '#FFD54F',
-    boxShadow: '0 4px 12px rgba(255, 213, 79, 0.4)',
-    marginBottom: 10,
-  },
-  logoEmoji: {
-    fontSize: 34,
-  },
-  brandTitle: {
-    fontSize: 26,
-    fontWeight: '900',
-    color: Colors.textDark,
-    letterSpacing: 0.5,
-  },
-  taglinePill: {
-    backgroundColor: '#FFF9C4',
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 12,
-    marginTop: 6,
-    borderWidth: 1,
-    borderColor: '#FFF59D',
-  },
-  taglineText: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: '#F57F17',
-    letterSpacing: 0.5,
-  },
-  mascotSpeech: {
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 16,
-    marginTop: 12,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
-  },
-  speechText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: Colors.textMuted,
-  },
+  flex: { flex: 1 },
+  container: { flex: 1, backgroundColor: Colors.canvas },
+  scrollContent: { paddingHorizontal: Spacing.xl, paddingTop: Spacing.xxxl, paddingBottom: Spacing.xxxl, alignItems: 'center' },
+  brandHero: { alignItems: 'center', marginBottom: Spacing.xl, gap: Spacing.xs },
+  logoWrap: { borderRadius: 44, ...Elevation.mid },
+  logoImage: { width: 88, height: 88, borderRadius: 44, borderWidth: 3, borderColor: Colors.surface },
+  brandTitle: { ...Typography.display, fontSize: 28, lineHeight: 36, color: Colors.text, marginTop: Spacing.sm },
+  brandTagline: { ...Typography.body, fontSize: 14, color: Colors.textMuted },
   formCard: {
     width: '100%',
-    maxWidth: 420,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 24,
-    padding: 22,
-    borderWidth: 1.5,
-    borderColor: Colors.border,
-    boxShadow: '0 6px 20px rgba(0, 0, 0, 0.08)',
-  },
-  formTitle: {
-    fontSize: 18,
-    fontWeight: '900',
-    color: Colors.textDark,
-  },
-  formSubtitle: {
-    fontSize: 12,
-    color: Colors.textMuted,
-    marginTop: 2,
-    marginBottom: 16,
-  },
-  errorBox: {
-    backgroundColor: '#FEE2E2',
-    padding: 10,
-    borderRadius: 12,
+    maxWidth: 440,
+    backgroundColor: Colors.surface,
+    borderRadius: Radius.xl,
+    padding: Spacing.xxl,
     borderWidth: 1,
-    borderColor: '#FECACA',
-    marginBottom: 12,
+    borderColor: Colors.outline,
+    ...Elevation.mid,
   },
-  errorText: {
-    color: '#DC2626',
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  loginBtn: {
-    marginTop: 4,
-  },
-  registerRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 16,
-  },
-  registerText: {
-    fontSize: 13,
-    color: Colors.textMuted,
-  },
-  registerLink: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: Colors.primary,
-  },
-  envBar: {
-    marginTop: 18,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#F3F4F6',
-  },
-  envTrigger: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  envTriggerText: {
-    fontSize: 10.5,
-    color: '#6B7280',
-    flex: 1,
-  },
-  envTriggerArrow: {
-    fontSize: 10,
-    color: '#9CA3AF',
-    marginLeft: 4,
-  },
-  envDropdown: {
-    marginTop: 8,
-    backgroundColor: '#F9FAFB',
-    borderRadius: 12,
-    padding: 6,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-  },
-  envChoice: {
-    paddingVertical: 6,
-    paddingHorizontal: 8,
-    borderRadius: 8,
-  },
-  envChoiceActive: {
-    backgroundColor: '#EFF6FF',
-  },
-  envChoiceText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#374151',
-  },
+  formTitle: { ...Typography.title, color: Colors.text },
+  formSubtitle: { ...Typography.body, fontSize: 14, color: Colors.textMuted, marginTop: 2, marginBottom: Spacing.lg },
+  errorBox: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.sm, backgroundColor: Colors.dangerTint, padding: Spacing.md, borderRadius: Radius.md, marginBottom: Spacing.md },
+  // danger #BA1A1A trên dangerTint 5.0:1
+  errorText: { ...Typography.label, color: Colors.danger, flex: 1 },
+  loginBtn: { marginTop: Spacing.xs },
+  registerRow: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center', marginTop: Spacing.lg, gap: Spacing.xs },
+  registerText: { ...Typography.body, fontSize: 14, color: Colors.textMuted },
+  registerBtn: { minHeight: Touch.min, justifyContent: 'center', paddingHorizontal: Spacing.xs },
+  pressed: { opacity: 0.7 },
+  // Link cam trên nền trắng dùng brandStrong 5.18:1 (QA_R1 HIGH-3)
+  registerLink: { fontFamily: FontFamily.extraBold, fontSize: 15, color: Colors.brandStrong },
+  previewBtn: { alignSelf: 'center', minHeight: Touch.min, justifyContent: 'center', marginTop: Spacing.xs },
+  envBar: { marginTop: Spacing.md, paddingTop: Spacing.md, borderTopWidth: 1, borderTopColor: Colors.outline },
+  envText: { ...Typography.caption, color: Colors.textMuted },
+  envWarn: { ...Typography.label, color: Colors.danger },
 });
