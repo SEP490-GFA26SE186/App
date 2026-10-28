@@ -21,7 +21,8 @@ Mục tiêu: (1) đồng bộ UI/luồng với Web & BE, (2) nối API thật, (
 1. **Giữ Expo SDK 52** (phương án A). Không nâng SDK, không migrate sang App_v2/SDK 58.
 2. App là repo chính; App_v2 chỉ tham khảo.
 3. **P0 = Parent + Kid Mode.**
-4. Seller, Specialist, Admin, Marketplace, Payment = **SCOPE PENDING**: không phát triển thêm, không kết nối mới.
+4. Seller, Marketplace, Payment = **SCOPE PENDING**: không phát triển thêm, không kết nối mới.
+   Admin/Specialist Mobile: đã làm các chức năng quản trị chính, lời gọi API viết theo contract BE — Admin: Tổng quan, Việc chờ, Tài khoản, Rút tiền, Hoàn tiền, Kháng nghị, Nhật ký kiểm toán; Specialist: Hàng chờ, Lượt duyệt, Hồ sơ người bán, Báo cáo vi phạm. Kiểm thử: FIXTURE PASS (BE giả); **E2E với BE thật: NOT VERIFIED / BLOCKED**. Tính năng chưa làm và việc chờ duyệt: `docs/mobile/ADMIN_SPECIALIST_MOBILE_IMPLEMENTATION.md`. Mở rộng phạm vi cần chủ dự án duyệt; tuân thủ §10.
 5. **Không tự ý xóa tính năng/màn hình hiện có.** Muốn xóa phải được duyệt.
 
 ## 3. Quy tắc bắt buộc
@@ -60,3 +61,12 @@ Mục tiêu: (1) đồng bộ UI/luồng với Web & BE, (2) nối API thật, (
 ## 9. Hiệu quả ngữ cảnh (không đánh đổi độ đúng/bảo mật/kiểm thử)
 - Tìm bằng grep/diff có mục tiêu trước khi đọc cả thư mục; không quét lại cùng file khi không có lý do; tái dùng ngữ cảnh đã xác minh trong task.
 - Không đọc mọi báo cáo QA hay module không liên quan; không chạy lại build/test tốn kém khi chưa đổi gì. Báo tiến độ ngắn nhưng đủ phát hiện quan trọng.
+
+## 10. Protected Architecture & Change Scope
+Bổ sung (không thay) §2–§3, §6–§8 và `AGENTS.md`; quyền sửa theo đường dẫn vẫn do `AGENTS.md` §1 quyết định.
+- Giữ nguyên kiến trúc Mobile đã ổn định (điều hướng state ADR-015, store `SessionProvider`, Design System R1–R2, cấu trúc thư mục). Không đổi tên/di chuyển module hay refactor chỉ để "gọn"; mỗi file sửa phải liên quan trực tiếp đến task được duyệt.
+- Không đổi hành vi Parent/Kid đang ổn định (đăng nhập, phiên, PIN, Story Wizard, Reader, EQ) khi chưa có lý do xác nhận và chủ dự án duyệt trước.
+- Cần sửa ngoài phạm vi (BE, Web, App_v2, kiến trúc chung, Parent/Kid, cấu hình Expo, dependency): dừng trước khi sửa, báo file cụ thể, vấn đề, lý do, tác dụng phụ dự kiến và cách sửa tối thiểu; chờ duyệt.
+- Giữ nguyên file Git đang dở dang của người khác/không liên quan: không revert, không stage, không gộp vào thay đổi của mình.
+- Thành công với BE giả/fixture/mock chỉ được ghi là FIXTURE PASS, không bao giờ là tích hợp thật hay E2E PASS.
+- Thao tác BE nhạy cảm/không hoàn tác (duyệt/từ chối nội dung, rút tiền, hoàn tiền, cảnh cáo, khoá tài khoản, đổi cấu hình, xoá dữ liệu, tiêu credit, gọi AI) trên dữ liệu thật cần chủ dự án cho phép rõ ràng cho từng lần.

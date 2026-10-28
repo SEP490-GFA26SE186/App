@@ -58,3 +58,9 @@ node %TEMP%/sw-manage-tests/manage.test.js
 npx tsc tests/r9a.test.ts --outDir %TEMP%/sw-r9a-tests --module commonjs --target es2022 --esModuleInterop --skipLibCheck --types node
 node %TEMP%/sw-r9a-tests/tests/r9a.test.js
 ```
+
+`management.test.ts` (Admin / Chuyên gia sư phạm) chặn hồi quy định tuyến theo role (role lạ không rơi vào giao diện Phụ huynh, dữ liệu Phụ huynh chỉ nạp cho PARENT), điều hướng ngăn xếp quản trị, luật nghiệp vụ khớp BE (hoàn tiền, tạo Chuyên gia, khoá tài khoản, lượt duyệt), endpoint/body gửi lên BE (fetch giả trong test), không dữ liệu mẫu/hex, thao tác nhạy cảm có xác nhận. Chạy từ `apps/mobile`:
+```
+npx tsc tests/management.test.ts --outDir %TEMP%/sw-mgmt-tests --module commonjs --target es2022 --esModuleInterop --skipLibCheck --jsx react-jsx --types react-native,node
+node %TEMP%/sw-mgmt-tests/tests/management.test.js
+```

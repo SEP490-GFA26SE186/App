@@ -22,7 +22,6 @@ import { SettingsScreen } from '../screens/parent/SettingsScreen';
 import { HelpScreen } from '../screens/parent/HelpScreen';
 import { MarketplaceScreen } from '../screens/scope-pending/MarketplaceScreen';
 import { SellerDashboard } from '../screens/scope-pending/SellerDashboard';
-import { ModeratorAdminScreen } from '../screens/scope-pending/ModeratorAdminScreen';
 import { authService, storyService } from '../services';
 import { useAuth, useKidSession, useParentData } from '../stores/SessionProvider';
 import { ParentNavigation } from './useParentNavigation';
@@ -274,8 +273,6 @@ export const ParentTabs: React.FC<ParentTabsProps> = ({ currentUser, nav, active
             onOpenWallet={openWallet}
             onSubmitForReview={() => notSupported('Gửi duyệt truyện')}
           />
-        ) : activeRole === 'MODERATOR' || activeRole === 'ADMIN' ? (
-          <ModeratorAdminScreen />
         ) : (
           renderRoute()
         )}

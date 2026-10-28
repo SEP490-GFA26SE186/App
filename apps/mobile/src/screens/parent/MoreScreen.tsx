@@ -34,6 +34,8 @@ interface MoreScreenProps {
   onLogout: () => void;
   /** Chỉ truyền khi không phải tab gốc (Hồ sơ là tab nên thường không có nút quay lại) */
   onBack?: () => void;
+  /** Tiêu đề màn (Admin/Chuyên gia dùng "Thêm"); mặc định "Hồ sơ" */
+  title?: string;
 }
 
 const groupItems = (items: MoreMenuItem[]) => {
@@ -46,9 +48,9 @@ const groupItems = (items: MoreMenuItem[]) => {
   return groups;
 };
 
-export const MoreScreen: React.FC<MoreScreenProps> = ({ currentUser, items, onLogout, onBack }) => (
+export const MoreScreen: React.FC<MoreScreenProps> = ({ currentUser, items, onLogout, onBack, title = 'Hồ sơ' }) => (
   <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-    <ScreenHeader title="Hồ sơ" onBack={onBack} />
+    <ScreenHeader title={title} onBack={onBack} />
 
     <HeyCard variant="accent" style={styles.userCard}>
       <Text style={styles.userName} numberOfLines={2}>
