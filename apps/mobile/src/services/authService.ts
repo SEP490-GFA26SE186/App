@@ -2,6 +2,7 @@
 import { apiFetch, ApiError } from './apiClient';
 import { safeStorage, STORAGE_KEYS } from './storage';
 import { SessionUser } from '../types/sessionUser';
+import type { Role } from '../types/domain';
 import type {
   AuthUserDto,
   EnterKidModeResponseDto,
@@ -289,6 +290,10 @@ export const authService = {
     if (!raw || typeof raw !== 'object' || typeof raw.id !== 'string' || !raw.id || typeof raw.email !== 'string' || !raw.email) {
       throw new ApiError('Dữ liệu tài khoản từ máy chủ không hợp lệ.', 502);
     }
+    // Thiếu/rỗng role: không mặc định PARENT (tránh cấp giao diện Phụ huynh nhầm). Role lạ vẫn giữ để shellForRole đưa ra màn chưa hỗ trợ
+    if (typeof raw.role !== 'string' || !raw.role.trim()) {
+      throw new ApiError('Dữ liệu tài khoản từ máy chủ không hợp lệ.', 502);
+    }
     const numberOrNull = (v: unknown): number | null => (typeof v === 'number' && Number.isFinite(v) ? v : null);
     return {
       id: raw.id,
@@ -296,7 +301,7 @@ export const authService = {
       fullName: raw.fullName || raw.username || 'Phụ huynh',
       // BE không trả avatar (API_MAPPING §1): UI tự hiện chữ cái đầu của tên
       phone: raw.phone || '',
-      role: (raw.role?.toUpperCase() as any) || 'PARENT',
+      role: raw.role.trim().toUpperCase() as Role,
       kidModePinHash: raw.hasKidPin ? '****' : '',
       createdAt: raw.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),

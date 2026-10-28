@@ -60,8 +60,8 @@ export const useAuthSessionState = ({ sessionRef, onReset }: Options) => {
     return sid;
   };
 
-  // Xác minh token hiện có với BE. Trả về id phiên khi thành công, null nếu không vào được APP.
-  const bootstrap = async (): Promise<number | null> => {
+  // Xác minh token hiện có với BE. Trả về id phiên + user khi thành công, null nếu không vào được APP.
+  const bootstrap = async (): Promise<{ sid: number; user: SessionUser } | null> => {
     const sid = ++sessionRef.current;
     setBootError(null);
     setAppPhase('BOOTING');
@@ -74,7 +74,7 @@ export const useAuthSessionState = ({ sessionRef, onReset }: Options) => {
       if (sid !== sessionRef.current) return null;
       setCurrentUser(me);
       setAppPhase('APP');
-      return sid;
+      return { sid, user: me };
     } catch (err: any) {
       if (sid !== sessionRef.current) return null;
       if (authService.isAuthError(err)) {

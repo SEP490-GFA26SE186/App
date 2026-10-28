@@ -14,14 +14,16 @@ import { KidModeScreen } from '../screens/kid/KidModeScreen';
 import { kidService } from '../services/kidService';
 import { ParentTabs } from './ParentTabs';
 import { useParentNavigation } from './useParentNavigation';
+import { AdminNavigator } from './AdminNavigator';
+import { SpecialistNavigator } from './SpecialistNavigator';
+import { shellForRole } from './managementRoutes';
+import { StateView } from '../components/ui/StateView';
+import { SessionUser } from '../types/sessionUser';
 
 // Chỉ được mount khi đang trong phiên: state điều hướng tự reset khi đăng xuất/đổi tài khoản.
+// Chọn khung theo role do BE xác nhận; role lạ không bao giờ rơi vào giao diện Phụ huynh.
 const AuthedNavigator: React.FC = () => {
   const auth = useAuth();
-  const kid = useKidSession();
-  // Giữ ở đây (không ở ParentTabs) để quay lại đúng tab sau khi thoát Kid Mode
-  const nav = useParentNavigation();
-  const [activeRole, setActiveRole] = useState<Role>('PARENT');
 
   // Không bao giờ vào giao diện khi chưa có user do BE xác nhận
   if (!auth.currentUser) {
@@ -33,6 +35,45 @@ const AuthedNavigator: React.FC = () => {
       </Screen>
     );
   }
+
+  switch (shellForRole(auth.currentUser.role)) {
+    case 'PARENT':
+      return <ParentNavigator currentUser={auth.currentUser} />;
+    case 'ADMIN':
+      return (
+        <Screen>
+          <AdminNavigator user={auth.currentUser} onLogout={auth.logout} />
+        </Screen>
+      );
+    case 'SPECIALIST':
+      return (
+        <Screen>
+          <SpecialistNavigator user={auth.currentUser} onLogout={auth.logout} />
+        </Screen>
+      );
+    default:
+      return (
+        <Screen>
+          <View style={{ flex: 1, justifyContent: 'center', padding: 24 }}>
+            <StateView
+              variant="unsupported"
+              title="Tài khoản này chưa dùng được trên ứng dụng"
+              description="Vai trò của tài khoản không có giao diện trên điện thoại. Vui lòng đăng nhập bằng tài khoản khác."
+              actionLabel="Đăng xuất"
+              onAction={auth.logout}
+            />
+          </View>
+        </Screen>
+      );
+  }
+};
+
+const ParentNavigator: React.FC<{ currentUser: SessionUser }> = ({ currentUser }) => {
+  const auth = useAuth();
+  const kid = useKidSession();
+  // Giữ ở đây (không ở ParentTabs) để quay lại đúng tab sau khi thoát Kid Mode
+  const nav = useParentNavigation();
+  const [activeRole, setActiveRole] = useState<Role>('PARENT');
 
   if (kid.isKidMode && kid.kidChild) {
     return (
@@ -50,7 +91,7 @@ const AuthedNavigator: React.FC = () => {
   return (
     <Screen>
       <ParentTabs
-        currentUser={auth.currentUser}
+        currentUser={currentUser}
         nav={nav}
         activeRole={activeRole}
         setActiveRole={setActiveRole}

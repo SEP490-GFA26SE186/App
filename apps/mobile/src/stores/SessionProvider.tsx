@@ -46,9 +46,10 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
     else if (result.outcome === 'done' && result.user) auth.setCurrentUser(result.user);
   };
 
+  // Dữ liệu Parent (bé, nhân vật, truyện) chỉ nạp cho tài khoản Phụ huynh; Admin/Chuyên gia có màn riêng
   const bootstrapSession = async () => {
-    const sid = await auth.bootstrap();
-    if (sid !== null) void loadData(sid);
+    const session = await auth.bootstrap();
+    if (session && session.user.role === 'PARENT') void loadData(session.sid);
   };
 
   useEffect(() => {
@@ -62,7 +63,7 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
     bootstrapSession,
     startSession: (user) => {
       const sid = auth.startSession(user);
-      void loadData(sid);
+      if (user.role === 'PARENT') void loadData(sid);
     },
     onKidSessionLost: () =>
       auth.endSession('Phiên Chế độ Bé không còn hợp lệ. Vui lòng đăng nhập lại bằng mật khẩu tài khoản.'),

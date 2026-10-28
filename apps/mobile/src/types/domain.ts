@@ -1,7 +1,8 @@
 // apps/mobile/src/types/domain.ts
 // Shared types for StoryWeaver platform
 
-export type Role = 'PARENT' | 'SELLER' | 'MODERATOR' | 'ADMIN';
+// BE trả role chữ thường parent | specialist | admin (authService.formatUser viết hoa). SELLER: chỉ màn SCOPE PENDING SellerDashboard dùng.
+export type Role = 'PARENT' | 'SELLER' | 'ADMIN' | 'SPECIALIST';
 
 export type StoryStatus = 'DRAFT' | 'GENERATING' | 'COMPLETED' | 'PENDING_REVIEW' | 'REJECTED' | 'PUBLISHED';
 
