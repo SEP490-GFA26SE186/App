@@ -2,6 +2,7 @@
 // B10/C12 – Gói dịch vụ & Credit, CHỈ XEM (Web: BillingPage). Dữ liệu từ BE: số dư (GET /auth/me), gói hiện tại + mức dùng
 // (GET /subscriptions/me), danh sách gói (GET /plans), lịch sử credit (GET /subscriptions/me/credit-history).
 // Không có nạp credit (BE không có endpoint), không rút tiền, không thanh toán/nâng gói (SCOPE PENDING).
+// Phase 2: "Xem chi tiết" trên thẻ gói mở sheet chỉ đọc từ GET /plans/:id (không mua/nâng gói, không gọi thanh toán).
 // R8: thẻ số dư lớn, mức dùng có thanh, gói dạng thẻ, lịch sử nhóm theo ngày (cộng/trừ có dấu, không chỉ dựa vào màu).
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { View, Text, ScrollView, StyleSheet } from 'react-native';
@@ -12,6 +13,7 @@ import { Badge } from '../../components/ui/Badge';
 import { Icon, IconName } from '../../components/ui/Icon';
 import { StateView } from '../../components/ui/StateView';
 import { ScreenHeader } from '../../components/ui/ScreenHeader';
+import { Sheet } from '../../components/ui/Sheet';
 import { Colors } from '../../theme/colors';
 import { Radius, Spacing } from '../../theme/spacing';
 import { FontFamily, Typography } from '../../theme/typography';
@@ -60,7 +62,37 @@ const Line: React.FC<{ icon: IconName; text: string }> = ({ icon, text }) => (
   </View>
 );
 
-const PlanRow: React.FC<{ plan: PlanDto; current: boolean }> = ({ plan, current }) => (
+/** Chi tiết gói: chỉ trường BE trả cho GET /plans/:id */
+const PlanDetailSheet: React.FC<{ planId: string | null; onClose: () => void }> = ({ planId, onClose }) => {
+  const res = useAsyncResource(() => (planId ? billingService.getPlan(planId) : Promise.resolve(null)), [planId]);
+  const p = res.data;
+  return (
+    <Sheet visible={!!planId} title={p?.name ?? 'Chi tiết gói'} description="Chỉ xem. Ứng dụng chưa hỗ trợ mua hay nâng gói." onClose={onClose}>
+      <View style={styles.planDetail}>
+        {res.status === 'loading' ? (
+          <StateView variant="loading" title="Đang tải gói..." />
+        ) : res.status === 'error' || !p ? (
+          <StateView variant="error" title="Không tải được gói" description={res.error ?? ''} actionLabel="Thử lại" onAction={() => void res.reload()} />
+        ) : (
+          <>
+            <Text style={styles.price}>
+              {money(p.priceVnd)}
+              {p.durationMonths ? ` / ${p.durationMonths} tháng` : ''}
+            </Text>
+            <Line icon="pricetag-outline" text={`Mã gói: ${p.code}`} />
+            <Line icon="diamond-outline" text={`${p.creditsPerMonth} credit mỗi tháng`} />
+            <Line icon="happy-outline" text={`Tối đa ${p.maxChildren} bé`} />
+            <Line icon="people-outline" text={`Tối đa ${p.maxCharacters} nhân vật`} />
+            <Line icon="storefront-outline" text={p.canSell ? 'Được đăng bán truyện' : 'Không gồm quyền đăng bán truyện'} />
+            <Line icon="information-circle-outline" text={p.isActive ? 'Gói đang được cung cấp' : 'Gói đã ngừng cung cấp'} />
+          </>
+        )}
+      </View>
+    </Sheet>
+  );
+};
+
+const PlanRow: React.FC<{ plan: PlanDto; current: boolean; onOpen?: () => void }> = ({ plan, current, onOpen }) => (
   <HeyCard variant={current ? 'info' : 'surface'} style={styles.planCard}>
     <View style={styles.planTop}>
       <Text style={styles.cardTitle}>{plan.name}</Text>
@@ -73,6 +105,9 @@ const PlanRow: React.FC<{ plan: PlanDto; current: boolean }> = ({ plan, current 
     <Line icon="diamond-outline" text={`${plan.creditsPerMonth} credit mỗi tháng`} />
     <Line icon="happy-outline" text={`Tối đa ${plan.maxChildren} bé`} />
     <Line icon="people-outline" text={`Tối đa ${plan.maxCharacters} nhân vật`} />
+    {!!onOpen && (
+      <HeyButton title="Xem chi tiết" iconName="information-circle-outline" variant="tertiary" size="sm" onPress={onOpen} accessibilityLabel={`Xem chi tiết gói ${plan.name}`} style={styles.planBtn} />
+    )}
   </HeyCard>
 );
 
@@ -91,6 +126,7 @@ const UsageBar: React.FC<{ label: string; used: number; max: number }> = ({ labe
 export const WalletScreen: React.FC<WalletScreenProps> = ({ currentUser, onRefreshWallet, onBack }) => {
   const sub = useAsyncResource(() => billingService.getSubscription(), []);
   const plans = useAsyncResource(() => billingService.getPlans(), []);
+  const [planId, setPlanId] = useState<string | null>(null);
 
   // Lịch sử credit: trang đầu + "Xem thêm"
   const [entries, setEntries] = useState<CreditEntryDto[]>([]);
@@ -199,8 +235,9 @@ export const WalletScreen: React.FC<WalletScreenProps> = ({ currentUser, onRefre
         <StateView variant="error" title="Chưa tải được danh sách gói" description={plans.error ?? ''} actionLabel="Thử lại" onAction={() => void plans.reload()} />
       )}
       {plans.data?.map((p) => (
-        <PlanRow key={p.code} plan={p} current={p.code === s?.plan.code} />
+        <PlanRow key={p.code} plan={p} current={p.code === s?.plan.code} onOpen={p.id ? () => setPlanId(p.id ?? null) : undefined} />
       ))}
+      <PlanDetailSheet planId={planId} onClose={() => setPlanId(null)} />
       <View style={styles.noteRow}>
         <Icon name="information-circle-outline" size={18} color={Colors.textMuted} />
         <Text style={styles.note}>Nâng cấp gói và thanh toán chưa được hỗ trợ trên ứng dụng. Ứng dụng không cho nạp hay rút tiền.</Text>
@@ -265,6 +302,8 @@ const styles = StyleSheet.create({
   usageNum: { fontFamily: FontFamily.extraBold, fontSize: 14, color: Colors.text },
   sectionTitle: { ...Typography.heading, color: Colors.text, marginTop: Spacing.md },
   planCard: { gap: Spacing.xs },
+  planBtn: { alignSelf: 'flex-start' },
+  planDetail: { gap: Spacing.sm, paddingBottom: Spacing.md },
   planTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: Spacing.sm },
   price: { ...Typography.title, fontSize: 20, color: Colors.text },
   noteRow: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.sm, marginVertical: Spacing.sm },

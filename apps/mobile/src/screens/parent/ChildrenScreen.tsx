@@ -1,5 +1,6 @@
 // apps/mobile/src/screens/parent/ChildrenScreen.tsx
 // B3/C6 – Hồ sơ bé (Web: ChildrenPage). Danh sách + chọn bé + thêm/sửa/xóa hồ sơ qua BE thật.
+// Phase 1: "Chi tiết" mở hồ sơ + thời gian đọc + tủ sách của bé (ChildDetailScreen).
 // R8: thẻ bé có avatar, "Vào Chế độ Bé" là hành động chính (PIN vẫn do BE xác minh ở Kid Mode), Chọn/Sửa/Xóa là hành động phụ có icon + chữ.
 import React, { useState } from 'react';
 import { View, Text, ScrollView, StyleSheet } from 'react-native';
@@ -27,6 +28,7 @@ interface ChildrenScreenProps {
   onChildSaved: (child: ChildProfile, isNew: boolean) => void;
   onChildDeleted: (id: string) => void;
   onOpenKidMode: (child: ChildProfile) => void;
+  onOpenDetail: (child: ChildProfile) => void;
   onOpenSettings: () => void;
   onBack: () => void;
 }
@@ -40,6 +42,7 @@ export const ChildrenScreen: React.FC<ChildrenScreenProps> = ({
   onChildSaved,
   onChildDeleted,
   onOpenKidMode,
+  onOpenDetail,
   onOpenSettings,
   onBack,
 }) => {
@@ -134,6 +137,7 @@ export const ChildrenScreen: React.FC<ChildrenScreenProps> = ({
                 onPress={() => onOpenKidMode(c)}
               />
               <View style={styles.cardActions}>
+                <HeyButton title="Chi tiết" iconName="information-circle-outline" variant="tertiary" size="sm" onPress={() => onOpenDetail(c)} />
                 {!selected && (
                   <HeyButton title="Chọn bé" iconName="checkmark-circle-outline" variant="tertiary" size="sm" onPress={() => onSelect(c.id)} />
                 )}

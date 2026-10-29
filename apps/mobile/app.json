@@ -16,7 +16,8 @@
       "bundler": "metro"
     },
     "plugins": [
-      "expo-video"
+      "expo-video",
+      ["expo-audio", { "microphonePermission": false }]
     ]
   }
 }

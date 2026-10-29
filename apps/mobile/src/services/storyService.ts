@@ -5,8 +5,12 @@ import { StoryView } from '../types/viewModels';
 import type {
   AiPricingDto,
   AnalyzeStoryResultDto,
+  BookshelfCheckDto,
+  BookshelfPageDto,
   GenerationDto,
   PaginationDto,
+  ShelfItemDto,
+  ShelfStatus,
   StoryDto,
   StoryResponseDto,
   TopicDto,
@@ -125,6 +129,26 @@ export const storyService = {
   removeFromShelf: async (childId: string, storyId: string): Promise<boolean> => {
     await apiFetch(`/bookshelf/${storyId}?childId=${childId}`, { method: 'DELETE' });
     return true;
+  },
+
+  /** Giá sách một bé: GET /bookshelf?childId&page&limit(≤50)&status (envelope: `data` = mảng, `child` + `pagination` ở top-level) */
+  getBookshelf: async (childId: string, params: { page?: number; limit?: number; status?: ShelfStatus } = {}): Promise<BookshelfPageDto> => {
+    const query = new URLSearchParams({
+      childId,
+      page: String(params.page ?? 1),
+      limit: String(params.limit ?? 20),
+      status: params.status ?? 'all',
+    });
+    const body = await apiFetch<{ data?: ShelfItemDto[]; child?: BookshelfPageDto['child']; pagination?: PaginationDto }>(`/bookshelf?${query}`, { raw: true });
+    if (!Array.isArray(body?.data) || !body.pagination || !body.child?.id) throw invalidResponseError('giá sách');
+    return { child: body.child, items: body.data, pagination: body.pagination };
+  },
+
+  /** Truyện đang ở giá sách của bé nào: GET /bookshelf/check/:storyId → data { storyId, children[] } (mọi bé của phụ huynh) */
+  checkShelf: async (storyId: string): Promise<BookshelfCheckDto> => {
+    const data = await apiFetch<Partial<BookshelfCheckDto>>(`/bookshelf/check/${storyId}`);
+    if (!Array.isArray(data?.children)) throw invalidResponseError('trạng thái giá sách');
+    return data as BookshelfCheckDto;
   },
 
   /**

@@ -80,6 +80,18 @@ export const useKidReader = (source: KidDataSource) => {
     });
   };
 
+  /** Áp dữ liệu lượt đọc BE trả: câu đã trả lời + trang đang đọc dở */
+  const applyPlay = (data: KidPlayDto) => {
+    const resume = data.story.pages.findIndex((p) => p.id === data.session.currentPageId);
+    setResults(
+      Object.fromEntries(data.story.checkpoints.filter((c) => c.result).map((c) => [c.id, c.result as KidAnswerResultDto]))
+    );
+    setPageIndex(resume >= 0 ? resume : 0);
+    setCheckpointOpen(false);
+    setFinished(false);
+    setPlay(data);
+  };
+
   const open = async (storyId: string) => {
     if (busy.current) return;
     busy.current = true;
@@ -88,14 +100,7 @@ export const useKidReader = (source: KidDataSource) => {
     try {
       const data = await source.startReading(storyId);
       if (!alive.current) return;
-      const resume = data.story.pages.findIndex((p) => p.id === data.session.currentPageId);
-      setResults(
-        Object.fromEntries(data.story.checkpoints.filter((c) => c.result).map((c) => [c.id, c.result as KidAnswerResultDto]))
-      );
-      setPageIndex(resume >= 0 ? resume : 0);
-      setCheckpointOpen(false);
-      setFinished(false);
-      setPlay(data);
+      applyPlay(data);
     } catch (e) {
       if (!alive.current) return;
       if (isLost(e)) setLost(true);
@@ -103,6 +108,33 @@ export const useKidReader = (source: KidDataSource) => {
     } finally {
       busy.current = false;
       if (alive.current) setStartingId(null);
+    }
+  };
+
+  /**
+   * Phase 2: sau lỗi khi đang đọc, nạp lại đúng lượt đọc đang mở từ BE (GET /kid/sessions/:id — BE chỉ trả lượt của bé
+   * trong token) để câu đã trả lời + trang khớp với máy chủ. Chỉ đọc; không trả lời / không hoàn thành thay bé.
+   */
+  const canResync = !!source.getSession;
+  const resync = async () => {
+    if (!play || !source.getSession || busy.current) return;
+    busy.current = true;
+    setSubmitting(true);
+    setActionError(null);
+    try {
+      const data = await source.getSession(play.session.id);
+      if (!alive.current) return;
+      if (data.session.id !== play.session.id || data.story.id !== play.story.id) {
+        throw new Error('Lượt đọc không khớp. Bé quay về tủ sách rồi mở lại truyện nhé.');
+      }
+      applyPlay(data);
+    } catch (e) {
+      if (!alive.current) return;
+      if (isLost(e)) setLost(true);
+      setActionError(messageOf(e, 'Chưa tải lại được lượt đọc.'));
+    } finally {
+      busy.current = false;
+      if (alive.current) setSubmitting(false);
     }
   };
 
@@ -219,6 +251,8 @@ export const useKidReader = (source: KidDataSource) => {
     submit,
     continueAfterCheckpoint,
     retryComplete: complete,
+    canResync,
+    resync,
   };
 };
 

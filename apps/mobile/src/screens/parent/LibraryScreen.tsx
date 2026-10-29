@@ -3,6 +3,7 @@
 // "Thêm vào tủ sách bé" gọi POST /bookshelf (C9); 422 = truyện chưa sẵn sàng, BE nêu lý do.
 // R7: lưới bìa sạch (bìa là trọng tâm, cả thẻ là một nút mở truyện), bộ lọc dạng segmented, "Thêm vào tủ sách bé" nằm trong menu "⋯" của thẻ
 // (và ở trang chi tiết) thay vì lặp một nút trên mọi thẻ. Dữ liệu/props/hành động giữ nguyên.
+// Phase 1: nút chuyển "Truyện gia đình" / "Tủ sách của bé" (ChildShelfPanel: GET /bookshelf + gỡ truyện khỏi giá).
 import React, { useMemo, useState } from 'react';
 import { View, Text, FlatList, Pressable, StyleSheet, useWindowDimensions } from 'react-native';
 import { ChildProfile, Story } from '../../types/domain';
@@ -15,6 +16,7 @@ import { StoryCover } from '../../components/ui/StoryCover';
 import { StateView } from '../../components/ui/StateView';
 import { ScreenHeader } from '../../components/ui/ScreenHeader';
 import { ChildSwitcher } from '../../components/parent/ChildSwitcher';
+import { ChildShelfPanel } from '../../components/parent/ChildShelfPanel';
 import { Colors } from '../../theme/colors';
 import { Layout, Radius, Spacing, Touch } from '../../theme/spacing';
 import { FontFamily, Typography } from '../../theme/typography';
@@ -29,10 +31,15 @@ interface LibraryScreenProps {
   selectedChildId?: string;
   dataStatus: DataStatus;
   onSelectChild: (id: string) => void;
-  onOpenStory: (story: Story) => void;
+  /** Chỉ dùng `id` (truyện trên giá sách chỉ có storyId) */
+  onOpenStory: (story: Pick<Story, 'id'>) => void;
   onAddToShelf: (story: Story) => void;
   onCreateStory: () => void;
+  /** 'shelf' = mở thẳng chế độ "Tủ sách của bé" (từ Chi tiết bé) */
+  initialView?: 'shelf';
 }
+
+type LibraryView = 'stories' | 'shelf';
 
 /** Số cột theo bề ngang cửa sổ (điện thoại 2, máy tính bảng 3, màn rộng 4); khung bề rộng tối đa thuộc R9. */
 const columnsFor = (width: number) => (width >= 640 ? 3 : 2);
@@ -48,7 +55,9 @@ export const LibraryScreen: React.FC<LibraryScreenProps> = ({
   onOpenStory,
   onAddToShelf,
   onCreateStory,
+  initialView,
 }) => {
+  const [view, setView] = useState<LibraryView>(initialView ?? 'stories');
   const { width } = useWindowDimensions();
   const cols = columnsFor(Math.min(width, Layout.maxContentWidth));
   const [filter, setFilter] = useState<(typeof STORY_FILTERS)[number]['value']>('ALL');
@@ -71,12 +80,57 @@ export const LibraryScreen: React.FC<LibraryScreenProps> = ({
   const loading = dataStatus === 'loading' && stories.length === 0;
   const selectedChild = childrenProfiles.find((c) => c.id === selectedChildId);
 
+  const views: { value: LibraryView; label: string }[] = [
+    { value: 'stories', label: 'Truyện gia đình' },
+    { value: 'shelf', label: selectedChild ? `Tủ sách của ${selectedChild.name}` : 'Tủ sách của bé' },
+  ];
+  const viewSwitch = (
+    <View accessibilityRole="tablist" style={styles.segment}>
+      {views.map((v) => {
+        const on = view === v.value;
+        return (
+          <Pressable
+            key={v.value}
+            onPress={() => setView(v.value)}
+            {...spaceActivates(() => setView(v.value))}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: on }}
+            accessibilityLabel={v.label}
+            style={(s) => [styles.segItem, on && styles.segItemOn, s.pressed && styles.pressed, focusRing(s)]}
+          >
+            <Text style={[styles.segText, on && styles.segTextOn]} numberOfLines={2}>
+              {v.label}
+            </Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+
+  if (view === 'shelf') {
+    return (
+      <ChildShelfPanel
+        key={selectedChildId}
+        child={selectedChild}
+        onOpenStory={(id) => onOpenStory({ id })}
+        header={
+          <View style={styles.header}>
+            <ScreenHeader title="Tủ truyện" subtitle="Truyện bé thấy trong Chế độ Bé" />
+            {viewSwitch}
+            <ChildSwitcher childrenProfiles={childrenProfiles} selectedId={selectedChildId} onSelect={onSelectChild} />
+          </View>
+        }
+      />
+    );
+  }
+
   const header = (
     <View style={styles.header}>
       <ScreenHeader
         title="Tủ truyện"
         subtitle={selectedChild ? `Truyện của gia đình · giá sách của ${selectedChild.name}` : 'Truyện của gia đình'}
       />
+      {viewSwitch}
       <ChildSwitcher childrenProfiles={childrenProfiles} selectedId={selectedChildId} onSelect={onSelectChild} />
       <HeyInput placeholder="Tìm truyện theo tên..." value={search} onChangeText={setSearch} style={styles.search} />
       {/* Bộ lọc dạng segmented (chọn-một), thay cho 4 chip rời */}

@@ -31,6 +31,12 @@ export type StoryView = Story & {
  * Đặt ở đây (không ở services) để `src/dev` không phải import service (grep G11).
  */
 export interface KidDataSource {
+  /** Tùy chọn (UI Preview không có): GET /kid/me — xác nhận phiên Kid thuộc đúng bé */
+  getMe?: () => Promise<import('./api').KidMeDto>;
+  /** Tùy chọn (UI Preview không có): GET /kid/sessions/:id — đồng bộ lại lượt đọc đang mở */
+  getSession?: (sessionId: string) => Promise<import('./api').KidPlayDto>;
+  /** Tùy chọn (UI Preview không có): GET /kid/ui-audio — câu đọc dùng chung đã tạo sẵn ở BE */
+  getUiAudio?: () => Promise<import('../utils/kidUiAudio').UiAudioAssets>;
   getShelf: () => Promise<import('./api').KidShelfItemDto[]>;
   startReading: (storyId: string) => Promise<import('./api').KidPlayDto>;
   saveProgress: (sessionId: string, pageId: string) => Promise<void>;

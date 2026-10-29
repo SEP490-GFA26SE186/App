@@ -13,13 +13,16 @@ import { KidCheckpointCard } from './KidCheckpointCard';
 import { KidState } from './KidState';
 import { useReduceMotion } from '../../utils/useReduceMotion';
 import type { KidReaderState } from '../../screens/kid/useKidReader';
+import type { KidUiAudioControls } from '../../utils/kidUiAudio';
 
 interface Props {
   reader: KidReaderState;
   hideBehind: 'auto' | 'no-hide-descendants';
+  /** Câu đọc dùng chung (tùy chọn): không có = không hiện nút Nghe */
+  audio?: KidUiAudioControls;
 }
 
-export const KidReader: React.FC<Props> = ({ reader, hideBehind }) => {
+export const KidReader: React.FC<Props> = ({ reader, hideBehind, audio }) => {
   const { height } = useWindowDimensions();
   const reduceMotion = useReduceMotion();
   const scrollRef = useRef<ScrollView>(null);
@@ -27,6 +30,9 @@ export const KidReader: React.FC<Props> = ({ reader, hideBehind }) => {
 
   // Điểm dừng nằm dưới tranh + chữ: tự cuộn tới để bé không phải tự tìm câu hỏi
   const checkpointId = reader.openCheckpoint?.id;
+  // Đổi/đóng điểm dừng, đổi trang hay rời trình đọc → dừng câu đang phát
+  const stopAudio = audio?.stop;
+  useEffect(() => () => stopAudio?.(), [checkpointId, play?.session.id, stopAudio]);
   useEffect(() => {
     if (!checkpointId) return;
     const t = setTimeout(() => scrollRef.current?.scrollToEnd({ animated: !reduceMotion }), 120);
@@ -105,6 +111,7 @@ export const KidReader: React.FC<Props> = ({ reader, hideBehind }) => {
               onChoose={(choice) => void reader.submit(choice)}
               onSkip={() => void reader.submit({ skipped: true })}
               onContinue={reader.continueAfterCheckpoint}
+              audio={audio}
             />
           )}
 
@@ -112,6 +119,17 @@ export const KidReader: React.FC<Props> = ({ reader, hideBehind }) => {
             <Text style={styles.error} accessibilityRole="alert">
               {reader.actionError}
             </Text>
+          )}
+          {/* Phase 2: đồng bộ lại lượt đọc với máy chủ sau lỗi (GET /kid/sessions/:id) */}
+          {!!reader.actionError && reader.canResync && (
+            <HeyButton
+              title="Tải lại lượt đọc"
+              iconName="refresh"
+              variant="tertiary"
+              size="lg"
+              loading={reader.submitting}
+              onPress={() => void reader.resync()}
+            />
           )}
         </View>
       </ScrollView>

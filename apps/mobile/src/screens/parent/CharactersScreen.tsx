@@ -2,6 +2,7 @@
 // B4/C6 – Nhân vật gia đình (Web: FamilyCharactersPage). Danh sách + thêm/sửa/xóa nhân vật qua BE thật.
 // Không có "role" (rev8). Chân dung AI đang tạm dừng (B5) nên chỉ hiện nhãn trạng thái BE trả.
 // R8: lưới thẻ (2/3/4 cột theo bề ngang) có ảnh/chữ cái đầu, mô tả, nhãn trạng thái; Sửa/Xóa là nút có icon + chữ.
+// Phase 2: "Chi tiết" mở sheet chỉ đọc từ GET /characters/:id (không vẽ chân dung, không gọi AI).
 import React, { useState } from 'react';
 import { View, Text, Image, ScrollView, StyleSheet, useWindowDimensions } from 'react-native';
 import { HeyButton } from '../../components/ui/HeyButton';
@@ -11,12 +12,15 @@ import { StateView } from '../../components/ui/StateView';
 import { ScreenHeader } from '../../components/ui/ScreenHeader';
 import { useDialog } from '../../components/ui/Dialog';
 import { CharacterFormSheet } from '../../components/parent/CharacterFormSheet';
+import { Sheet } from '../../components/ui/Sheet';
 import { Colors } from '../../theme/colors';
 import { Layout, Radius, Spacing } from '../../theme/spacing';
 import { Typography } from '../../theme/typography';
 import { CharacterView } from '../../types/viewModels';
 import { characterService } from '../../services';
 import type { DataStatus } from '../../stores/useParentData';
+import { useAsyncResource } from '../../utils/useAsyncResource';
+import { formatDate } from '../../utils/format';
 
 const PORTRAIT_LABELS: Record<string, string> = {
   none: 'Chưa có chân dung',
@@ -33,6 +37,42 @@ interface CharactersScreenProps {
   onCharacterDeleted: (id: string) => void;
   onBack: () => void;
 }
+
+/** Sheet chi tiết: nạp mới từ BE mỗi lần mở (loading / lỗi + thử lại) */
+const CharacterDetailSheet: React.FC<{ characterId: string | null; onClose: () => void }> = ({ characterId, onClose }) => {
+  const res = useAsyncResource(() => (characterId ? characterService.getCharacter(characterId) : Promise.resolve(null)), [characterId]);
+  const c = res.data;
+  return (
+    <Sheet visible={!!characterId} title={c?.name ?? 'Chi tiết nhân vật'} onClose={onClose}>
+      <View style={styles.detail}>
+        {res.status === 'loading' ? (
+          <StateView variant="loading" title="Đang tải nhân vật..." />
+        ) : res.status === 'error' || !c ? (
+          <StateView variant="error" title="Không tải được nhân vật" description={res.error ?? ''} actionLabel="Thử lại" onAction={() => void res.reload()} />
+        ) : (
+          <>
+            {c.portraitImageUrl ? (
+              <Image source={{ uri: c.portraitImageUrl }} style={styles.detailPortrait} accessibilityLabel={`Chân dung ${c.name}`} />
+            ) : (
+              <View style={[styles.detailPortrait, styles.initialBox]} accessible={false}>
+                <Text style={styles.initial}>{(c.name || '?').trim().charAt(0).toUpperCase()}</Text>
+              </View>
+            )}
+            <View style={styles.badges}>
+              <Badge label={PORTRAIT_LABELS[c.portraitStatus ?? 'none'] ?? 'Chân dung: chưa rõ'} tone={c.portraitStatus === 'ready' ? 'success' : 'neutral'} />
+              {!!c.child && <Badge label={`Nhân vật đại diện của ${c.child.name}`} tone="info" />}
+            </View>
+            <Text style={styles.detailLabel}>Ngoại hình</Text>
+            <Text style={styles.detailText}>{c.appearance || '—'}</Text>
+            <Text style={styles.detailMeta}>
+              Tạo {formatDate(c.createdAt)} · cập nhật {formatDate(c.updatedAt)}
+            </Text>
+          </>
+        )}
+      </View>
+    </Sheet>
+  );
+};
 
 /** Số cột theo bề ngang nội dung (đã giới hạn 720) */
 const columnsFor = (width: number) => (width >= 640 ? 3 : 2);
@@ -53,6 +93,7 @@ export const CharactersScreen: React.FC<CharactersScreenProps> = ({
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<CharacterView | undefined>(undefined);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [detailId, setDetailId] = useState<string | null>(null);
   const openForm = (c?: CharacterView) => {
     setEditing(c);
     setFormOpen(true);
@@ -130,6 +171,7 @@ export const CharactersScreen: React.FC<CharactersScreenProps> = ({
                 {!!c.childId && <Badge label="Nhân vật của bé" tone="info" />}
               </View>
               <View style={styles.actions}>
+                <HeyButton title="Chi tiết" iconName="information-circle-outline" variant="tertiary" size="sm" onPress={() => setDetailId(c.id)} accessibilityLabel={`Xem chi tiết nhân vật ${c.name}`} />
                 <HeyButton title="Sửa" iconName="create-outline" variant="tertiary" size="sm" onPress={() => openForm(c)} accessibilityLabel={`Sửa nhân vật ${c.name}`} />
                 {!c.childId && (
                   <HeyButton
@@ -155,6 +197,7 @@ export const CharactersScreen: React.FC<CharactersScreenProps> = ({
         onClose={() => setFormOpen(false)}
         onSaved={(c) => onCharacterSaved(c, !editing)}
       />
+      <CharacterDetailSheet characterId={detailId} onClose={() => setDetailId(null)} />
     </ScrollView>
   );
 };
@@ -170,5 +213,10 @@ const styles = StyleSheet.create({
   portrait: { width: '100%', aspectRatio: 1, borderRadius: Radius.md, backgroundColor: Colors.brandTint },
   initialBox: { alignItems: 'center', justifyContent: 'center' },
   initial: { ...Typography.display, color: Colors.brandStrong },
+  detail: { gap: Spacing.sm, paddingBottom: Spacing.md },
+  detailPortrait: { width: 160, aspectRatio: 1, alignSelf: 'center', borderRadius: Radius.lg, backgroundColor: Colors.brandTint },
+  detailLabel: { ...Typography.bodyStrong, color: Colors.text },
+  detailText: { ...Typography.body, color: Colors.text },
+  detailMeta: { ...Typography.caption, color: Colors.textMuted },
   actions: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.xs },
 });

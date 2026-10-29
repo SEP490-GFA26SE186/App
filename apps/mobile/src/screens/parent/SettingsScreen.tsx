@@ -1,7 +1,9 @@
 // apps/mobile/src/screens/parent/SettingsScreen.tsx
 // B11/C3/C4 – Cài đặt (Web: SettingsPage). Thông tin tài khoản chỉ xem (BE chưa có API cập nhật hồ sơ – U8),
-// đổi mật khẩu, đặt/đổi mã PIN Kid Mode qua BE, địa chỉ máy chủ, đăng xuất.
-import React, { useRef, useState } from 'react';
+// đổi mật khẩu, đặt/đổi mã PIN Kid Mode qua BE, đăng xuất.
+// Phase 2: xác thực email bằng mã (POST /auth/send-verification-email → POST /auth/verify-email).
+// Khu "Máy chủ" (địa chỉ API, URL tạm, kiểm tra /health) đã gỡ theo yêu cầu chủ dự án; địa chỉ API vẫn lấy từ EXPO_PUBLIC_API_URL.
+import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, ScrollView, StyleSheet } from 'react-native';
 import { HeyCard } from '../../components/ui/HeyCard';
 import { HeyInput } from '../../components/ui/HeyInput';
@@ -13,12 +15,7 @@ import { Radius, Spacing } from '../../theme/spacing';
 import { Typography } from '../../theme/typography';
 import { Icon } from '../../components/ui/Icon';
 import { SessionUser } from '../../types/sessionUser';
-import {
-  authService,
-  getApiBaseUrl,
-  setDevApiBaseUrl,
-  API_NOT_CONFIGURED_MESSAGE,
-} from '../../services';
+import { ApiError, authService } from '../../services';
 
 // BE trả message tiếng Anh → dịch lỗi PIN hay gặp (Web VI_MESSAGES)
 const PIN_VI_MESSAGES: Record<string, string> = {
@@ -95,9 +92,60 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ currentUser, onU
     }
   };
 
-  const [apiBaseUrl, setApiBaseUrlState] = useState<string | null>(getApiBaseUrl());
-  const [customUrl, setCustomUrl] = useState('');
-  const [urlError, setUrlError] = useState<string | null>(null);
+  // Xác thực email: gửi mã (BE gửi email thật, chờ 60 giây giữa hai lần) rồi nhập mã
+  const emailVerified = !!currentUser.emailVerifiedAt;
+  const [verifyCode, setVerifyCode] = useState('');
+  const [verifyBusy, setVerifyBusy] = useState<'send' | 'verify' | null>(null);
+  const verifyBusyRef = useRef(false);
+  const [verifyError, setVerifyError] = useState<string | null>(null);
+  const [verifyNotice, setVerifyNotice] = useState<string | null>(null);
+  const [resendAt, setResendAt] = useState(0);
+  const waiting = resendAt > Date.now();
+  useEffect(() => {
+    if (!waiting) return;
+    const t = setTimeout(() => setResendAt(0), resendAt - Date.now());
+    return () => clearTimeout(t);
+  }, [resendAt, waiting]);
+
+  const runVerify = async (kind: 'send' | 'verify', task: () => Promise<void>) => {
+    if (verifyBusyRef.current) return;
+    verifyBusyRef.current = true;
+    setVerifyBusy(kind);
+    setVerifyError(null);
+    setVerifyNotice(null);
+    try {
+      await task();
+    } catch (err: any) {
+      if (err instanceof ApiError && err.status === 429) {
+        const wait = err.errors?.[0]?.retryAfterSeconds;
+        if (typeof wait === 'number') setResendAt(Date.now() + wait * 1000);
+      }
+      setVerifyError(err?.message || 'Có lỗi xảy ra, ba mẹ thử lại sau nhé.');
+    } finally {
+      verifyBusyRef.current = false;
+      setVerifyBusy(null);
+    }
+  };
+
+  const sendVerification = () =>
+    runVerify('send', async () => {
+      const { retryAfterSeconds } = await authService.sendVerificationEmail();
+      if (retryAfterSeconds) setResendAt(Date.now() + retryAfterSeconds * 1000);
+      setVerifyNotice(`Đã gửi mã tới ${currentUser.email}. Mã có hiệu lực 24 giờ.`);
+    });
+
+  const verifyEmail = () => {
+    if (!verifyCode.trim()) {
+      setVerifyError('Ba mẹ dán mã xác thực trong email nhé.');
+      return;
+    }
+    void runVerify('verify', async () => {
+      const { emailVerifiedAt } = await authService.verifyEmail(verifyCode);
+      setVerifyCode('');
+      onUserUpdate({ ...currentUser, emailVerifiedAt });
+      setVerifyNotice('Xác thực email thành công.');
+    });
+  };
 
   // PIN do BE xác minh/lưu; client KHÔNG lưu PIN, chỉ giữ cờ "đã có PIN" ('****').
   // BE chấp nhận PIN 4–6 số; bàn phím Kid Mode nhập tối đa 6 số rồi xác nhận.
@@ -130,15 +178,6 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ currentUser, onU
     }
   };
 
-  const applyUrl = (value: string | null) => {
-    if (!setDevApiBaseUrl(value)) {
-      setUrlError('Địa chỉ máy chủ không hợp lệ (cần dạng http://host:port).');
-      return;
-    }
-    setUrlError(null);
-    setApiBaseUrlState(getApiBaseUrl());
-  };
-
   return (
     <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
       <ScreenHeader title="Cài đặt" onBack={onBack} />
@@ -149,6 +188,32 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ currentUser, onU
         <Row label="Email" value={currentUser.email} />
         <Row label="Số điện thoại" value={currentUser.phone ?? ''} />
         <Text style={styles.hint}>Chỉnh sửa thông tin tài khoản chưa được hỗ trợ (máy chủ chưa cung cấp chức năng này).</Text>
+      </HeyCard>
+
+      <HeyCard style={styles.card}>
+        <View style={styles.titleRow}>
+          <Text style={styles.cardTitle}>Xác thực email</Text>
+          <Badge label={emailVerified ? 'Đã xác thực' : 'Chưa xác thực'} tone={emailVerified ? 'success' : 'warning'} />
+        </View>
+        {emailVerified ? (
+          <Text style={styles.hint}>Email {currentUser.email} đã được xác thực.</Text>
+        ) : (
+          <>
+            <Text style={styles.hint}>Máy chủ gửi mã xác thực tới {currentUser.email}. Dán mã vào ô dưới đây.</Text>
+            <HeyButton
+              title={waiting ? 'Đã gửi mã · chờ để gửi lại' : 'Gửi mã xác thực'}
+              iconName="mail-outline"
+              variant="tertiary"
+              onPress={sendVerification}
+              loading={verifyBusy === 'send'}
+              disabled={waiting || !!verifyBusy}
+            />
+            <HeyInput label="Mã xác thực" value={verifyCode} onChangeText={setVerifyCode} autoCapitalize="none" autoCorrect={false} />
+            <HeyButton title="Xác thực" iconName="checkmark-circle-outline" variant="secondary" onPress={verifyEmail} loading={verifyBusy === 'verify'} disabled={!!verifyBusy} />
+          </>
+        )}
+        {!!verifyError && <Msg tone="error" text={verifyError} />}
+        {!!verifyNotice && <Msg tone="success" text={verifyNotice} />}
       </HeyCard>
 
       <HeyCard style={styles.card}>
@@ -199,43 +264,6 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ currentUser, onU
         />
       </HeyCard>
 
-      <HeyCard style={styles.card}>
-        <Text style={styles.cardTitle}>Máy chủ</Text>
-        {/* J1: địa chỉ máy chủ chỉ hiện ở bản phát triển; bản thường chỉ báo khi CHƯA cấu hình */}
-        <Text style={styles.hint}>
-          {!apiBaseUrl
-            ? API_NOT_CONFIGURED_MESSAGE
-            : __DEV__
-              ? `Địa chỉ hiện tại: ${apiBaseUrl}. Địa chỉ đặt bằng biến môi trường EXPO_PUBLIC_API_URL khi chạy ứng dụng.`
-              : 'Ứng dụng đã được cấu hình kết nối máy chủ.'}
-        </Text>
-        {__DEV__ && (
-          <>
-            <HeyInput
-              label="Địa chỉ tạm thời (chỉ khi phát triển)"
-              placeholder="http://<địa-chỉ-máy-chủ>:<cổng>"
-              value={customUrl}
-              onChangeText={setCustomUrl}
-              error={urlError ?? undefined}
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
-            <View style={styles.btnRow}>
-              <HeyButton title="Áp dụng" variant="secondary" size="sm" onPress={() => applyUrl(customUrl)} />
-              <HeyButton
-                title="Dùng cấu hình"
-                variant="tertiary"
-                size="sm"
-                onPress={() => {
-                  setCustomUrl('');
-                  applyUrl(null);
-                }}
-              />
-            </View>
-          </>
-        )}
-      </HeyCard>
-
       <HeyButton title="Đăng xuất" iconName="log-out-outline" variant="tertiary" onPress={onLogout} style={styles.logout} />
     </ScrollView>
   );
@@ -261,6 +289,5 @@ const styles = StyleSheet.create({
   msg: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.sm },
   error: { ...Typography.label, color: Colors.danger, flex: 1 },
   success: { ...Typography.label, color: Colors.successText, flex: 1 },
-  btnRow: { flexDirection: 'row', gap: Spacing.sm },
   logout: { marginTop: Spacing.xs },
 });

@@ -11,6 +11,8 @@ export const ROUTES = {
   // Màn hình con (không nằm trên thanh tab). WALLET (R3): mở từ pill credit ở header hoặc từ Hồ sơ
   WALLET: 'WALLET',
   CHILDREN: 'CHILDREN',
+  CHILD_DETAIL: 'CHILD_DETAIL',
+  EQ_SKILLS: 'EQ_SKILLS',
   CHARACTERS: 'CHARACTERS',
   STORY: 'STORY',
   SETTINGS: 'SETTINGS',
@@ -24,6 +26,9 @@ export const TAB_ROUTES: RouteKey[] = [ROUTES.HOME, ROUTES.LIBRARY, ROUTES.CREAT
 
 export interface RouteParams {
   storyId?: string;
+  childId?: string;
+  /** LIBRARY: 'shelf' = mở thẳng chế độ "Tủ sách của bé" */
+  view?: 'shelf';
 }
 
 export interface NavState {
@@ -35,7 +40,7 @@ export interface NavState {
 export const navigateStack = (stack: NavState[], route: RouteKey, params?: RouteParams): NavState[] => {
   if (TAB_ROUTES.includes(route)) return [{ route, params }];
   const top = stack[stack.length - 1];
-  if (top.route === route && top.params?.storyId === params?.storyId) return stack;
+  if (top.route === route && top.params?.storyId === params?.storyId && top.params?.childId === params?.childId) return stack;
   return [...stack, { route, params }];
 };
 

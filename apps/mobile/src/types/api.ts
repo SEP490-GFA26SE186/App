@@ -256,6 +256,55 @@ export interface ReadingProgressDto {
   lastActivityAt: string;
 }
 
+/** Một truyện trên giá sách của bé (BE bookshelf.service getBookshelf) */
+export interface ShelfItemDto {
+  storyId: string;
+  /** 'private' = truyện của phụ huynh; khác = bản đã mua */
+  kind: string;
+  title: string;
+  length?: string;
+  totalPages: number;
+  topic: { title: string; competency: string } | null;
+  cover?: { imageUrl?: string | null; competency?: string | null } | null;
+  addedAt: string;
+  readingProgress: ReadingProgressDto | null;
+}
+
+export type ShelfStatus = 'all' | 'reading' | 'completed' | 'not_started';
+
+/** GET /children/:id/bookshelf → data { child, items, pagination, counts, continueReading } */
+export interface ChildBookshelfDto {
+  child: { id: string; name: string };
+  items: ShelfItemDto[];
+  pagination: PaginationDto;
+  counts: Record<ShelfStatus, number>;
+  continueReading: ShelfItemDto[];
+}
+
+/** GET /bookshelf?childId → envelope { data: items[], child, pagination } (không có counts) */
+export interface BookshelfPageDto {
+  child: { id: string; name: string };
+  items: ShelfItemDto[];
+  pagination: PaginationDto;
+}
+
+/** GET /bookshelf/check/:storyId → data { storyId, children[] } (mọi bé của phụ huynh) */
+export interface BookshelfCheckDto {
+  storyId: string;
+  children: { childId: string; name: string; inBookshelf: boolean; addedAt: string | null }[];
+}
+
+/** GET /children/:id/eq-journey → báo cáo EQ + trend theo tuần (cũ → mới). Mobile chỉ dùng `trend`. */
+export interface EqTrendWeekDto {
+  /** Thứ Hai đầu tuần (giờ VN), 'YYYY-MM-DD' */
+  weekStart: string;
+  /** items = số câu chấm trong tuần; level = mức năng lực tính đến hết tuần */
+  competencies: Record<string, { items: number; level: EqCompetencyDto['level'] }>;
+}
+export interface EqJourneyDto extends EqReportDto {
+  trend: EqTrendWeekDto[];
+}
+
 /** GET /kid/bookshelf → items[] (không có pages) */
 export interface KidShelfItemDto {
   storyId: string;
@@ -318,6 +367,8 @@ export interface KidPlayDto {
 
 // ---- Plans / Subscription / Credit ----
 export interface PlanDto {
+  /** GET /plans có trả id (dùng cho GET /plans/:id) */
+  id?: string;
   code: string;
   name: string;
   durationMonths?: number | null;
@@ -348,4 +399,52 @@ export interface CreditEntryDto {
     | { kind: 'ai'; requestType: string; storyTitle: string | null; characterName: string | null }
     | { kind: 'plan'; planName: string }
     | null;
+}
+
+// ---- Phase 2: EQ skills / sub-skills / character detail / plan detail / kid / health ----
+/** GET /eq-skills → data { skills } (công khai) */
+export interface EqSkillDto {
+  id: string;
+  caselCode: string;
+  nameVi: string;
+  nameEn: string;
+  description: string;
+  displayOrder: number;
+  activeTopicsCount: number;
+}
+/** GET /eq-skills/:idOrCode → data { skill } (kèm bài học đang dùng) */
+export interface EqSkillDetailDto extends Omit<EqSkillDto, 'activeTopicsCount'> {
+  topics: { id: string; title: string; ageMin: number | null; ageMax: number | null }[];
+}
+/** GET /sub-skills?skillId (Phụ huynh: chỉ mục đang dùng, không kèm số đếm) */
+export interface SubSkillDto {
+  id: string;
+  skillId: string;
+  skill: { id: string; caselCode: string; nameVi: string };
+  code: string;
+  nameVi: string;
+  descriptionVi: string;
+  caselTextEn: string;
+  ageMin: number;
+  ageMax: number;
+  isActive: boolean;
+  displayOrder: number;
+}
+
+/** GET /characters/:id → data { character } (có bé gắn với nhân vật) */
+export interface CharacterDetailDto extends CharacterDto {
+  child: { id: string; name: string; birthDate: string | null } | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** GET /plans/:id → data { plan } (dòng plans của BE, priceVnd BigInt → chuỗi) */
+export interface PlanDetailDto extends PlanDto {
+  id: string;
+  isActive: boolean;
+}
+
+/** GET /kid/me (token kid_session) → data { child } */
+export interface KidMeDto {
+  child: { id: string; name: string; birthDate: string | null; preferredVoice: string | null };
 }

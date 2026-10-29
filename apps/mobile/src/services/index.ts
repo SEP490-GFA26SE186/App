@@ -8,3 +8,4 @@ export * from './characterService';
 export * from './storyService';
 export * from './kidService';
 export * from './billingService';
+export * from './eqSkillService';

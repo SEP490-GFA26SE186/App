@@ -13,6 +13,7 @@
     "@expo/vector-icons": "~14.0.4",
     "expo": "~52.0.0",
     "expo-asset": "~11.0.5",
+    "expo-audio": "~0.3.5",
     "expo-font": "~13.0.4",
     "expo-haptics": "~14.0.0",
     "expo-linear-gradient": "~14.0.1",

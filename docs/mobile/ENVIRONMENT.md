@@ -17,6 +17,17 @@ Cập nhật: A0.2. Mobile đọc địa chỉ API từ biến công khai **`EXP
 
 Backend: cổng mặc định 3000 (`BE/api/src/config/env.js`), API mount tại `/api/v1` (`BE/api/src/app.js`).
 
+## Công cụ dev trên màn Đăng nhập (`EXPO_PUBLIC_SHOW_DEV_TOOLS`)
+
+Nút "UI Preview (dev)" và dòng "Máy chủ (dev): …" **mặc định ẩn, kể cả khi chạy dev**. Muốn hiện (để mở Kid UI Preview hoặc kiểm địa chỉ BE):
+
+```powershell
+$env:EXPO_PUBLIC_SHOW_DEV_TOOLS='1'
+npx expo start --web --port 8082 -c
+```
+
+Biến được nhúng lúc Metro khởi động nên đổi giá trị phải chạy lại kèm `-c`. Bản phát hành (`__DEV__ = false`) luôn ẩn.
+
 ## Hành vi khi cấu hình thiếu/sai
 - Không đặt hoặc giá trị không phải `http(s)://…`: mọi request báo lỗi *"Chưa cấu hình địa chỉ máy chủ…"* (không gửi request, không dùng mock/phiên giả). Màn Login hiển thị cảnh báo này.
 - Chế độ `__DEV__`: tab "API" trong AuthModal cho nhập địa chỉ tạm thời (ví dụ IP LAN) mà không cần khởi động lại; **không** có trong bản production.

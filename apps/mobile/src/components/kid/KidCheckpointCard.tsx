@@ -1,6 +1,8 @@
 // apps/mobile/src/components/kid/KidCheckpointCard.tsx
 // Điểm dừng EQ trong lúc bé đọc (5 kiểu theo BE). Component thuần hiển thị: BE chấm đúng/sai, trả gợi ý và đáp án.
 // R4: nút cảm xúc/đáp án lớn (>= 56pt, có nhãn trợ năng), "Bỏ qua" là nút thật rõ ràng, màu theo token.
+// Nút "Nghe" (tùy chọn): phát câu đọc BE tạo sẵn (GET /kid/ui-audio). Chỉ phát âm thanh, không gửi câu trả lời;
+// không có file → không hiện nút, chữ vẫn hiện như cũ.
 import React from 'react';
 import { View, Text, Pressable, StyleSheet, ActivityIndicator } from 'react-native';
 import { Colors } from '../../theme/colors';
@@ -11,6 +13,7 @@ import { HeyButton } from '../ui/HeyButton';
 import { Icon } from '../ui/Icon';
 import { KID_EMOTIONS, emotionLabel } from '../../constants/kid';
 import type { KidAnswerResultDto, KidCheckpointDto } from '../../types/api';
+import { UI_AUDIO_KEYS, type KidUiAudioControls } from '../../utils/kidUiAudio';
 
 interface Props {
   checkpoint: KidCheckpointDto;
@@ -20,9 +23,30 @@ interface Props {
   onChoose: (choice: { emotion?: string; optionId?: string }) => void;
   onSkip: () => void;
   onContinue: () => void;
+  audio?: KidUiAudioControls;
 }
 
-export const KidCheckpointCard: React.FC<Props> = ({ checkpoint, result, submitting, error, onChoose, onSkip, onContinue }) => {
+/** Nút nghe câu đọc: chỉ hiện khi BE có file cho khóa này; lỗi phát → báo bằng chữ, giữ nguyên nội dung */
+const Listen: React.FC<{ audio?: KidUiAudioControls; audioKey: string; label: string }> = ({ audio, audioKey, label }) => {
+  if (!audio?.canPlay(audioKey)) return null;
+  const playing = audio.playingKey === audioKey;
+  return (
+    <View style={styles.listenWrap}>
+      <HeyButton
+        title={playing ? 'Đang đọc…' : 'Nghe'}
+        iconName="volume-high"
+        variant="tertiary"
+        size="lg"
+        accessibilityLabel={label}
+        onPress={() => audio.play(audioKey)}
+        style={styles.listen}
+      />
+      {audio.failedKey === audioKey && <Text style={styles.listenError}>Chưa phát được âm thanh, bé đọc chữ nhé.</Text>}
+    </View>
+  );
+};
+
+export const KidCheckpointCard: React.FC<Props> = ({ checkpoint, result, submitting, error, onChoose, onSkip, onContinue, audio }) => {
   const isEmotion = checkpoint.type === 'emotion_self' || checkpoint.type === 'emotion_other';
   const isReflection = checkpoint.type === 'reflection';
   const done = !!result?.done;
@@ -35,6 +59,8 @@ export const KidCheckpointCard: React.FC<Props> = ({ checkpoint, result, submitt
       <Text style={styles.question} accessibilityRole="header">
         {checkpoint.question || 'Bé nghĩ sao nhỉ? 🌟'}
       </Text>
+      {!done && isEmotion && <Listen audio={audio} audioKey={UI_AUDIO_KEYS.chooseEmotion} label="Nghe hướng dẫn chọn cảm xúc" />}
+      {!done && isReflection && <Listen audio={audio} audioKey={UI_AUDIO_KEYS.reflection} label="Nghe hướng dẫn" />}
 
       {!!result && !done && !!result.hint && (
         <View style={styles.hintBox} accessibilityLiveRegion="polite">
@@ -45,6 +71,7 @@ export const KidCheckpointCard: React.FC<Props> = ({ checkpoint, result, submitt
           </View>
         </View>
       )}
+      {!!result && !done && !!result.hint && <Listen audio={audio} audioKey={UI_AUDIO_KEYS.tryAgain} label="Nghe lời nhắc chọn lại" />}
 
       {done ? (
         <View style={styles.outcome}>
@@ -61,6 +88,8 @@ export const KidCheckpointCard: React.FC<Props> = ({ checkpoint, result, submitt
           ) : (
             <Text style={styles.outcomeText}>Bé đã trả lời xong 💛</Text>
           )}
+          {!result?.skipped && !isReflection && result?.correct === true && <Listen audio={audio} audioKey={UI_AUDIO_KEYS.correct} label="Nghe lời khen" />}
+          {!result?.skipped && !isReflection && result?.correct === false && <Listen audio={audio} audioKey={UI_AUDIO_KEYS.answerIs} label="Nghe đáp án" />}
           {!!result?.feedback && <Text style={styles.feedback}>{result.feedback}</Text>}
           <HeyButton title="Tiếp tục" iconName="arrow-forward" variant="kid" size="xl" onPress={onContinue} />
         </View>
@@ -167,4 +196,7 @@ const styles = StyleSheet.create({
   feedback: { ...Typography.body, color: Colors.textMuted, textAlign: 'center' },
   spinner: { marginTop: Spacing.sm },
   error: { ...Typography.label, color: Colors.danger, textAlign: 'center' },
+  listenWrap: { alignItems: 'center', gap: Spacing.xs },
+  listen: { minHeight: Touch.kid, paddingHorizontal: Spacing.xl },
+  listenError: { ...Typography.caption, color: Colors.textMuted, textAlign: 'center' },
 });

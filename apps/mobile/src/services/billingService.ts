@@ -1,7 +1,7 @@
 // apps/mobile/src/services/billingService.ts
 // C12 – CHỈ XEM gói, quota, lịch sử credit. Không nạp credit / thanh toán (SCOPE PENDING; BE không có top-up).
 import { apiFetch, invalidResponseError } from './apiClient';
-import type { CreditEntryDto, PaginationDto, PlanDto, SubscriptionMeDto } from '../types/api';
+import type { CreditEntryDto, PaginationDto, PlanDetailDto, PlanDto, SubscriptionMeDto } from '../types/api';
 
 export const billingService = {
   /** Danh sách gói (công khai): GET /plans → data { plans } */
@@ -9,6 +9,13 @@ export const billingService = {
     const data = await apiFetch<{ plans?: PlanDto[] }>('/plans', { skipAuth: true });
     if (!Array.isArray(data?.plans)) throw invalidResponseError('danh sách gói');
     return data.plans;
+  },
+
+  /** Chi tiết một gói (công khai, chỉ xem): GET /plans/:id → data { plan }. Không có thanh toán ở đây. */
+  getPlan: async (id: string): Promise<PlanDetailDto> => {
+    const data = await apiFetch<{ plan?: PlanDetailDto }>(`/plans/${encodeURIComponent(id)}`, { skipAuth: true });
+    if (!data?.plan?.code) throw invalidResponseError('chi tiết gói');
+    return data.plan;
   },
 
   /** Gói hiện tại + mức dùng: GET /subscriptions/me (isFallback = chưa có dòng subscription → gói Miễn phí mặc định của BE) */

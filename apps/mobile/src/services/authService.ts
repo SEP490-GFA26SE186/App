@@ -202,6 +202,50 @@ export const authService = {
   },
 
   /**
+   * Quên mật khẩu: POST /auth/forgot-password { email } (công khai). BE luôn trả cùng một câu (không lộ email
+   * nào đã đăng ký) và gửi MÃ khôi phục qua email (hiệu lực 1 giờ, dùng một lần) — không có link/deep link.
+   */
+  forgotPassword: async (email: string): Promise<string> => {
+    const body = await apiFetch<{ message?: string }>('/auth/forgot-password', {
+      method: 'POST',
+      skipAuth: true,
+      raw: true,
+      body: JSON.stringify({ email: email.trim() }),
+    });
+    return body?.message || 'Nếu email đã đăng ký, mã khôi phục sẽ được gửi trong ít phút.';
+  },
+
+  /** Đặt lại mật khẩu bằng mã trong email: POST /auth/reset-password { token, newPassword(8–100) }. BE thu hồi mọi phiên cũ. */
+  resetPassword: async (token: string, newPassword: string): Promise<string> => {
+    const body = await apiFetch<{ message?: string }>('/auth/reset-password', {
+      method: 'POST',
+      skipAuth: true,
+      raw: true,
+      body: JSON.stringify({ token: token.trim(), newPassword }),
+    });
+    return body?.message || 'Đã đặt lại mật khẩu.';
+  },
+
+  /**
+   * Gửi mã xác thực tới email của tài khoản đang đăng nhập: POST /auth/send-verification-email (không body).
+   * → data { retryAfterSeconds }. 429 = gửi lại quá sớm (errors[0].retryAfterSeconds); 400 = đã xác thực.
+   */
+  sendVerificationEmail: async (): Promise<{ retryAfterSeconds: number | null }> => {
+    const data = await apiFetch<{ retryAfterSeconds?: number }>('/auth/send-verification-email', { method: 'POST' });
+    return { retryAfterSeconds: typeof data?.retryAfterSeconds === 'number' ? data.retryAfterSeconds : null };
+  },
+
+  /** Xác thực email bằng mã: POST /auth/verify-email { token } → data = user { emailVerifiedAt, ... } */
+  verifyEmail: async (token: string): Promise<{ emailVerifiedAt: string }> => {
+    const data = await apiFetch<{ emailVerifiedAt?: string | null }>('/auth/verify-email', {
+      method: 'POST',
+      body: JSON.stringify({ token: token.trim() }),
+    });
+    if (typeof data?.emailVerifiedAt !== 'string') throw new ApiError('Phản hồi xác thực email từ máy chủ không hợp lệ.', 502);
+    return { emailVerifiedAt: data.emailVerifiedAt };
+  },
+
+  /**
    * Thiết lập mã PIN Kid Mode: POST /auth/kid-pin/set
    */
   setKidPin: async (pin: string): Promise<boolean> => {
@@ -307,6 +351,7 @@ export const authService = {
       updatedAt: new Date().toISOString(),
       // null = BE chưa trả ví (login không có wallet); UI hiển thị "—"
       creditBalance: numberOrNull(raw.wallet?.creditBalance),
+      emailVerifiedAt: typeof raw.emailVerifiedAt === 'string' || raw.emailVerifiedAt === null ? raw.emailVerifiedAt : undefined,
       // Ví người bán/ngân hàng thuộc SCOPE PENDING: BE trả earningAvailableVnd, chưa ánh xạ (không bịa)
     };
   },

@@ -1,7 +1,7 @@
 // apps/mobile/tests/r9a.test.ts
 // R9-A: ràng buộc hồi quy cho các lỗi đã sửa ở đợt hoàn thiện (hộp thoại Web, vùng chạm Web, Space cho radio, giới hạn bề rộng, J1 còn sót). Quét mã nguồn.
 import assert from 'node:assert/strict';
-import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 
 const src = join(process.cwd(), 'src');
@@ -71,10 +71,11 @@ test('Bề rộng nội dung Parent giới hạn 720 (Layout.maxContentWidth) v�
   assert.match(read('screens/parent/CharactersScreen.tsx'), /Math\.min\(windowWidth, Layout\.maxContentWidth\)/);
 });
 
-test('J1: AuthModal cũng không lộ địa chỉ máy chủ ngoài __DEV__', () => {
-  const a = noComments(read('components/auth/AuthModal.tsx'));
-  assert.match(a, /\{__DEV__ && \(\s*<Text style=\{styles\.envSubText\}>/);
-  assert.match(a, /: __DEV__\s*\?/);
+test('J1: AuthModal (legacy, không được mount) đã xóa — không còn file nào import', () => {
+  assert.ok(!existsSync(join(src, 'components/auth/AuthModal.tsx')));
+  const walk = (dir: string): string[] =>
+    readdirSync(dir).flatMap((f) => (statSync(join(dir, f)).isDirectory() ? walk(join(dir, f)) : [join(dir, f)]));
+  for (const f of walk(src).filter((p) => /\.tsx?$/.test(p))) assert.doesNotMatch(readFileSync(f, 'utf8'), /AuthModal/, f);
 });
 
 console.log(`OK ${passed}/${passed}`);

@@ -2,11 +2,25 @@
 // Mọi hàm dùng kidSessionToken (kidFetch), KHÔNG dùng token Parent. Lỗi → throw ApiError (401 = phiên Kid mất).
 import { kidFetch, invalidResponseError } from './apiClient';
 import type { KidDataSource } from '../types/viewModels';
-import type { KidAnswerResultDto, KidPlayDto, KidShelfItemDto } from '../types/api';
+import type { KidAnswerResultDto, KidMeDto, KidPlayDto, KidShelfItemDto } from '../types/api';
 
-export const kidService: KidDataSource & {
-  getUiAudio: () => Promise<Record<string, { text: string; audioUrl: string | null }>>;
-} = {
+export const kidService: Required<KidDataSource> = {
+  /** Bé của phiên Kid hiện tại: GET /kid/me → data { child } (BE lấy childId từ token kid_session) */
+  getMe: async (): Promise<KidMeDto> => {
+    const data = await kidFetch<Partial<KidMeDto>>('/kid/me');
+    if (!data?.child?.id) throw invalidResponseError('hồ sơ bé');
+    return { child: data.child };
+  },
+
+  /** Nạp lại một lượt đọc của chính bé: GET /kid/sessions/:id → { session, story } (lượt của bé khác → 404) */
+  getSession: async (sessionId: string): Promise<KidPlayDto> => {
+    const data = await kidFetch<Partial<KidPlayDto>>(`/kid/sessions/${sessionId}`);
+    if (!data?.session?.id || !data.story?.id || !Array.isArray(data.story.pages) || !Array.isArray(data.story.checkpoints)) {
+      throw invalidResponseError('lượt đọc');
+    }
+    return data as KidPlayDto;
+  },
+
   /**
    * Tủ sách của bé: GET /kid/bookshelf → data { items[] } (chỉ truyện đã sẵn sàng, không có trang).
    * Danh sách rỗng là hợp lệ.
@@ -68,7 +82,7 @@ export const kidService: KidDataSource & {
     await kidFetch(`/kid/sessions/${sessionId}/complete`, { method: 'POST' });
   },
 
-  /** Câu đọc dùng chung (tên cảm xúc…): GET /kid/ui-audio → { assets } — chỉ lấy dữ liệu; phát âm thanh chờ chốt thư viện (C11) */
+  /** Câu đọc dùng chung (tên cảm xúc, nhắc, khen…): GET /kid/ui-audio → { assets: { [key]: { text, audioUrl } } }. File BE tạo sẵn; phát ở useKidUiAudio */
   getUiAudio: async () => {
     const data = await kidFetch<{ assets?: Record<string, { text: string; audioUrl: string | null }> }>('/kid/ui-audio');
     if (!data?.assets || typeof data.assets !== 'object') throw invalidResponseError('âm thanh giao diện');

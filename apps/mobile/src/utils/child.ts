@@ -15,3 +15,11 @@ export const formatBirthDate = (value?: string | null): string =>
 /** Nhãn tuổi: chưa có ngày sinh thì nói rõ, không đoán */
 export const ageLabel = (child?: { birthDate?: string | null; age?: number } | null): string =>
   child?.birthDate && typeof child.age === 'number' ? `${child.age} tuổi` : 'Chưa có ngày sinh';
+
+/** 'YYYY-MM-DD' theo giờ VN (UTC+7, không đổi giờ) lùi `daysAgo` ngày — khớp ngày BE dùng cho /children/:id/usage */
+export const vnDateDaysAgo = (daysAgo: number, now: number = Date.now()): string =>
+  new Date(now + 7 * 3_600_000 - daysAgo * 86_400_000).toISOString().slice(0, 10);
+
+/** Thời gian đọc từ usedSeconds của BE: 0 → "0 phút", dưới 1 phút nói rõ thay vì làm tròn về 0 */
+export const readingTimeLabel = (usedSeconds: number): string =>
+  usedSeconds <= 0 ? '0 phút' : usedSeconds < 60 ? 'Dưới 1 phút' : `${Math.round(usedSeconds / 60)} phút`;

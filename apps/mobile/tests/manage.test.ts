@@ -48,10 +48,10 @@ test('Ví chỉ xem: không gọi thanh toán/nạp/nâng gói; EQ không tự t
   assert.match(eq, /competencies\.filter\(\(c\) => c\.level != null\)\.length/); // chỉ đếm từ dữ liệu BE
 });
 
-test('Cài đặt (J1): địa chỉ máy chủ chỉ hiện khi __DEV__; PIN không lưu ở client', () => {
+test('Cài đặt: không còn khu "Máy chủ" (địa chỉ API / URL tạm / kiểm tra kết nối); PIN không lưu ở client', () => {
   const s = noComments(read('screens/parent/SettingsScreen.tsx'));
-  assert.match(s, /: __DEV__\s*\?/);
-  assert.equal([...s.matchAll(/\$\{apiBaseUrl\}/g)].length, 1, 'apiBaseUrl chỉ render đúng một chỗ (nhánh __DEV__)');
+  // Gỡ theo yêu cầu chủ dự án (sau Phase 2): Cài đặt không lộ hay đổi địa chỉ máy chủ
+  assert.doesNotMatch(s, /apiBaseUrl|setDevApiBaseUrl|getApiBaseUrl|checkHealth|Kiểm tra kết nối|>Máy chủ</);
   assert.doesNotMatch(s, /AsyncStorage|localStorage|setItem\(/);
 });
 

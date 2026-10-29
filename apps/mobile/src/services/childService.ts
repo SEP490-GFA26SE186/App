@@ -1,7 +1,17 @@
 // apps/mobile/src/services/childService.ts
 import { apiFetch, invalidResponseError } from './apiClient';
 import { ChildProfile } from '../types/domain';
-import type { ChildDto, ChildOverviewDto, ChildrenListDto, ChildResponseDto, EqReportDto } from '../types/api';
+import type {
+  ChildBookshelfDto,
+  ChildDto,
+  ChildOverviewDto,
+  ChildrenListDto,
+  ChildResponseDto,
+  ChildUsageDto,
+  EqJourneyDto,
+  EqReportDto,
+  ShelfStatus,
+} from '../types/api';
 
 export interface CreateChildPayload {
   name: string;
@@ -74,6 +84,36 @@ export const childService = {
     const data = await apiFetch<Partial<EqReportDto>>(`/children/${childId}/eq-report`);
     if (!data?.childId || !Array.isArray(data.competencies)) throw invalidResponseError('báo cáo EQ');
     return { ...data, recommendations: data.recommendations ?? [] } as EqReportDto;
+  },
+
+  /** Chi tiết hồ sơ bé: GET /children/:id → data { child } (DTO gốc: có nhân vật đại diện, số truyện, lượt đọc xong) */
+  getChild: async (childId: string): Promise<ChildDto> => {
+    const data = await apiFetch<Partial<ChildResponseDto>>(`/children/${childId}`);
+    if (!data?.child?.id) throw invalidResponseError('hồ sơ bé');
+    return data.child;
+  },
+
+  /** Thời gian đọc trong một ngày (giờ VN): GET /children/:id/usage?date=YYYY-MM-DD; không có date = hôm nay */
+  getChildUsage: async (childId: string, date?: string): Promise<ChildUsageDto> => {
+    const query = date ? `?date=${date}` : '';
+    const data = await apiFetch<Partial<ChildUsageDto>>(`/children/${childId}/usage${query}`);
+    if (typeof data?.usedSeconds !== 'number' || typeof data.sessionsCount !== 'number') throw invalidResponseError('thời gian đọc');
+    return data as ChildUsageDto;
+  },
+
+  /** Hành trình EQ: GET /children/:id/eq-journey?weeks=4..26 → báo cáo EQ + trend theo tuần */
+  getChildEqJourney: async (childId: string, weeks = 8): Promise<EqJourneyDto> => {
+    const data = await apiFetch<Partial<EqJourneyDto>>(`/children/${childId}/eq-journey?weeks=${weeks}`);
+    if (!Array.isArray(data?.trend)) throw invalidResponseError('hành trình EQ');
+    return data as EqJourneyDto;
+  },
+
+  /** Giá sách của bé: GET /children/:id/bookshelf?page&limit(≤50)&status → data { child, items, pagination, counts, continueReading } */
+  getChildBookshelf: async (childId: string, params: { page?: number; limit?: number; status?: ShelfStatus } = {}): Promise<ChildBookshelfDto> => {
+    const query = new URLSearchParams({ page: String(params.page ?? 1), limit: String(params.limit ?? 10), status: params.status ?? 'all' });
+    const data = await apiFetch<Partial<ChildBookshelfDto>>(`/children/${childId}/bookshelf?${query}`);
+    if (!Array.isArray(data?.items) || !data.counts || !data.pagination) throw invalidResponseError('giá sách của bé');
+    return data as ChildBookshelfDto;
   },
 
   /** Chỉ ánh xạ trường BE trả. `age` do BE tính từ ngày sinh; không có ngày sinh → 0 (UI dùng `ageLabel`, không hiện số). */

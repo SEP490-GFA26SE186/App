@@ -29,9 +29,11 @@ test('A3: chạm cú không phát tiếng cún; không còn huy hiệu cấp đ�
   assert.doesNotMatch(noComments(read('components/OwlMascot.tsx')), /Lv\.\s*1/);
 });
 
-test('J1: địa chỉ máy chủ trên màn Đăng nhập chỉ hiện khi __DEV__', () => {
+test('J1: địa chỉ máy chủ và UI Preview trên màn Đăng nhập chỉ hiện khi bật công cụ dev (__DEV__ + EXPO_PUBLIC_SHOW_DEV_TOOLS=1)', () => {
   const login = read('screens/auth/LoginScreen.tsx');
-  assert.match(login, /__DEV__ && !!apiBaseUrl/);
+  assert.match(login, /const SHOW_DEV_TOOLS = __DEV__ && process\.env\.EXPO_PUBLIC_SHOW_DEV_TOOLS === '1';/);
+  assert.match(login, /SHOW_DEV_TOOLS && !!apiBaseUrl/);
+  assert.match(login, /SHOW_DEV_TOOLS && !!onOpenPreview/);
   const shown = [...login.matchAll(/\{apiBaseUrl\}/g)].length;
   assert.equal(shown, 1, 'apiBaseUrl chỉ được render đúng một chỗ (trong nhánh __DEV__)');
 });

@@ -9,4 +9,6 @@ import { UserAccount } from './domain';
  */
 export type SessionUser = Omit<UserAccount, 'creditBalance'> & {
   creditBalance: number | null;
+  /** BE trả ở login/register/me; null = chưa xác thực email. Không có (phiên lưu cũ) = chưa rõ */
+  emailVerifiedAt?: string | null;
 };

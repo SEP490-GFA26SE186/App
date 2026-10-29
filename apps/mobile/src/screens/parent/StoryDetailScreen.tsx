@@ -1,6 +1,8 @@
 // apps/mobile/src/screens/parent/StoryDetailScreen.tsx
 // B6/C8 – Chi tiết truyện / xem lại (Web: StoryEditorPage). Nạp GET /stories/:id; xem trang + điểm dừng (khóa),
 // theo dõi/chạy AI viết, "Hoàn tất xem lại" (POST /review; lỗi 422 hiển thị errors[]), thêm vào tủ sách của bé (POST /bookshelf).
+// Phase 1: khối "Tủ sách của các bé" – GET /bookshelf/check/:storyId cho biết truyện đang ở giá bé nào; thêm (POST /bookshelf)
+// hoặc gỡ (DELETE /bookshelf/:storyId?childId, có xác nhận) theo từng bé rồi kiểm tra lại. Không đổi luồng xem lại / AI viết / đọc thử.
 // Chưa có: sửa chữ từng trang / điểm dừng (PUT /stories/:id/pages|checkpoints) → "Chưa hỗ trợ".
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { View, Text, ScrollView, StyleSheet } from 'react-native';
@@ -21,6 +23,7 @@ import { Typography } from '../../theme/typography';
 import { CHECKPOINT_TYPES, STORY_STATUS_LABELS } from '../../constants/story';
 import { storyService } from '../../services';
 import { StoryView } from '../../types/viewModels';
+import { useAsyncResource } from '../../utils/useAsyncResource';
 
 /** Lý do BE trả (mã) → câu tiếng Việt; mã lạ giữ nguyên chữ BE trả. */
 const READINESS_REASONS: Record<string, string> = {
@@ -57,6 +60,7 @@ export const StoryDetailScreen: React.FC<StoryDetailScreenProps> = ({
   const [loadError, setLoadError] = useState('');
   const [reviewErrors, setReviewErrors] = useState<string[]>([]);
   const [busy, setBusy] = useState<'review' | 'shelf' | null>(null);
+  const [shelfChildId, setShelfChildId] = useState<string | null>(null);
   const busyRef = useRef(false);
   const reqRef = useRef(0);
   // 'start' = bấm "Cho AI viết"; 'track' = theo dõi job đang chạy
@@ -117,17 +121,47 @@ export const StoryDetailScreen: React.FC<StoryDetailScreenProps> = ({
       }
     });
 
-  const addToShelf = () =>
+  // Chỉ kiểm tra giá sách khi truyện đã có trang (cùng điều kiện hiện khối tủ sách)
+  const hasPages = status === 'ready' && (story?.pages?.length ?? 0) > 0;
+  const shelfCheck = useAsyncResource(() => (hasPages ? storyService.checkShelf(storyId) : Promise.resolve(null)), [storyId, hasPages]);
+
+  const addToShelf = (child: { childId: string; name: string }) =>
     run('shelf', async () => {
-      if (!selectedChild) return;
+      setShelfChildId(child.childId);
       try {
-        await storyService.addToShelf(selectedChild.id, storyId);
-        toast.show(`Đã thêm truyện lên tủ sách của ${selectedChild.name}.`);
+        await storyService.addToShelf(child.childId, storyId);
+        toast.show(`Đã thêm truyện lên tủ sách của ${child.name}.`);
+        void shelfCheck.reload();
       } catch (e: any) {
         // 422: truyện chưa sẵn sàng cho bé (chưa hoàn tất / thiếu giọng đọc) – BE nêu rõ lý do
         void dialog.notify('Chưa thêm được', e?.errors?.[0]?.message || e?.message || 'Vui lòng thử lại.');
+      } finally {
+        setShelfChildId(null);
       }
     });
+
+  const removeFromShelf = async (child: { childId: string; name: string }) => {
+    if (busyRef.current) return;
+    const ok = await dialog.confirm({
+      title: `Gỡ truyện khỏi tủ sách của ${child.name}?`,
+      message: 'Bé sẽ không thấy truyện này trong Chế độ Bé nữa. Truyện gốc và lịch sử đọc vẫn được giữ.',
+      confirmLabel: 'Gỡ khỏi tủ',
+      destructive: true,
+    });
+    if (!ok) return;
+    await run('shelf', async () => {
+      setShelfChildId(child.childId);
+      try {
+        await storyService.removeFromShelf(child.childId, storyId);
+        toast.show(`Đã gỡ truyện khỏi tủ sách của ${child.name}.`);
+      } catch (e: any) {
+        void dialog.notify('Chưa gỡ được', e?.message || 'Vui lòng thử lại.');
+      } finally {
+        setShelfChildId(null);
+        void shelfCheck.reload(); // 404 (đã gỡ ở nơi khác) cũng cần làm mới
+      }
+    });
+  };
 
   const shown = story ?? summary;
   if (!shown) {
@@ -217,17 +251,6 @@ export const StoryDetailScreen: React.FC<StoryDetailScreenProps> = ({
               style={styles.actionBtn}
             />
           )}
-          {pages.length > 0 && !!selectedChild && (
-            <HeyButton
-              title={`Thêm vào tủ sách của ${selectedChild.name}`}
-              iconName="bookmark-outline"
-              variant="tertiary"
-              loading={busy === 'shelf'}
-              disabled={!!busy}
-              onPress={addToShelf}
-              style={styles.actionBtn}
-            />
-          )}
           {pages.length > 0 && (
             <HeyButton
               title="Chỉnh sửa (chưa hỗ trợ)"
@@ -238,6 +261,50 @@ export const StoryDetailScreen: React.FC<StoryDetailScreenProps> = ({
             />
           )}
         </View>
+      )}
+
+      {status === 'ready' && !generating && pages.length > 0 && (
+        <HeyCard style={styles.shelfCard}>
+          <Text style={styles.shelfTitle} accessibilityRole="header">
+            Tủ sách của các bé
+          </Text>
+          {shelfCheck.status === 'loading' ? (
+            <StateView variant="loading" title="Đang kiểm tra tủ sách..." />
+          ) : shelfCheck.status === 'error' || !shelfCheck.data ? (
+            <StateView
+              variant="error"
+              title="Chưa kiểm tra được tủ sách"
+              description={shelfCheck.error ?? ''}
+              actionLabel="Thử lại"
+              onAction={() => void shelfCheck.reload()}
+            />
+          ) : shelfCheck.data.children.length === 0 ? (
+            <Text style={styles.noteText}>Ba mẹ cần thêm hồ sơ bé trước khi đưa truyện lên tủ sách.</Text>
+          ) : (
+            [...shelfCheck.data.children]
+              .sort((a, b) => Number(b.childId === selectedChild?.id) - Number(a.childId === selectedChild?.id))
+              .map((c) => (
+                <View key={c.childId} style={styles.shelfRow}>
+                  <View style={styles.shelfInfo}>
+                    <Text style={styles.shelfName} numberOfLines={1}>
+                      {c.name}
+                    </Text>
+                    <Badge label={c.inBookshelf ? 'Đã có trên tủ' : 'Chưa có trên tủ'} tone={c.inBookshelf ? 'success' : 'neutral'} />
+                  </View>
+                  <HeyButton
+                    title={c.inBookshelf ? 'Gỡ' : 'Thêm'}
+                    iconName={c.inBookshelf ? 'trash-outline' : 'bookmark-outline'}
+                    variant="tertiary"
+                    size="sm"
+                    accessibilityLabel={c.inBookshelf ? `Gỡ truyện khỏi tủ sách của ${c.name}` : `Thêm truyện vào tủ sách của ${c.name}`}
+                    loading={shelfChildId === c.childId}
+                    disabled={!!busy}
+                    onPress={() => void (c.inBookshelf ? removeFromShelf(c) : addToShelf(c))}
+                  />
+                </View>
+              ))
+          )}
+        </HeyCard>
       )}
 
       {status === 'ready' && !!story?.readiness && !story.readiness.ready && !!story.readiness.reason && (
@@ -310,6 +377,11 @@ const styles = StyleSheet.create({
   actionBtn: { alignSelf: 'stretch' },
   note: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.sm, marginTop: Spacing.sm },
   noteText: { ...Typography.label, color: Colors.text, flex: 1 },
+  shelfCard: { gap: Spacing.sm, marginBottom: Spacing.md },
+  shelfTitle: { ...Typography.bodyStrong, color: Colors.text },
+  shelfRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
+  shelfInfo: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, flexWrap: 'wrap' },
+  shelfName: { ...Typography.body, color: Colors.text, flexShrink: 1 },
   errors: { marginBottom: Spacing.md, gap: Spacing.xs },
   errorsTitle: { ...Typography.bodyStrong, color: Colors.danger },
   errorsItem: { ...Typography.label, color: Colors.danger },

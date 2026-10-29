@@ -1,5 +1,6 @@
 // apps/mobile/src/screens/kid/KidModeScreen.tsx — R4 Warm Storybook Guardian
 // Kid Mode: tủ sách → đọc truyện → điểm dừng EQ. Dữ liệu qua `source` (kidService thật; UI Preview dùng fixture).
+// Phase 2: GET /kid/me xác nhận phiên Kid thuộc đúng bé đã chọn (khác bé hoặc 401 → báo phiên mất, ẩn nội dung).
 // Màn này giữ STATE + LOGIC thoát bằng PIN (gửi lên BE) và ghép các phần hiển thị: components/kid/{KidShelf,KidReader,KidPinOverlay}.
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, BackHandler } from 'react-native';
@@ -16,6 +17,7 @@ import { KidReader } from '../../components/kid/KidReader';
 import { KidPinOverlay } from '../../components/kid/KidPinOverlay';
 import type { KidDataSource } from '../../types/viewModels';
 import { useKidReader } from './useKidReader';
+import { useKidUiAudio } from './useKidUiAudio';
 
 interface KidModeScreenProps {
   child: ChildProfile;
@@ -43,6 +45,8 @@ export const KidModeScreen: React.FC<KidModeScreenProps> = ({
   const preview = __DEV__ ? previewProp : undefined;
   const reader = useKidReader(source);
   const { play } = reader;
+  // Câu đọc dùng chung (GET /kid/ui-audio): chỉ ở Kid Mode thật, chỉ phát khi bé bấm "Nghe"
+  const uiAudio = useKidUiAudio(source, !preview);
 
   // PIN Lock
   const [showPinModal, setShowPinModal] = useState(false);
@@ -53,6 +57,27 @@ export const KidModeScreen: React.FC<KidModeScreenProps> = ({
   const verifyingPinRef = useRef(false);
   const [verifyingPin, setVerifyingPin] = useState(false);
   const [sessionLost, setSessionLost] = useState(false);
+
+  // Hồ sơ bé theo token kid_session (không dùng token Parent). Preview không có getMe → bỏ qua.
+  const [kidName, setKidName] = useState<string | null>(null);
+  const [meLost, setMeLost] = useState(false);
+  useEffect(() => {
+    if (preview || !source.getMe) return;
+    let alive = true;
+    source
+      .getMe()
+      .then((me) => {
+        if (!alive) return;
+        if (me.child.id !== child?.id) setMeLost(true);
+        else setKidName(me.child.name);
+      })
+      .catch((e) => {
+        if (alive && e instanceof ApiError && e.status === 401) setMeLost(true);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [preview, source, child?.id]);
 
   const handleVerifyPin = async (pin: string) => {
     if (verifyingPinRef.current) return;
@@ -114,6 +139,12 @@ export const KidModeScreen: React.FC<KidModeScreenProps> = ({
     return () => sub.remove();
   }, [preview, showPinModal]);
 
+  // Mở khoá PIN thì dừng âm thanh đang phát
+  const stopAudio = uiAudio.stop;
+  useEffect(() => {
+    if (showPinModal) stopAudio();
+  }, [showPinModal, stopAudio]);
+
   // TalkBack/VoiceOver không được đọc nội dung phía sau khi khoá PIN đang mở
   const hideBehindPin = showPinModal ? 'no-hide-descendants' : 'auto';
   const name = child?.name || 'bé';
@@ -134,7 +165,7 @@ export const KidModeScreen: React.FC<KidModeScreenProps> = ({
           </Text>
         </View>
         <Text style={styles.greeting} numberOfLines={2} accessibilityRole="header">
-          Chào {child?.name || 'Bé yêu'}!
+          Chào {kidName || child?.name || 'Bé yêu'}!
         </Text>
         <HeyButton
           title={preview ? 'Thoát Preview' : 'Thoát'}
@@ -146,7 +177,7 @@ export const KidModeScreen: React.FC<KidModeScreenProps> = ({
         />
       </View>
 
-      {reader.lost && !preview && (
+      {(reader.lost || meLost) && !preview && (
         <View style={styles.lostBanner} importantForAccessibility={hideBehindPin} accessibilityRole="alert">
           <Text style={styles.lostText}>Phiên Chế độ Bé không còn hợp lệ. Ba mẹ đăng nhập lại bằng mật khẩu để tiếp tục.</Text>
           <HeyButton title="Đăng nhập lại" variant="secondary" size="md" onPress={onKidSessionLost} />
@@ -154,7 +185,11 @@ export const KidModeScreen: React.FC<KidModeScreenProps> = ({
       )}
 
       {/* ── NỘI DUNG: tủ sách hoặc trình đọc ── */}
-      {!play ? <KidShelf reader={reader} childName={name} hideBehind={hideBehindPin} /> : <KidReader reader={reader} hideBehind={hideBehindPin} />}
+      {meLost && !preview ? null : !play ? (
+        <KidShelf reader={reader} childName={kidName || name} hideBehind={hideBehindPin} />
+      ) : (
+        <KidReader reader={reader} hideBehind={hideBehindPin} audio={uiAudio} />
+      )}
 
       {/* ── Khoá phụ huynh: lớp phủ trong cây (không dùng <Modal>, xem KidPinOverlay) ── */}
       {showPinModal && (

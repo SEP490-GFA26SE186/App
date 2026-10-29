@@ -70,3 +70,29 @@ Bổ sung (không thay) §2–§3, §6–§8 và `AGENTS.md`; quyền sửa theo
 - Giữ nguyên file Git đang dở dang của người khác/không liên quan: không revert, không stage, không gộp vào thay đổi của mình.
 - Thành công với BE giả/fixture/mock chỉ được ghi là FIXTURE PASS, không bao giờ là tích hợp thật hay E2E PASS.
 - Thao tác BE nhạy cảm/không hoàn tác (duyệt/từ chối nội dung, rút tiền, hoàn tiền, cảnh cáo, khoá tài khoản, đổi cấu hình, xoá dữ liệu, tiêu credit, gọi AI) trên dữ liệu thật cần chủ dự án cho phép rõ ràng cho từng lần.
+
+## 11. Bảo vệ AI / Tạo truyện / API trả phí (chỉ chủ dự án)
+Chủ dự án độc quyền kiểm soát mọi luồng AI, tiêu credit, thanh toán và tạo truyện. Bổ sung (không thay) §10. **Cấm tuyệt đối nếu chưa có phép riêng, rõ ràng của chủ dự án:**
+1. Triển khai/thay đổi Story Wizard, sinh truyện AI, phân tích truyện, chỉnh sửa truyện hoặc luồng tạo truyện.
+2. Triển khai/thay đổi sinh tranh AI hoặc chân dung nhân vật.
+3. Triển khai/thay đổi giọng đọc AI phía server, sinh TTS hoặc luồng thử lại giọng đọc.
+4. Gọi bất kỳ AI provider, model, worker, hàng đợi sinh nội dung hay dịch vụ bên thứ ba trả phí.
+5. Gửi request API sinh truyện, tranh, audio, chân dung hoặc tiêu credit.
+6. Chạy test tự động, E2E, smoke test, demo script hay seed script có thể kích hoạt các luồng trên.
+7. Khởi động worker/tiến trình nền có thể tự kích hoạt sinh AI.
+8. Đổi số dư credit, mua gói, thu tiền, hoàn tiền hoặc bất kỳ giao dịch tài chính nào.
+9. Dùng tài khoản/dữ liệu thật hoặc demo cho thao tác test trả phí hay phá huỷ.
+10. Gián tiếp sửa logic tạo truyện, AI hay credit đang ổn định qua component dùng chung.
+
+**Task nối 35 API sắp tới:**
+- LOẠI TRỪ toàn bộ tạo truyện, Story Editor, sinh AI, sinh tranh, chân dung AI, sinh giọng đọc và luồng trả phí; không sửa UI, service call, hook, cấu hình hay tích hợp BE của chúng.
+- Chủ dự án tự triển khai và tự kiểm thử thủ công các phần đó.
+- Được đọc mã liên quan (READ-ONLY) để viết tài liệu và phân tích phụ thuộc.
+- Ghi rõ các mục này là **OWNER-RESERVED / NOT IMPLEMENTED** trong báo cáo tích hợp; không tính API owner-reserved là "mới nối".
+
+**Được phép:**
+- Triển khai chức năng Mobile không-AI, không-trả-phí đã được duyệt rõ ràng.
+- Phân tích tĩnh, TypeScript check, build verification, miễn không kích hoạt API trả phí thật hay sinh nội dung nền.
+- Không tự khởi chạy luồng ứng dụng có thể tiêu credit. Thao tác có thể phát sinh chi phí hoặc chạm phần được bảo vệ: DỪNG trước khi chạy và xin phép rõ ràng.
+
+Ranh giới dự án giữ nguyên: BE, Web, App_v2 chỉ đọc; giữ kiến trúc Mobile; giữ tính năng Parent/Kid/Admin/Specialist ổn định; không refactor ngoài phạm vi; không thêm dependency khi chưa duyệt; không tự commit/push.

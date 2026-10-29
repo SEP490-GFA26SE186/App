@@ -17,6 +17,12 @@ import {
 } from '../../services';
 import { SessionUser } from '../../types/sessionUser';
 import { isValidIdentity } from '../../utils/validation';
+import { ForgotPasswordSheet } from '../../components/auth/ForgotPasswordSheet';
+
+
+// Công cụ dev trên màn Đăng nhập (UI Preview, địa chỉ máy chủ): mặc định ẩn cả khi chạy dev; bật bằng EXPO_PUBLIC_SHOW_DEV_TOOLS=1.
+// Bản phát hành (__DEV__ = false) luôn ẩn.
+const SHOW_DEV_TOOLS = __DEV__ && process.env.EXPO_PUBLIC_SHOW_DEV_TOOLS === '1';
 
 interface LoginScreenProps {
   onLoginSuccess: (user: SessionUser) => void;
@@ -39,6 +45,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
   const submittingRef = useRef(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(initialMessage ?? null);
   const apiBaseUrl = getApiBaseUrl();
+  const [forgotOpen, setForgotOpen] = useState(false);
 
   // Rời màn (vd. sang Đăng ký) thì hủy request đang chờ để phản hồi muộn không tự đăng nhập
   const abortRef = useRef<AbortController | null>(null);
@@ -145,6 +152,16 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
             onSubmitEditing={handleLogin}
           />
 
+          {/* Phase 2: quên mật khẩu = mã khôi phục qua email (ForgotPasswordSheet) */}
+          <Pressable
+            onPress={() => setForgotOpen(true)}
+            accessibilityRole="button"
+            accessibilityLabel="Quên mật khẩu"
+            style={(s) => [styles.registerBtn, styles.forgotBtn, s.pressed && styles.pressed, focusRing(s)]}
+          >
+            <Text style={styles.registerLink}>Quên mật khẩu?</Text>
+          </Pressable>
+
           <HeyButton title="Đăng nhập" iconName="log-in-outline" onPress={handleLogin} style={styles.loginBtn} size="lg" loading={loading} />
 
           <View style={styles.registerRow}>
@@ -159,7 +176,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
             </Pressable>
           </View>
 
-          {__DEV__ && !!onOpenPreview && (
+          {SHOW_DEV_TOOLS && !!onOpenPreview && (
             <Pressable
               onPress={onOpenPreview}
               accessibilityRole="button"
@@ -170,8 +187,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
             </Pressable>
           )}
 
-          {/* J1: địa chỉ máy chủ chỉ hiện ở bản phát triển (__DEV__); bản thường chỉ báo khi CHƯA cấu hình (không lộ địa chỉ) */}
-          {__DEV__ && !!apiBaseUrl && (
+          {/* J1: địa chỉ máy chủ chỉ hiện khi bật công cụ dev; bản thường chỉ báo khi CHƯA cấu hình (không lộ địa chỉ) */}
+          {SHOW_DEV_TOOLS && !!apiBaseUrl && (
             <View style={styles.envBar}>
               <Text style={styles.envText}>Máy chủ (dev): {apiBaseUrl}</Text>
             </View>
@@ -183,6 +200,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
           )}
         </View>
       </ScrollView>
+      <ForgotPasswordSheet visible={forgotOpen} initialEmail={email} onClose={() => setForgotOpen(false)} />
     </KeyboardAvoidingView>
   );
 };
@@ -212,6 +230,7 @@ const styles = StyleSheet.create({
   // danger #BA1A1A trên dangerTint 5.0:1
   errorText: { ...Typography.label, color: Colors.danger, flex: 1 },
   loginBtn: { marginTop: Spacing.xs },
+  forgotBtn: { alignSelf: 'flex-end' },
   registerRow: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center', marginTop: Spacing.lg, gap: Spacing.xs },
   registerText: { ...Typography.body, fontSize: 14, color: Colors.textMuted },
   registerBtn: { minHeight: Touch.min, justifyContent: 'center', paddingHorizontal: Spacing.xs },

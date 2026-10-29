@@ -14,9 +14,11 @@ import { LibraryScreen } from '../screens/parent/LibraryScreen';
 import { StoryDetailScreen } from '../screens/parent/StoryDetailScreen';
 import { StoryWizard } from '../screens/parent/StoryWizard';
 import { EqReportScreen } from '../screens/parent/EqReportScreen';
+import { EqSkillsScreen } from '../screens/parent/EqSkillsScreen';
 import { WalletScreen } from '../screens/parent/WalletScreen';
 import { MoreScreen, MoreMenuItem } from '../screens/parent/MoreScreen';
 import { ChildrenScreen } from '../screens/parent/ChildrenScreen';
+import { ChildDetailScreen } from '../screens/parent/ChildDetailScreen';
 import { CharactersScreen } from '../screens/parent/CharactersScreen';
 import { SettingsScreen } from '../screens/parent/SettingsScreen';
 import { HelpScreen } from '../screens/parent/HelpScreen';
@@ -129,6 +131,8 @@ export const ParentTabs: React.FC<ParentTabsProps> = ({ currentUser, nav, active
       case ROUTES.LIBRARY:
         return (
           <LibraryScreen
+            key={nav.current.params?.view ?? 'stories'}
+            initialView={nav.current.params?.view}
             stories={data.stories}
             childrenProfiles={data.childrenProfiles}
             selectedChildId={data.selectedChild?.id}
@@ -175,8 +179,11 @@ export const ParentTabs: React.FC<ParentTabsProps> = ({ currentUser, nav, active
             childrenProfiles={data.childrenProfiles}
             selectedChildId={data.selectedChild?.id}
             onSelectChild={data.selectChild}
+            onOpenSkills={() => navigate(ROUTES.EQ_SKILLS)}
           />
         );
+      case ROUTES.EQ_SKILLS:
+        return <EqSkillsScreen onBack={goBack} />;
       case ROUTES.WALLET:
         return <WalletScreen currentUser={currentUser} onRefreshWallet={() => void data.reload()} onBack={goBack} />;
       case ROUTES.MORE:
@@ -201,10 +208,27 @@ export const ParentTabs: React.FC<ParentTabsProps> = ({ currentUser, nav, active
               void data.reload(); // nhân vật đại diện bị BE xóa theo
             }}
             onOpenKidMode={(c) => kid.openKidMode(c)}
+            onOpenDetail={(c) => navigate(ROUTES.CHILD_DETAIL, { childId: c.id })}
             onOpenSettings={() => navigate(ROUTES.SETTINGS)}
             onBack={goBack}
           />
         );
+      case ROUTES.CHILD_DETAIL: {
+        const childId = nav.current.params?.childId as string;
+        return (
+          <ChildDetailScreen
+            key={childId}
+            childId={childId}
+            summary={data.childrenProfiles.find((c) => c.id === childId)}
+            onBack={goBack}
+            onOpenShelf={() => {
+              data.selectChild(childId); // tủ sách trong Tủ truyện theo bé đang chọn
+              navigate(ROUTES.LIBRARY, { view: 'shelf' });
+            }}
+            onOpenStory={(storyId) => navigate(ROUTES.STORY, { storyId })}
+          />
+        );
+      }
       case ROUTES.CHARACTERS:
         return (
           <CharactersScreen

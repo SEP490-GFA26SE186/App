@@ -1,7 +1,7 @@
 // apps/mobile/src/services/characterService.ts
 import { apiFetch, invalidResponseError } from './apiClient';
 import { CharacterView } from '../types/viewModels';
-import type { CharacterDto, CharactersListDto, CharacterResponseDto } from '../types/api';
+import type { CharacterDetailDto, CharacterDto, CharactersListDto, CharacterResponseDto } from '../types/api';
 
 // Mọi hàm ở đây throw ApiError khi BE lỗi/từ chối/trả sai hình dạng.
 // Không được trả dữ liệu mẫu hoặc "thành công" giả (ADR-008).
@@ -33,6 +33,13 @@ export const characterService = {
     });
     if (!data?.character?.id) throw invalidResponseError('cập nhật nhân vật');
     return characterService.formatCharacter(data.character);
+  },
+
+  /** Chi tiết nhân vật: GET /characters/:id → data { character } (kèm `child` nếu là nhân vật đại diện của bé). Chỉ đọc. */
+  getCharacter: async (id: string): Promise<CharacterDetailDto> => {
+    const data = await apiFetch<{ character?: CharacterDetailDto }>(`/characters/${id}`);
+    if (!data?.character?.id) throw invalidResponseError('chi tiết nhân vật');
+    return data.character;
   },
 
   deleteCharacter: async (id: string): Promise<boolean> => {
