@@ -42,6 +42,16 @@ export const characterService = {
     return data.character;
   },
 
+  /**
+   * GĐ B3 – Vẽ chân dung AI (giữ credit): POST /characters/:id/portrait → 202 data { character, aiRequestId }.
+   * 422 chưa có mô tả ngoại hình, 409 đang vẽ, 402 thiếu credit, 503 hàng đợi lỗi.
+   */
+  generatePortrait: async (id: string): Promise<CharacterView> => {
+    const data = await apiFetch<Partial<CharacterResponseDto>>(`/characters/${id}/portrait`, { method: 'POST' });
+    if (!data?.character?.id) throw invalidResponseError('vẽ chân dung');
+    return characterService.formatCharacter(data.character);
+  },
+
   deleteCharacter: async (id: string): Promise<boolean> => {
     await apiFetch(`/characters/${id}`, { method: 'DELETE' });
     return true;
