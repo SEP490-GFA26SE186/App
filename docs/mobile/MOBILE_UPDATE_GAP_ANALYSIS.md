@@ -400,3 +400,24 @@ Kiểm tra: `npx tsc --noEmit` PASS; `apps/mobile/tests` 17/17 file PASS (mới:
 - Ranh giới từ trong gợi ý mô tả dùng dải chữ Latin / tiếng Việt thay cho `\p{L}` của Web, để không phụ thuộc Hermes hỗ trợ Unicode property escape; khớp với các từ trong danh sách.
 - Mỗi màn (Nhân vật, Chi tiết bé) gọi `GET /stories/ai-pricing` một lần để biết giá (GET, không tốn credit). Chưa tải được giá → khoá nút.
 - Form hồ sơ bé (`ChildFormSheet`) chưa có gợi ý mô tả (Web có ở `ChildFormModal`); ngoài phạm vi đợt này.
+
+## 21. GĐ C – Trang pháp lý + gợi ý mô tả ở form hồ sơ bé (branch `feat/mobile-legal-pages`) — FIXTURE PASS
+
+Không có API mới. Nguồn Web (`VERIFIED_FROM_SOURCE`): `pages/legal/PrivacyPolicyPage.jsx` (9 mục), `pages/legal/TermsPage.jsx` (10 mục), `components/legal/LegalPage.jsx`, `constants/legal.js`, `components/auth/AuthShell.jsx:6-7`, `pages/parent/HelpPage.jsx:25-28`, `components/parent/children/ChildFormModal.jsx:110-124`.
+
+| Hạng mục | Mobile | Trạng thái |
+|---|---|---|
+| Nội dung 2 trang (chép nguyên văn, con số từ `POLICY_NUMBERS`) | `constants/legal.ts` | DONE |
+| Màn hiển thị chung (phiên bản, mục lục chạm để cuộn, mục đánh số, liên hệ) | `screens/legal/LegalScreen.tsx` | DONE |
+| Chưa đăng nhập: 2 liên kết chân trang Đăng nhập / Đăng ký | `components/auth/LegalLinks.tsx`, `AppNavigator` (state `legal`, Back Android về màn auth) | DONE |
+| Đã đăng nhập: 2 mục ở Trợ giúp | route `PRIVACY` / `TERMS` (ADR-015), `HelpScreen` | DONE |
+| Form hồ sơ bé: ô "Ngoại hình của bé (không bắt buộc)" + gợi ý | `ChildFormSheet`, `AppearanceHints` (tách từ B3, dùng chung), `utils/child.ts` | DONE (chủ dự án duyệt thêm ô) |
+
+Kiểm tra: `npx tsc --noEmit` PASS; `apps/mobile/tests` 18/18 file PASS (mới: `legal.test.ts` 6 ca, so nguyên văn với file Web).
+
+**Quyết định / lưu ý**
+- Form hồ sơ bé trên Mobile trước đây **không có** ô ngoại hình. Chủ dự án duyệt thêm ô như Web → payload `POST/PUT /children` có thêm `appearance` (tối đa 500).
+- **BE gỡ nhân vật đại diện (kèm chân dung) khi nhận `appearance` rỗng / null** (`children.service.js` `applyCharacter`). Web gửi `null` mỗi lần sửa mà ô trống; Mobile chỉ gửi `null` khi ba mẹ thật sự xoá một mô tả đang có, và hiện câu nhắc "Để trống sẽ gỡ nhân vật đại diện (kèm chân dung) của bé." ngay dưới ô.
+- `ChildProfile` mang thêm `appearance` (BE `child.character.appearance`, có trong `GET /children` và `GET /children/:id`) để form sửa điền sẵn.
+- Liên kết chân trang Đăng ký ghi "Điều khoản sử dụng" (như Web AuthShell), tiêu đề trang là "Điều khoản dịch vụ" (như Web TermsPage).
+- `NOT_VERIFIED_AT_RUNTIME`: chưa mở trên máy; chủ dự án kiểm ở GĐ G.
