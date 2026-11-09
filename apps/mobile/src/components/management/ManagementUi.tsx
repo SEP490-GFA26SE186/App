@@ -192,16 +192,19 @@ export const ReasonSheet: React.FC<{
   label: string;
   placeholder?: string;
   minLength?: number;
+  /** Giới hạn trên như BE (không đặt = không giới hạn) */
+  maxLength?: number;
   confirmLabel: string;
   destructive?: boolean;
   busy?: boolean;
   onSubmit: (text: string) => void;
   onClose: () => void;
-}> = ({ visible, title, description, label, placeholder, minLength = 0, confirmLabel, destructive, busy, onSubmit, onClose }) => {
+}> = ({ visible, title, description, label, placeholder, minLength = 0, maxLength, confirmLabel, destructive, busy, onSubmit, onClose }) => {
   const [text, setText] = useState('');
   const [touched, setTouched] = useState(false);
   const trimmed = text.trim();
-  const invalid = trimmed.length < minLength;
+  const tooLong = maxLength != null && trimmed.length > maxLength;
+  const invalid = trimmed.length < minLength || tooLong;
   // Mỗi lần mở là một yêu cầu mới: không mang lý do của lần trước (sheet đóng sau khi gửi thành công không qua close())
   useEffect(() => {
     if (visible) {
@@ -241,7 +244,7 @@ export const ReasonSheet: React.FC<{
         placeholder={placeholder}
         multiline
         numberOfLines={3}
-        error={touched && invalid ? `Nhập tối thiểu ${minLength} ký tự.` : undefined}
+        error={touched && invalid ? (tooLong ? `Tối đa ${maxLength} ký tự.` : `Nhập tối thiểu ${minLength} ký tự.`) : undefined}
         hint={minLength > 0 ? `Tối thiểu ${minLength} ký tự.` : undefined}
       />
     </Sheet>
