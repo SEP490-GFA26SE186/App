@@ -261,3 +261,66 @@ Kiểm tra: `npx tsc --noEmit` PASS; `apps/mobile/tests` 15/15 file PASS (mới:
 - Wizard "Tự viết" không hiện công tắc giọng đọc (giữ UI cũ), gửi `useTts: true` như mặc định của Web.
 - `StoryDetailScreen` vẫn còn câu "Truyện tự viết cần thêm trang (chưa hỗ trợ trên Mobile)" ở trạng thái rỗng và chú thích "Điểm dừng… không chỉnh trực tiếp": không sửa vì phạm vi chỉ cho đổi nút mở editor. Truyện tự viết luôn có ≥ 4 trang nên trạng thái rỗng hiếm gặp.
 - Giới hạn `custom_limits` (4–20 trang, ≤ 6 điểm dừng) không hard-code ở Mobile; vượt giới hạn thì hiện lỗi 422 của BE.
+
+## 18. GĐ B2 – Tranh AI, giọng đọc, làm mới credit (branch `feat/mobile-story-ai-media`)
+
+Quyết định của chủ dự án: **không test thật sau từng đợt**, mọi test thật dồn về GĐ G. Đợt này chỉ có tsc + test fetch giả + review. Đọc từ source (`VERIFIED_FROM_SOURCE`) trước khi code. BE tính từ `BE/api/src/modules/stories/`.
+
+### Endpoint
+
+| Endpoint | Response | Luật / lỗi BE | Mobile |
+|---|---|---|---|
+| `POST /stories/:id/images` (routes:53) | 202 `data { portraits, scenes, waiting, insufficientCredit, skippedNoCredit? }` | `drawStoryImages` (images.service:215). Chỉ chủ truyện, truyện `private` (403 bản đăng bán), không `generating` (409). Quyền AI bị khoá → 403. Tự bật `useAiImage`. Vẽ chân dung còn thiếu rồi từng cảnh `none`/`failed`/`queued` có mô tả. Không vẽ được mục nào vì thiếu credit → 402 "Ba mẹ không đủ credit để vẽ tranh.". Hàng đợi lỗi → 503 (enqueueOrFail:35) | `storyService.drawImages` |
+| `POST /stories/:id/scenes/:sceneId/image` (:54) | 202 `data { …như trên }` | `redrawScene` (:227): cảnh không có mô tả → 422; cảnh đang vẽ → 409; thiếu credit → 402; trừ credit lần nữa | `storyService.redrawScene` |
+| `POST /stories/:id/narration/retry` (:47) | 202 `data { story }` | `retryNarration` (narration.service:46): chưa hoàn tất → 422; tắt giọng đọc → 422; hàng đợi lỗi → 503. Chỉ đưa lại đoạn lỗi / thiếu / lệch | `storyService.retryNarration` |
+| `GET /stories/ai-pricing` (đã có) | `data { images: { characterPortrait, scene, maxScenes: 4 }, lengths[] }` (generation.service:226) | — | Bổ sung type `images` |
+
+Hình dạng chi tiết truyện (`lib/storyFormat.js`):
+- `scenes[]`: `{ id, sceneOrder, description, imageUrl, imageStatus }` (:101). `imageStatus`: `none | queued | generating | ready | failed`. `queued` mà chưa có job = đang chờ vẽ chân dung.
+- `narration` (:93) = `narrationProgress` (`lib/narration.js:97`): `{ enabled, total, ready, pending, failed, missing, complete }`.
+- `readiness`, `useAiImage`, `useTts`, `kind`.
+
+### Web (nguồn hành vi)
+- `CreateStoryPage.jsx:175-187`: `imagesMax = maxScenes × scene + chân dung còn thiếu × characterPortrait` (chỉ 2 lối AI khi bật tranh). Chân dung còn thiếu = nhân vật đã chọn, chưa có ảnh và `portraitStatus = 'none'`. `afterCost = số dư − giá viết chữ`; `scenes = afterCost < giá chân dung ? 0 : min(maxScenes, ⌊(afterCost − giá chân dung) / scene⌋)`. Ba mức: đủ cả N cảnh / chỉ đủ n/N cảnh / không có tranh. Công tắc giọng đọc hiện cho mọi lối (mặc định bật).
+- `StoryEditorPage.jsx`: khung "Thêm tranh minh hoạ AI" (truyện AI chưa bật tranh, có mô tả cảnh); khung "n/N cảnh chưa có tranh" + "Vẽ tiếp" (cảnh `none`, không có cảnh đang vẽ, chặn khi số dư < giá 1 cảnh); `ScenePicture` (chưa vẽ / đang chờ chân dung / đang vẽ / lỗi – credit đã hoàn / xong, nút "Vẽ lại cảnh" hoặc "Vẽ tranh"); `NarrationPanel` + `narrationState.js` (ready / working / failed / stale), toast khi working → ready / failed.
+- `hooks/useStudio.js`: hỏi lại GET /stories/:id mỗi 5 s khi `narration.pending > 0` hoặc còn cảnh đang vẽ; số cảnh đang vẽ giảm → tải lại credit (`f0fa6b3`); vẽ xong lệnh → tải lại truyện + credit.
+
+### Mobile hiện có
+- `ParentTabs.refreshCredit` đã gọi `authService.getMe()` rồi `auth.setCurrentUser` → dùng lại, không thêm hàm vào store.
+- `GenerationRunner`: pattern polling bằng `setTimeout`, dừng khi rời màn, dừng sau 4 lần lỗi liên tiếp.
+- `StoryView` chưa mang `scenes` / `narration` / `useAiImage` / `useTts` / `kind`; `AiPricingDto` chưa có `images`.
+
+### File Mobile sẽ sửa
+- `types/api.ts`, `types/viewModels.ts`, `services/storyService.ts` (3 hàm + map thêm trường BE trả).
+- `utils/storyMedia.ts` (mới): `narrationState`, `imagePlan`, cảnh đang vẽ / còn thiếu, `createStoryPoller` (có trần số lần), `drawAndRefresh`.
+- `components/parent/StoryMediaPanel.tsx` (mới): khung giọng đọc + tranh từng cảnh + vẽ tranh / vẽ tiếp / vẽ lại + polling.
+- `screens/parent/StoryEditorScreen.tsx`, `screens/parent/StoryDetailScreen.tsx`, `navigation/ParentTabs.tsx` (truyền `refreshCredit`).
+- `screens/parent/StoryWizard.tsx`: công tắc tranh AI + cảnh báo credit (2 lối AI), công tắc giọng đọc cho "Tự viết".
+- `tests/storyMedia.test.ts` (mới), `docs/mobile/LO_TRINH_MOBILE.md`.
+
+### Kết quả GĐ B2 (2026-11-09) — FIXTURE PASS, test thật dồn về GĐ G
+
+| Hạng mục | Trạng thái |
+|---|---|
+| Service + type (`drawImages`, `redrawScene`, `retryNarration`, `NarrationDto`, `AiPricingDto.images`; `StoryView` mang `scenes`/`narration`/`useAiImage`/`useTts`/`kind`) | DONE, FIXTURE PASS |
+| `StoryMediaPanel` (giọng đọc, tranh từng cảnh, vẽ tranh / vẽ tiếp / vẽ lại, polling) ở Sửa truyện + Chi tiết truyện | DONE, TSC PASS, `NOT_VERIFIED_AT_RUNTIME` |
+| Wizard: công tắc tranh AI + cảnh báo credit (2 lối AI), công tắc giọng đọc cho mọi lối | DONE, FIXTURE PASS |
+| Làm mới credit: sau khi bắt đầu vẽ, khi số cảnh đang vẽ giảm (xong / lỗi) | DONE (dùng `ParentTabs.refreshCredit` có sẵn, không thêm hàm vào store) |
+
+Kiểm tra: `npx tsc --noEmit` PASS; `apps/mobile/tests` 16/16 file PASS (mới: `storyMedia.test.ts` 10 ca). `storyEditor.test.ts`: đổi ca cuối thành "editor không tự gọi API AI; tranh/giọng đọc chỉ qua `StoryMediaPanel`".
+
+**Quyết định UI cho điện thoại**
+- Tranh liệt kê theo cảnh thành một khối "Tranh minh hoạ (n/N cảnh)" ở đầu màn Sửa truyện và trong Chi tiết truyện, thay vì chèn tranh giữa các trang như Web: màn hẹp, đọc liền mạch hơn.
+- Mỗi cảnh: ảnh 4:3 hoặc ô chờ (đang vẽ / chờ chân dung / lỗi – credit đã hoàn / chưa có tranh), nút "Vẽ lại cảnh" hoặc "Vẽ tranh" kèm số credit.
+- Khung "n/N cảnh chưa có tranh" + "Vẽ tiếp n cảnh · x credit" (khoá khi số dư < giá 1 cảnh); khung "Thêm tranh minh hoạ AI" cho truyện AI chưa bật tranh.
+- Giọng đọc: thẻ trạng thái + thanh tiến độ, nút "Thử lại giọng đọc" khi có đoạn lỗi; toast khi đang làm → xong / lỗi.
+- Wizard: công tắc "Tranh minh hoạ bằng AI" + khung cảnh báo (xanh: đủ; cam: chỉ đủ n cảnh / không có tranh) ngay dưới công tắc.
+- Polling 5 s, **trần 120 lần (10 phút)**, dừng sau 4 lần lỗi liên tiếp hoặc khi rời màn; dừng giữa chừng thì hiện "Cập nhật lại".
+
+**Điểm còn chưa chắc / chưa làm**
+- `NOT_VERIFIED_AT_RUNTIME`: chưa chạy app, chưa gọi BE (theo quyết định dồn test thật về GĐ G).
+- Panel tự gọi `GET /stories/ai-pricing` một lần để lấy giá cảnh (GET, không tốn credit).
+- Số credit hiển thị sau khi vẽ phụ thuộc thời điểm worker hoàn credit (vẽ lỗi hoàn sau vài giây); poller tải lại khi số cảnh đang vẽ giảm, giống Web.
+- Khi Chi tiết truyện và Sửa truyện cùng nằm trong ngăn xếp, chỉ màn đang hiện mới polling (màn dưới bị unmount).
+- Chưa có nút "Nâng gói" trong khung thiếu credit (GĐ D).
+- Chân dung nhân vật (B3) chưa làm; truyện bật tranh vẫn tự vẽ chân dung còn thiếu ở BE.

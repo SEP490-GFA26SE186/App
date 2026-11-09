@@ -178,9 +178,10 @@ const cases: [string, () => void | Promise<void>][] = [
     assert.match(block, /onOpenEditor\(story\.id\)/);
     assert.ok(w.includes("entry: 'topic'") && w.includes("entry: 'family'") && w.includes('analysisToken: analysis.analysisToken'));
   }],
-  ['Editor không gọi API AI / tốn credit (B2/B3)', () => {
+  ['Editor không tự gọi API AI; tranh / giọng đọc (B2) chỉ đi qua StoryMediaPanel, chân dung (B3) không có ở đây', () => {
     const screen = noComments(read('screens/parent/StoryEditorScreen.tsx'));
-    assert.doesNotMatch(screen, /startGeneration|\/generate|\/images|\/narration|analyze\(|portrait/);
+    assert.doesNotMatch(screen, /startGeneration|\/generate|\/images|\/narration|analyze\(|portrait|drawImages|redrawScene|retryNarration/);
+    assert.match(screen, /<StoryMediaPanel /);
   }],
 ];
 

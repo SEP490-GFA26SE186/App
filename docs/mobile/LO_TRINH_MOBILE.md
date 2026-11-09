@@ -4,14 +4,15 @@ Lập ngày 2026-11-09 · Nguồn đối chiếu: GitHub `main` — App `f84c4f9
 Môi trường demo: Web `https://storyweaver.id.vn` · API `https://api.storyweaver.id.vn/api/v1` (lấy từ tài liệu deploy của BE).
 Tài khoản demo **không ghi trong tài liệu hay source**; chủ dự án tự nhập khi test.
 
-> Tiến độ: GĐ A xong và đã review (tsc + 14/14 test PASS) trên nhánh `feat/mobile-error-i18n` (`1f0162a`, `bb4d930`), chờ merge. Tiếp theo: GĐ B1.
+> Tiến độ: GĐ A và GĐ B1 đã merge vào `main`. **GĐ B2** (tranh AI, giọng đọc, làm mới credit) đang làm trên nhánh `feat/mobile-story-ai-media`.
+> Quyết định 2026-11-09: **không test thật sau từng đợt; mọi test thật dồn về GĐ G.** Mỗi đợt chỉ cần tsc + test fetch giả + review.
 
 ## 1. Mục tiêu và nguyên tắc
 
 - Mobile làm được mọi việc demo trên Web, cho cả 3 role: Phụ huynh (kèm Kid Mode), Admin, Chuyên gia.
 - Giữ nguyên phần Mobile đang tốt: Expo SDK 52, điều hướng hiện tại, `SessionProvider`, Design System. Chỉ thêm phần còn thiếu.
 - Luồng tạo truyện và AI **được phép viết code và nối API**. Nhưng Claude **không được tự gọi** các API này. Chủ dự án tự test thật.
-- Mỗi giai đoạn làm trên một nhánh riêng. Quy trình: push → review → chủ dự án test → merge vào `main`.
+- Mỗi giai đoạn làm trên một nhánh riêng. Quy trình: push → review → merge vào `main`. Test thật trên BE demo dồn về GĐ G.
 
 ## 2. Hiện trạng (đã xác minh từ source)
 
@@ -33,13 +34,13 @@ API thuộc luồng truyện mà Web gọi nhưng Mobile chưa gọi:
 
 Kích thước: S = nhỏ, M = vừa, L = lớn. Thứ tự đã xếp theo mức quan trọng cho buổi demo.
 
-### GĐ A – Chuẩn bị (S) · ĐÃ XONG, chờ merge
+### GĐ A – Chuẩn bị (S) · ĐÃ XONG, đã merge
 1. Sửa 4 điểm review trên `feat/mobile-error-i18n`, sau đó merge vào `main`.
 2. Cập nhật `CLAUDE.md` theo phạm vi mới (§2.4, §11, §12).
 3. Trỏ app tới BE demo: `EXPO_PUBLIC_API_URL=https://api.storyweaver.id.vn` trong `.env.local` (đã có trong `.gitignore`). Test trên Android/Expo Go; Expo Web có thể bị CORS của BE chặn.
 4. Đề xuất (cần duyệt dependency): K1, giữ phiên đăng nhập sau khi tắt app, dùng `expo-secure-store`.
 
-### GĐ B – Luồng tạo truyện (L) · trọng tâm của demo · chủ dự án test thật
+### GĐ B – Luồng tạo truyện (L) · trọng tâm của demo · test thật ở GĐ G
 Chia 3 đợt, mỗi đợt một nhánh:
 - **B1** `feat/mobile-story-editor`: Trình sửa truyện (trang, điểm dừng, ảnh bìa, hoàn tất, xoá truyện) + lối "Tự viết" + sửa `StoryDetailScreen.tsx:117`. Không gọi API AI nào.
 - **B2** `feat/mobile-story-ai-media`: bật tranh AI + cảnh báo credit trong Wizard, vẽ tranh/vẽ tiếp/vẽ lại cảnh, giọng đọc + thử lại, làm mới credit.
@@ -76,7 +77,11 @@ Chi tiết:
 1. Claude (chat) lập bảng đối chiếu chi tiết Web – BE – Mobile cho giai đoạn đó và viết prompt triển khai.
 2. Claude Code trên máy làm trên nhánh `feat/mobile-<giai-đoạn>`: chạy `tsc` và test (fetch giả), commit, rồi dừng.
 3. Chủ dự án push, Claude (chat) review diff và tự chạy lại `tsc` cùng test.
-4. Chủ dự án test thật trên BE demo, sau đó merge.
+4. Chủ dự án merge. Test thật trên BE demo làm một lần ở GĐ G.
 
 ## 5. Thứ tự đề xuất
 A → B → C → E1 → F → D → E2 → G
+
+## 6. Quyết định chờ chủ dự án
+
+- **Demo trên iPhone?** App giữ Expo SDK 52, mà Expo Go trên iOS (App Store) chỉ chạy được SDK mới nhất, nên iPhone không mở được app bằng Expo Go. Muốn chạy trên iPhone phải build riêng (development build / TestFlight, cần tài khoản Apple Developer) hoặc nâng SDK (trái quyết định đã duyệt). **Đề xuất: demo bằng Android**: Expo Go trên Google Play cũng chỉ theo SDK mới nhất, nhưng Android cài được bản Expo Go cũ cho SDK 52 (file APK) hoặc một bản build APK của app. Cần kiểm lại trên máy demo ở GĐ G.
