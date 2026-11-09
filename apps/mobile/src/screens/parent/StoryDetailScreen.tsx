@@ -336,7 +336,7 @@ export const StoryDetailScreen: React.FC<StoryDetailScreenProps> = ({
             <StateView
               variant="empty"
               title="Truyện chưa có trang nào"
-              description={notWritten ? 'Bấm “Cho AI viết” để AI viết truyện này.' : 'Truyện tự viết cần thêm trang (chưa hỗ trợ trên Mobile).'}
+              description={notWritten ? 'Bấm “Cho AI viết” để AI viết truyện này.' : 'Truyện tự viết chưa có trang. Bấm “Sửa truyện” để thêm trang.'}
             />
           ) : (
             pages.map((p, i) => (
@@ -360,7 +360,7 @@ export const StoryDetailScreen: React.FC<StoryDetailScreenProps> = ({
               ))}
               <View style={styles.footnoteRow}>
                 <Icon name="lock-closed-outline" size={14} color={Colors.textMuted} />
-                <Text style={styles.footnote}>Điểm dừng câu hỏi do khung sư phạm quy định, không chỉnh trực tiếp.</Text>
+                <Text style={styles.footnote}>{isAi ? 'Điểm dừng của truyện AI do khung sư phạm quy định, chỉ xem.' : 'Sửa điểm dừng trong màn “Sửa truyện”.'}</Text>
               </View>
             </>
           )}
