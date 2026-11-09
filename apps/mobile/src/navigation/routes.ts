@@ -21,7 +21,10 @@ export const ROUTES = {
   // GĐ C: trang pháp lý mở từ Trợ giúp (khi chưa đăng nhập: AppNavigator)
   PRIVACY: 'PRIVACY',
   TERMS: 'TERMS',
-  MARKET: 'MARKET', // SCOPE PENDING: giữ nguyên, không phát triển thêm
+  // GĐ D2: Chợ truyện (mở từ menu Hồ sơ) → chi tiết truyện → hồ sơ người bán
+  MARKET: 'MARKET',
+  MARKET_LISTING: 'MARKET_LISTING',
+  MARKET_SELLER: 'MARKET_SELLER',
 } as const;
 
 export type RouteKey = (typeof ROUTES)[keyof typeof ROUTES];
@@ -31,8 +34,12 @@ export const TAB_ROUTES: RouteKey[] = [ROUTES.HOME, ROUTES.LIBRARY, ROUTES.CREAT
 export interface RouteParams {
   storyId?: string;
   childId?: string;
-  /** LIBRARY: 'shelf' = mở thẳng chế độ "Tủ sách của bé" */
-  view?: 'shelf';
+  /** LIBRARY: 'shelf' = mở thẳng chế độ "Tủ sách của bé"; 'owned' = "Đã mua" (GĐ D2) */
+  view?: 'shelf' | 'owned';
+  /** MARKET_LISTING */
+  listingId?: string;
+  /** MARKET_SELLER */
+  sellerId?: string;
 }
 
 export interface NavState {
@@ -44,7 +51,14 @@ export interface NavState {
 export const navigateStack = (stack: NavState[], route: RouteKey, params?: RouteParams): NavState[] => {
   if (TAB_ROUTES.includes(route)) return [{ route, params }];
   const top = stack[stack.length - 1];
-  if (top.route === route && top.params?.storyId === params?.storyId && top.params?.childId === params?.childId) return stack;
+  if (
+    top.route === route &&
+    top.params?.storyId === params?.storyId &&
+    top.params?.childId === params?.childId &&
+    top.params?.listingId === params?.listingId &&
+    top.params?.sellerId === params?.sellerId
+  )
+    return stack;
   return [...stack, { route, params }];
 };
 

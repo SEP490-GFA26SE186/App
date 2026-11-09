@@ -1,7 +1,8 @@
 // apps/mobile/src/screens/admin/PlansScreen.tsx
 // GĐ F – Gói & định giá (Web PlansPage): danh sách gói dạng thẻ; thêm / sửa gói trong bottom sheet theo đúng trường + luật BE
 // (planFields, mã + thời hạn chỉ khi tạo, gói FREE khoá giá và công tắc mở bán). Lưu LUÔN qua Dialog xác nhận liệt kê thay đổi
-// (giá / credit ảnh hưởng người dùng thật). Nhóm cài đặt market / moderation của trang Web không làm ở đây (ngoài phạm vi GĐ F).
+// (giá / credit ảnh hưởng người dùng thật). GĐ D2: thêm nhóm cài đặt `market` (Chợ truyện & hoàn tiền) như Web PlansPage;
+// nhóm `moderation` chưa làm.
 import React, { useEffect, useState } from 'react';
 import { StyleSheet, Switch, Text, View } from 'react-native';
 import { HeyCard } from '../../components/ui/HeyCard';
@@ -11,7 +12,8 @@ import { HeyInput } from '../../components/ui/HeyInput';
 import { Badge } from '../../components/ui/Badge';
 import { Sheet } from '../../components/ui/Sheet';
 import { useDialog } from '../../components/ui/Dialog';
-import { ManagementPage, ResourceBody, useManagementResource, useMutationRunner } from '../../components/management/ManagementUi';
+import { ManagementPage, ResourceBody, SectionTitle, useManagementResource, useMutationRunner } from '../../components/management/ManagementUi';
+import { SettingsGroup } from '../../components/admin/SettingsGroup';
 import { Colors } from '../../theme/colors';
 import { Spacing, Touch } from '../../theme/spacing';
 import { Typography } from '../../theme/typography';
@@ -109,6 +111,7 @@ const PlanSheet: React.FC<{ visible: boolean; plan?: AdminPlan; busy: boolean; o
 export const PlansScreen: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const dialog = useDialog();
   const list = useManagementResource(() => adminService.getAdminPlans(), []);
+  const settings = useManagementResource(() => adminService.getSettings(), []);
   const { run, busy } = useMutationRunner(list.reload);
   const [editing, setEditing] = useState<AdminPlan | 'new' | null>(null);
   const plan = editing && editing !== 'new' ? editing : undefined;
@@ -134,7 +137,7 @@ export const PlansScreen: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   };
 
   return (
-    <ManagementPage title="Gói & định giá" subtitle="Gói cấp credit mỗi tháng (không bán credit lẻ). Thay đổi chỉ áp dụng cho giao dịch mới." onBack={onBack} onRefresh={list.reload}>
+    <ManagementPage title="Gói & định giá" subtitle="Gói cấp credit mỗi tháng (không bán credit lẻ). Thay đổi chỉ áp dụng cho giao dịch mới." onBack={onBack} onRefresh={() => Promise.all([list.reload(), settings.reload()])}>
       <HeyButton title="Thêm gói" iconName="add" size="sm" onPress={() => setEditing('new')} disabled={busy} style={styles.selfStart} />
       <ResourceBody status={list.status} error={list.error} empty={!list.data?.length} emptyTitle="Chưa có gói nào." onRetry={list.reload}>
         {list.data?.map((p) => (
@@ -156,6 +159,8 @@ export const PlansScreen: React.FC<{ onBack: () => void }> = ({ onBack }) => {
           </HeyCard>
         ))}
       </ResourceBody>
+      <SectionTitle>Chợ truyện & hoàn tiền</SectionTitle>
+      <SettingsGroup group="market" res={settings} emptyTitle="Chưa có cài đặt chợ truyện." />
       <PlanSheet visible={!!editing} plan={plan} busy={busy} onSave={(f) => void save(f)} onClose={() => setEditing(null)} />
     </ManagementPage>
   );

@@ -581,3 +581,46 @@ Kiểm tra: `npx tsc --noEmit` PASS; `apps/mobile/tests` 20/20 file PASS (mới:
 - Giới hạn: đơn chờ chỉ giữ trong state của màn — thoát màn trước khi kiểm tra thì mất thẻ kết quả (BE / webhook vẫn giao gói; lịch sử thanh toán hiện đơn đã trả).
 - Dialog xác nhận hoàn tiền mở chồng lên sheet lý do — cùng lưu ý thứ tự lớp trên Expo Web như GĐ F.
 - `NEEDS_BACKEND_REVIEW`: đề xuất BE nhận `returnUrl` / deep link của app (ghi ở `LO_TRINH_MOBILE.md` §6).
+
+## 25. GĐ D2 – Chợ truyện (branch `feat/mobile-marketplace`)
+
+**Bước 0 – đối chiếu (đọc trước khi code)**
+
+| Hạng mục | BE (nguồn chuẩn) | Web | Mobile trước D2 | Trạng thái |
+|---|---|---|---|---|
+| Danh sách truyện đang bán | `GET /market/listings` (đăng nhập) query `search≤200, competency(all\|5 CASEL), age(all\|1–2 chữ số), priceMin/priceMax (int ≥0, min≤max), narration(all\|with\|without), sort(best_selling\|newest\|rating\|price_asc), page, limit≤50` → `{ items[card + owned], pagination }` (`market.routes.js:12`, `market.validation.js:5-21`, `market.service.js:72-108`) | `MarketplacePage.jsx`: tìm kiếm, tuổi 5–8, 5 khoảng giá, giọng đọc, sắp xếp, chip năng lực, 8 truyện/trang | Màn cũ `screens/scope-pending/MarketplaceScreen.tsx` lọc dữ liệu cục bộ (không gọi BE), chỉ hiện ở `__DEV__` | `NEEDS_NEW_SCREEN` + `NEEDS_API_INTEGRATION` |
+| Chi tiết truyện | `GET /market/listings/:id` → `{ listing: card + preview (chữ trang 1) + isMine }` (`market.service.js:111-121`) | `ListingDetailPage.jsx`: nhãn, mô tả, số trang, lượt mua, khung người bán, xem trước trang 1; `isMine` → "truyện ba mẹ đăng bán"; `owned` → đưa lên giá sách từng bé; còn lại "Nhận miễn phí" / "Mua …đ" | Không có | `NEEDS_NEW_SCREEN` |
+| Mua truyện | `POST /market/checkout { listingId uuid }` → 201 `{ order, checkoutUrl }` (0đ: giao ngay, `checkoutUrl null`); 422 truyện của mình, 409 đã có; payOS `returnUrl` về **Web** `/parent/marketplace/result` (`market.routes.js:16`, `market.service.js:137-152`) | `window.location.assign`; `PurchaseResultPage.jsx` hỏi lại đơn, paid → "Mua truyện thành công" | D1 đã có `checkoutAndOpen`, `watchAppReturn`, `billingService.getOrder` | `NEEDS_API_INTEGRATION` (dùng lại D1) |
+| Hồ sơ người bán | `GET /market/sellers/:sellerId` → `{ seller{displayName,bio,expertise,totalSales,ratingAvg,ratingCount,listingCount,sellingSince}, items ≤60 }` (`market.service.js:158-188`) | `SellerProfilePage.jsx` | Không có | `NEEDS_NEW_SCREEN` |
+| Truyện đã mua | `GET /market/owned` (parent) → `{ items: [card + grantedAt] }`. `GET /stories` chỉ trả truyện `private`; parent KHÔNG đọc được bản đăng bán qua `GET /stories/:id` (`stories.access.js:17`) — đọc qua tủ sách bé (`bookshelf.service.js:107-108` cho phép bản đã mua) | Tủ truyện = giá sách của bé, nhãn "Mua từ chợ" theo `kind === 'published'` (`LibraryStoryCard.jsx`); đọc qua Chế độ Bé | Giá sách bé (`ChildShelfPanel`) có truyện đã mua nhưng không nhãn, không mở được; không có danh sách "Đã mua" | `NEEDS_FEATURE_UPDATE` |
+| Đánh giá | `GET /market/listings/:id/reviews?page` → `{ reviews, distribution{1..5}, pagination, myReview(+hidden), canReview, reason(not_owned\|not_finished), isSeller, tags }`; `PUT /market/listings/:id/review { rating int 1–5, comment ≤1000?, tags ⊂ [child_liked, age_appropriate, clear_lesson, good_narration] }` (`reviews.routes.js:14-34`, `reviews.service.js:73-118`) | `ListingReviews.jsx`: sao, thẻ, nhận xét, sửa đánh giá của mình, ẩn khi vi phạm | Không có | `NEEDS_API_INTEGRATION` |
+| Báo cáo truyện / đánh giá | `POST /market/listings/:id/reports { category ∈ 6 loại, description ≤2000?, pageId? }` → 201 `{ reportId, suspended }`, 409 đã báo cáo, 422 truyện của mình; `POST /market/reviews/:id/reports { category, description ≤2000? }` → 201, 409/422 (`monitoring.routes.js:101-118`, `reviews.routes.js:43-54`) | `ReportListingButton.jsx` (radio loại + mô tả), `ReportReview` (chọn loại) | Không có (`REPORT_CATEGORIES` đã có ở `constants/management.ts`) | `NEEDS_API_INTEGRATION` |
+| Cài đặt nhóm `market` (Admin) | `GET/PUT /admin/settings`; 4 khoá `market.*` (`settingsRegistry.js:32-46`): tỉ lệ người bán 50–95%, giữ doanh thu 1–30 ngày, hạn hoàn tiền 1–30 ngày, rút tối thiểu 10.000–10.000.000đ; ràng buộc chéo hạn hoàn ≤ ngày giữ (`settingError`) | `PlansPage.jsx:138-141` `<SettingsGroup group="market" />` | Màn Cấu hình AI chỉ nhóm `ai`; nhóm market WEB ONLY | `NEEDS_FEATURE_UPDATE` |
+
+**Quyết định cho Mobile**
+- Lối vào: Web đặt Chợ truyện ở menu bên ("Sáng tác & Chợ truyện") và khối "Bán chạy" ở Tổng quan. Mobile đã có mục "Chợ truyện" trong menu Hồ sơ (đang ẩn ngoài `__DEV__`) → dùng lại mục này, bỏ cờ ẩn, đổi màn đích sang màn mới. Không thêm tab, không đổi Trang chủ (ít xáo trộn nhất). Màn cũ `scope-pending/MarketplaceScreen.tsx` thôi được dùng (không xoá file; chờ chủ dự án duyệt xoá).
+- Mua: Dialog → `marketService.checkoutListing` qua `checkoutAndOpen` (D1); 0đ nhận ngay, không mở trình duyệt; > 0đ mở payOS, quay lại app thì `watchAppReturn` + `billingService.getOrder` một lần (chữ như `PurchaseResultPage`).
+- "Đọc": BE không cho phụ huynh đọc bản đăng bán ngoài giá sách bé → truyện đã có hiện khối "Đưa lên tủ sách của bé" (như Web `OwnedShelf`) + nút "Đọc trong Chế độ Bé" dùng đường vào Chế độ Bé sẵn có.
+- Tủ truyện: thêm chế độ "Đã mua" (`GET /market/owned`) và nhãn "Mua từ chợ" cho truyện `kind !== 'private'` trên giá sách bé.
+- Admin: nhóm `market` đặt ở màn Gói & định giá như Web, dùng chung phần hiển thị/kiểm tra của nhóm `ai` (thêm ràng buộc chéo của BE).
+- Trả lời đánh giá (người bán) thuộc D3 (Bán truyện), không làm ở D2.
+
+### Kết quả GĐ D2 — FIXTURE PASS · `OWNER_RESERVED` (mua truyện thật do chủ dự án test ở GĐ G)
+
+| File | Thay đổi |
+|---|---|
+| `src/types/market.ts`, `src/services/marketService.ts` (mới) | 9 hàm: `listListings`, `getListing`, `getSellerProfile`, `listOwned`, `checkoutListing`, `getReviews`, `saveReview`, `reportListing`, `reportReview` (kiểm dạng dữ liệu, sai → 502) |
+| `src/utils/market.ts` (mới) | Bộ lọc như Web (5 khoảng giá, tuổi 5–8, giọng đọc, sắp xếp, năng lực), nút theo sở hữu, nội dung Dialog, kết quả đơn như `PurchaseResultPage`, kiểm đánh giá / báo cáo như BE |
+| `src/screens/parent/market/{MarketplaceScreen,ListingDetailScreen,SellerProfileScreen}.tsx` (mới) | Danh sách + tìm (chờ gõ xong 400 ms) + "Tải thêm"; chi tiết (xem trước, người bán, mua qua `checkoutAndOpen` + `watchAppReturn` của D1, khối tủ sách khi đã có, báo cáo); hồ sơ người bán |
+| `src/components/market/{MarketUi,ListingReviews,OwnedListingsPanel}.tsx` (mới) | Thẻ truyện, sao, sheet báo cáo; đánh giá (phân bố, viết / sửa, báo cáo); "Đã mua" |
+| `src/navigation/{routes.ts,ParentTabs.tsx}` | Route `MARKET_LISTING`, `MARKET_SELLER`; mục "Chợ truyện" trong Hồ sơ hiện ở bản thật, trỏ màn mới |
+| `src/screens/parent/LibraryScreen.tsx`, `src/components/parent/ShelfItemRow.tsx` | Chế độ "Đã mua"; nhãn "Mua từ chợ" trên giá sách bé |
+| `src/components/admin/SettingsGroup.tsx` (mới), `src/screens/admin/{AiConfigScreen,PlansScreen}.tsx`, `src/utils/adminConfig.ts` | Nhóm `market` ở Gói & định giá; dùng chung với nhóm `ai`; ràng buộc chéo hạn hoàn tiền ≤ ngày giữ doanh thu |
+| `tests/marketplace.test.ts` (mới), `tests/adminPlansFinance.test.ts` | 8 ca D2; 2 assert cũ đọc mã lưu cài đặt ở vị trí mới (`SettingsGroup`) |
+
+- `npx tsc --noEmit`: PASS. Toàn bộ `tests/*.test.ts`: 22/22 PASS (fetch giả).
+- `NOT_VERIFIED_AT_RUNTIME`: chưa chạy với BE thật, chưa mở payOS, chưa thử ảnh bìa thật.
+- Màn cũ `screens/scope-pending/MarketplaceScreen.tsx` (dữ liệu cục bộ, có `<Modal>`) không còn được dùng; giữ file, chờ chủ dự án duyệt xoá (cùng `SellerDashboard.tsx` khi làm D3).
+- Phụ huynh chưa đọc được truyện đã mua ngoài Chế độ Bé: BE `GET /stories/:id` chỉ cho chủ truyện (`stories.access.js:17`) → `NEEDS_BACKEND_REVIEW` nếu muốn có trình đọc cho phụ huynh.
+- Báo cáo 409 ("đã báo cáo") hiện câu BE và tải lại truyện, không tự ẩn nút như Web.
+- Dialog xác nhận mở chồng lên sheet (đánh giá / báo cáo): lưu ý thứ tự lớp trên Expo Web như GĐ F.

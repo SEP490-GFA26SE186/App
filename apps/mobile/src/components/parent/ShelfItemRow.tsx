@@ -5,6 +5,7 @@ import React from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { StoryCover } from '../ui/StoryCover';
 import { HeyProgressBar } from '../ui/HeyProgressBar';
+import { Badge } from '../ui/Badge';
 import { Colors } from '../../theme/colors';
 import { Radius, Spacing } from '../../theme/spacing';
 import { Typography } from '../../theme/typography';
@@ -38,6 +39,8 @@ export const ShelfItemRow: React.FC<ShelfItemRowProps> = ({ item, onOpen, action
             {item.topic.title}
           </Text>
         )}
+        {/* GĐ D2: bản đã mua trên Chợ truyện (BE kind 'published') — đọc trong Chế độ Bé, không mở chi tiết */}
+        {item.kind !== 'private' && <Badge label="Mua từ chợ" tone="info" />}
         <Text style={styles.meta}>{progress}</Text>
         {!!item.readingProgress && <HeyProgressBar progress={item.readingProgress.progressPercentage} height={6} color={Colors.tealStrong} />}
       </View>
@@ -55,7 +58,7 @@ export const ShelfItemRow: React.FC<ShelfItemRowProps> = ({ item, onOpen, action
           {body}
         </Pressable>
       ) : (
-        <View style={styles.main} accessible accessibilityLabel={`${item.title}. ${progress}`}>
+        <View style={styles.main} accessible accessibilityLabel={`${item.title}. ${item.kind !== 'private' ? 'Mua từ chợ. ' : ''}${progress}`}>
           {body}
         </View>
       )}

@@ -4,6 +4,7 @@
 // R7: lưới bìa sạch (bìa là trọng tâm, cả thẻ là một nút mở truyện), bộ lọc dạng segmented, "Thêm vào tủ sách bé" nằm trong menu "⋯" của thẻ
 // (và ở trang chi tiết) thay vì lặp một nút trên mọi thẻ. Dữ liệu/props/hành động giữ nguyên.
 // Phase 1: nút chuyển "Truyện gia đình" / "Tủ sách của bé" (ChildShelfPanel: GET /bookshelf + gỡ truyện khỏi giá).
+// GĐ D2: thêm "Đã mua" (OwnedListingsPanel: GET /market/owned) khi màn cha truyền lối vào Chợ truyện.
 import React, { useMemo, useState } from 'react';
 import { View, Text, FlatList, Pressable, StyleSheet, useWindowDimensions } from 'react-native';
 import { ChildProfile, Story } from '../../types/domain';
@@ -17,6 +18,7 @@ import { StateView } from '../../components/ui/StateView';
 import { ScreenHeader } from '../../components/ui/ScreenHeader';
 import { ChildSwitcher } from '../../components/parent/ChildSwitcher';
 import { ChildShelfPanel } from '../../components/parent/ChildShelfPanel';
+import { OwnedListingsPanel } from '../../components/market/OwnedListingsPanel';
 import { Colors } from '../../theme/colors';
 import { Layout, Radius, Spacing, Touch } from '../../theme/spacing';
 import { FontFamily, Typography } from '../../theme/typography';
@@ -35,11 +37,14 @@ interface LibraryScreenProps {
   onOpenStory: (story: Pick<Story, 'id'>) => void;
   onAddToShelf: (story: Story) => void;
   onCreateStory: () => void;
-  /** 'shelf' = mở thẳng chế độ "Tủ sách của bé" (từ Chi tiết bé) */
-  initialView?: 'shelf';
+  /** 'shelf' = mở thẳng chế độ "Tủ sách của bé" (từ Chi tiết bé); 'owned' = "Đã mua" */
+  initialView?: 'shelf' | 'owned';
+  /** GĐ D2: mở chi tiết truyện đã mua / Chợ truyện (có thì hiện chế độ "Đã mua") */
+  onOpenListing?: (listingId: string) => void;
+  onOpenMarket?: () => void;
 }
 
-type LibraryView = 'stories' | 'shelf';
+type LibraryView = 'stories' | 'shelf' | 'owned';
 
 /** Số cột theo bề ngang cửa sổ (điện thoại 2, máy tính bảng 3, màn rộng 4); khung bề rộng tối đa thuộc R9. */
 const columnsFor = (width: number) => (width >= 640 ? 3 : 2);
@@ -56,6 +61,8 @@ export const LibraryScreen: React.FC<LibraryScreenProps> = ({
   onAddToShelf,
   onCreateStory,
   initialView,
+  onOpenListing,
+  onOpenMarket,
 }) => {
   const [view, setView] = useState<LibraryView>(initialView ?? 'stories');
   const { width } = useWindowDimensions();
@@ -83,6 +90,7 @@ export const LibraryScreen: React.FC<LibraryScreenProps> = ({
   const views: { value: LibraryView; label: string }[] = [
     { value: 'stories', label: 'Truyện gia đình' },
     { value: 'shelf', label: selectedChild ? `Tủ sách của ${selectedChild.name}` : 'Tủ sách của bé' },
+    ...(onOpenListing && onOpenMarket ? [{ value: 'owned' as const, label: 'Đã mua' }] : []),
   ];
   const viewSwitch = (
     <View accessibilityRole="tablist" style={styles.segment}>
@@ -106,6 +114,21 @@ export const LibraryScreen: React.FC<LibraryScreenProps> = ({
       })}
     </View>
   );
+
+  if (view === 'owned' && onOpenListing && onOpenMarket) {
+    return (
+      <OwnedListingsPanel
+        onOpenListing={onOpenListing}
+        onOpenMarket={onOpenMarket}
+        header={
+          <View style={styles.header}>
+            <ScreenHeader title="Tủ truyện" subtitle="Truyện ba mẹ mua hoặc nhận trên Chợ truyện" />
+            {viewSwitch}
+          </View>
+        }
+      />
+    );
+  }
 
   if (view === 'shelf') {
     return (

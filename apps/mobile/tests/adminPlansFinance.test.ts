@@ -132,7 +132,8 @@ const cases: [string, () => void | Promise<void>][] = [
     const fix = fin.slice(fin.indexOf('const fix = async'), fin.indexOf('return (', fin.indexOf('const fix = async')));
     assert.ok(fix.indexOf('dialog.confirm(fixCountersConfirm(') >= 0 && fix.indexOf('dialog.confirm(') < fix.indexOf('adminService.fixCounters('));
     assert.match(fix, /if \(busy \|\|/);
-    const ai = noComments(read('screens/admin/AiConfigScreen.tsx'));
+    // GĐ D2: lưu cài đặt chuyển sang components/admin/SettingsGroup (dùng chung nhóm ai + market)
+    const ai = noComments(read('components/admin/SettingsGroup.tsx'));
     const aiSave = ai.slice(ai.indexOf('const save = async'), ai.indexOf('return (', ai.indexOf('const save = async')));
     assert.ok(aiSave.indexOf('dialog.confirm(settingConfirm(s, raw))') >= 0 && aiSave.indexOf('dialog.confirm(') < aiSave.indexOf('adminService.updateSetting('));
     assert.match(aiSave, /if \(busy\) return;/);
@@ -140,9 +141,11 @@ const cases: [string, () => void | Promise<void>][] = [
   ['Cấu hình AI chỉ hiện nhóm `ai`; giá trị kiểm như BE settingError; tỉ lệ hiện %', () => {
     const all = [setting({}), setting({ key: 'finance.usd_vnd', min: 15000, max: 40000, value: 26000, unit: 'đ / 1 USD' }), setting({ key: 'market.seller_share_rate', group: 'market', type: 'rate', min: 0.5, max: 0.95, value: 0.8 }), setting({ key: 'moderation.strike_limit', group: 'moderation' })];
     assert.deepEqual(aiSettings(all).map((s) => s.key), ['ai_cost.story_text.short', 'finance.usd_vnd']);
+    // GĐ D2: màn chỉ truyền group="ai"; SettingsGroup lọc bằng settingsOfGroup (aiSettings = nhóm ai)
     const screen = noComments(read('screens/admin/AiConfigScreen.tsx'));
-    assert.match(screen, /aiSettings\(res\.data\.settings\)/);
-    assert.equal(screen.match(/\.settings\b/g)?.length, 1, 'không dùng danh sách cài đặt ở chỗ khác');
+    assert.match(screen, /<SettingsGroup group="ai"/);
+    assert.doesNotMatch(screen, /\.settings\b/);
+    assert.match(noComments(read('components/admin/SettingsGroup.tsx')), /settingsOfGroup\(all, group\)/);
     const s = setting({});
     assert.equal(settingInputError(s, 'abc'), 'Credit cho truyện AI ngắn: phải là số.');
     assert.equal(settingInputError(s, '1.5'), 'Credit cho truyện AI ngắn: phải là số nguyên.');

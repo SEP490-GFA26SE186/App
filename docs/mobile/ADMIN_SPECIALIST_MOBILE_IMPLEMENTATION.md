@@ -32,7 +32,7 @@ Xung đột Web ↔ BE: Web cho bấm "Đã chuyển trả — duyệt" khi tr�
 | Admin | Kháng nghị | `/admin/appeals`, `/decision` | MISSING | API INTEGRATED | |
 | Admin | Nhật ký kiểm toán | `GET /admin/audit-logs` | MISSING | API INTEGRATED | chỉ đọc |
 | Admin | Gói & định giá | `/admin/plans` (GET, POST, PUT /:planId) | MISSING | API INTEGRATED (GĐ F, FIXTURE PASS) | thẻ gói + sheet tạo/sửa, Dialog xác nhận liệt kê thay đổi; nhóm cài đặt market/moderation của trang Web chưa làm |
-| Admin | Cấu hình AI | `/admin/settings`, `PUT /admin/settings/:key` | MISSING | API INTEGRATED (GĐ F, FIXTURE PASS) | chỉ nhóm `ai`; mỗi giá trị lưu qua Dialog xác nhận |
+| Admin | Cấu hình AI | `/admin/settings`, `PUT /admin/settings/:key` | MISSING | API INTEGRATED (GĐ F, FIXTURE PASS) | nhóm `ai` ở Cấu hình AI; nhóm `market` ở Gói & định giá (GĐ D2); mỗi giá trị lưu qua Dialog xác nhận; nhóm `moderation`: WEB ONLY |
 | Admin | Doanh thu & đối soát | `/admin/finance/summary`, `/reconciliation`, `/reconciliation/fix-counters` | MISSING | API INTEGRATED (GĐ F, FIXTURE PASS) | thẻ + danh sách; "Tính lại bộ đếm" qua Dialog xác nhận |
 | Specialist | Hàng chờ duyệt | `GET /moderation/submissions` | MOCK ONLY | API INTEGRATED | |
 | Specialist | Lượt duyệt | `.../claim`, `.../pages/:id/view`, `.../decision` | MOCK ONLY | API INTEGRATED | nghe giọng đọc: WEB ONLY |
@@ -152,4 +152,10 @@ Không đụng: `ModeratorAdminScreen.tsx` (mock cũ, không còn đường vào
 - Doanh thu & đối soát: chọn khoảng thời gian; 3 thẻ + danh sách phân tích doanh thu; 3 mục đối soát; "Tính lại bộ đếm" qua Dialog xác nhận, báo "Đã tính lại N truyện" theo BE.
 - Cấu hình AI: chỉ khoá nhóm `ai`; mỗi giá trị kiểm như `settingError` của BE và lưu qua Dialog xác nhận; đoạn "Nhà cung cấp" chép từ Web, không hiện khoá API.
 - Kiểm thử: `tests/adminPlansFinance.test.ts` — FIXTURE PASS; E2E với BE thật dồn về GĐ G.
-- Còn WEB ONLY: nhóm cài đặt `market` (chợ truyện & hoàn tiền) và `moderation` (giám sát nội dung) — Web đặt ở trang Gói & định giá.
+- Còn WEB ONLY: nhóm cài đặt `moderation` (giám sát nội dung). Nhóm `market` đã có từ GĐ D2 (xem mục 14).
+
+## 14. GĐ D2 – Admin: nhóm cài đặt `market` (2026-11-10, branch `feat/mobile-marketplace`)
+
+- Màn Gói & định giá có thêm khối "Chợ truyện & hoàn tiền" như Web `PlansPage` (`<SettingsGroup group="market" />`): phần người bán nhận (50–95%), số ngày giữ doanh thu, thời hạn hoàn tiền (1–30 ngày), mức rút tối thiểu.
+- Phần hàng cài đặt tách thành `components/admin/SettingsGroup.tsx`, dùng chung với Cấu hình AI. Kiểm như `settingError` của BE, thêm ràng buộc chéo: thời hạn hoàn tiền không dài hơn số ngày giữ doanh thu. Lưu qua Dialog xác nhận.
+- Kiểm thử: `tests/marketplace.test.ts`, `tests/adminPlansFinance.test.ts` — FIXTURE PASS.

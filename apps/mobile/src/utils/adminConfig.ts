@@ -130,17 +130,23 @@ export const planConfirm = (plan: AdminPlan | undefined, body: Partial<PlanField
   };
 };
 
-// ---- Cấu hình (nhóm ai) ----
+// ---- Cấu hình (nhóm ai, market) ----
 
-/** Màn Cấu hình AI chỉ hiện nhóm `ai` (Web SettingsGroup group="ai"); khoá ngoài nhóm không hiện, không sửa */
-export const aiSettings = (settings: PlatformSetting[]): PlatformSetting[] => settings.filter((s) => s.group === 'ai');
+/** Chỉ khoá của một nhóm (Web SettingsGroup group=...); khoá ngoài nhóm không hiện, không sửa */
+export const settingsOfGroup = (settings: PlatformSetting[], group: 'ai' | 'market'): PlatformSetting[] => settings.filter((s) => s.group === group);
+/** Màn Cấu hình AI chỉ hiện nhóm `ai` */
+export const aiSettings = (settings: PlatformSetting[]): PlatformSetting[] => settingsOfGroup(settings, 'ai');
 
 /** Tỉ lệ lưu 0..1, hiển thị % (Web SettingsGroup toInput / fromInput) */
 export const settingToInput = (s: PlatformSetting): string => (s.type === 'rate' ? String(Math.round(s.value * 100)) : String(s.value));
 export const settingFromInput = (s: PlatformSetting, raw: string): number => (s.type === 'rate' ? Number(raw) / 100 : Number(raw));
 
-/** Lỗi phía client theo settingError của BE (kiểu số, số nguyên, khoảng). null = hợp lệ */
-export const settingInputError = (s: PlatformSetting, raw: string): string | null => {
+const HOLD_KEY = 'market.earning_hold_days';
+const REFUND_KEY = 'market.refund_window_days';
+
+/** Lỗi phía client theo settingError của BE (kiểu số, số nguyên, khoảng, ràng buộc chéo nhóm market). null = hợp lệ.
+ *  `all` = các cài đặt hiện tại (để kiểm tra hạn hoàn tiền ≤ số ngày giữ doanh thu). */
+export const settingInputError = (s: PlatformSetting, raw: string, all: PlatformSetting[] = []): string | null => {
   const t = raw.trim();
   if (!t || Number.isNaN(Number(t))) return `${s.label}: phải là số.`;
   const v = settingFromInput(s, t);
@@ -148,6 +154,12 @@ export const settingInputError = (s: PlatformSetting, raw: string): string | nul
   if (v < s.min || v > s.max) {
     const fmt = (x: number) => (s.type === 'rate' ? `${Math.round(x * 100)}%` : `${x}`);
     return `${s.label}: trong khoảng ${fmt(s.min)}–${fmt(s.max)}.`;
+  }
+  const current = (key: string) => all.find((x) => x.key === key)?.value;
+  const hold = s.key === HOLD_KEY ? v : current(HOLD_KEY);
+  const window = s.key === REFUND_KEY ? v : current(REFUND_KEY);
+  if ((s.key === HOLD_KEY || s.key === REFUND_KEY) && hold != null && window != null && window > hold) {
+    return 'Thời hạn hoàn tiền không được dài hơn số ngày giữ doanh thu (tiền hoàn lấy lại từ doanh thu đang giữ).';
   }
   return null;
 };
