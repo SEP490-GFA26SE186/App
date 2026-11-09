@@ -56,7 +56,7 @@ Mở lại Expo Go / tạo lại Activity (đổi `wm size`) → **về màn Đ�
 
 ## 7. R4.1 — Kid Reader ↔ BE thật
 
-**NOT RUN / DEFERRED.** Chưa kiểm: mở truyện thật, điểm dừng EQ do BE chấm, lưu và tiếp tục tiến độ, hoàn thành, ảnh thật. Các bước này **ghi dữ liệu** (`play_sessions`, `checkpoint_answers`) không khôi phục được → chỉ chạy trên tài khoản test. **Bắt buộc xong trước demo/bàn giao.** Ca test: R9B-06 trong [R9B_MANUAL_TEST_PLAN.md](R9B_MANUAL_TEST_PLAN.md). Không tạo DB QA cô lập (phương án cũ chỉ là đề xuất, không hiệu lực).
+**NOT RUN / DEFERRED.** Chưa kiểm: mở truyện thật, điểm dừng EQ do BE chấm, lưu và tiếp tục tiến độ, hoàn thành, ảnh thật. Các bước này **ghi dữ liệu** (`play_sessions`, `checkpoint_answers`) không khôi phục được → chỉ chạy trên tài khoản test. **Bắt buộc xong trước demo/bàn giao.** Ca test: R9B-06 trong R9B_MANUAL_TEST_PLAN.md (tài liệu chưa có trong repo). Không tạo DB QA cô lập (phương án cũ chỉ là đề xuất, không hiệu lực).
 
 ## 8. Chặn phía Backend/hạ tầng (đã kiểm 2026-10-27)
 
@@ -71,11 +71,11 @@ Mở lại Expo Go / tạo lại Activity (đổi `wm size`) → **về màn Đ�
 | — | — | Không có nạp credit/thanh toán, upload ảnh, return URL payOS cho mobile (ngoài phạm vi, SCOPE PENDING) | audit cũ |
 | — | Khuyến nghị BE | Giới hạn sai PIN lưu trong bộ nhớ (reset khi restart BE); chưa rate-limit chung login/register; URL Cloudinary ký không hết hạn | audit bảo mật cũ |
 
-Chi tiết và đề nghị gửi BE: [QA_R9B_READINESS.md](QA_R9B_READINESS.md) §1, §8, §12.
+Chi tiết và đề nghị gửi BE: QA_R9B_READINESS.md (tài liệu chưa có trong repo) §1, §8, §12.
 
 ## 9. Sẵn sàng R9-B
 
-Sẵn sàng: Mobile, PostgreSQL, các endpoint đọc, đăng nhập/PIN. **Bị chặn:** tạo truyện AI, phân tích lời kể, credit giữ/hoàn thật (B-1…B-3). Chạy được ngay: ca chỉ xem (R9B-04, R9B-07, R9B-11) và ca ghi không cần AI trên tài khoản test (R9B-08/09/10, cần bạn duyệt). Kế hoạch: [R9B_MANUAL_TEST_PLAN.md](R9B_MANUAL_TEST_PLAN.md).
+Sẵn sàng: Mobile, PostgreSQL, các endpoint đọc, đăng nhập/PIN. **Bị chặn:** tạo truyện AI, phân tích lời kể, credit giữ/hoàn thật (B-1…B-3). Chạy được ngay: ca chỉ xem (R9B-04, R9B-07, R9B-11) và ca ghi không cần AI trên tài khoản test (R9B-08/09/10, cần bạn duyệt). Kế hoạch: R9B_MANUAL_TEST_PLAN.md (tài liệu chưa có trong repo).
 
 ## 10. Chức năng/độ phủ còn chờ
 
@@ -99,6 +99,6 @@ Sẵn sàng: Mobile, PostgreSQL, các endpoint đọc, đăng nhập/PIN. **Bị
 ## 12. Việc tiếp theo trước demo
 
 1. BE bật Redis + worker + AI service (+ Gemini/Cloudinary nếu cần nội dung thật).
-2. Chạy R9-B theo thứ tự trong [R9B_MANUAL_TEST_PLAN.md](R9B_MANUAL_TEST_PLAN.md) (bắt đầu R9B-04).
+2. Chạy R9-B theo thứ tự trong R9B_MANUAL_TEST_PLAN.md (tài liệu chưa có trong repo) (bắt đầu R9B-04).
 3. Hoàn tất R4.1 (R9B-06) trên tài khoản test.
 4. Sửa lỗi Frontend phát sinh (nếu có), chạy lại 56 test + export, cập nhật tài liệu này.

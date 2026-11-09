@@ -30,6 +30,14 @@ const PORTRAIT_LABELS: Record<string, string> = {
   failed: 'Chân dung: chưa vẽ được',
 };
 
+/** Lý do chân dung lỗi theo `portraitFailure` của BE (characters/lib/portraitFailure.js); null nếu không lỗi. */
+const portraitFailureText = (c: { portraitStatus?: string | null; portraitFailure?: string | null }): string | null => {
+  if (c.portraitStatus !== 'failed') return null;
+  return c.portraitFailure === 'blocked'
+    ? 'Bộ lọc ảnh không nhận mô tả này (credit đã hoàn). Ba mẹ sửa mô tả, bỏ tên nhân vật hoạt hình, vũ khí, trang phục hở.'
+    : 'Chưa vẽ được do lỗi tạm thời, credit đã hoàn lại.';
+};
+
 interface CharactersScreenProps {
   characters: CharacterView[];
   dataStatus: DataStatus;
@@ -62,6 +70,7 @@ const CharacterDetailSheet: React.FC<{ characterId: string | null; onClose: () =
               <Badge label={PORTRAIT_LABELS[c.portraitStatus ?? 'none'] ?? 'Chân dung: chưa rõ'} tone={c.portraitStatus === 'ready' ? 'success' : 'neutral'} />
               {!!c.child && <Badge label={`Nhân vật đại diện của ${c.child.name}`} tone="info" />}
             </View>
+            {!!portraitFailureText(c) && <Text style={styles.failure}>{portraitFailureText(c)}</Text>}
             <Text style={styles.detailLabel}>Ngoại hình</Text>
             <Text style={styles.detailText}>{c.appearance || '—'}</Text>
             <Text style={styles.detailMeta}>
@@ -170,6 +179,7 @@ export const CharactersScreen: React.FC<CharactersScreenProps> = ({
                 />
                 {!!c.childId && <Badge label="Nhân vật của bé" tone="info" />}
               </View>
+              {!!portraitFailureText(c) && <Text style={styles.failure}>{portraitFailureText(c)}</Text>}
               <View style={styles.actions}>
                 <HeyButton title="Chi tiết" iconName="information-circle-outline" variant="tertiary" size="sm" onPress={() => setDetailId(c.id)} accessibilityLabel={`Xem chi tiết nhân vật ${c.name}`} />
                 <HeyButton title="Sửa" iconName="create-outline" variant="tertiary" size="sm" onPress={() => openForm(c)} accessibilityLabel={`Sửa nhân vật ${c.name}`} />
@@ -210,6 +220,7 @@ const styles = StyleSheet.create({
   name: { ...Typography.bodyStrong, color: Colors.text },
   appearance: { ...Typography.caption, color: Colors.textMuted },
   badges: { gap: Spacing.xs, alignItems: 'flex-start' },
+  failure: { ...Typography.caption, color: Colors.textMuted },
   portrait: { width: '100%', aspectRatio: 1, borderRadius: Radius.md, backgroundColor: Colors.brandTint },
   initialBox: { alignItems: 'center', justifyContent: 'center' },
   initial: { ...Typography.display, color: Colors.brandStrong },
