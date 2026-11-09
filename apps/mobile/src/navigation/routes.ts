@@ -15,6 +15,7 @@ export const ROUTES = {
   EQ_SKILLS: 'EQ_SKILLS',
   CHARACTERS: 'CHARACTERS',
   STORY: 'STORY',
+  STORY_EDITOR: 'STORY_EDITOR', // GĐ B1: Sửa truyện (mở từ Chi tiết truyện hoặc sau khi tạo truyện "Tự viết")
   SETTINGS: 'SETTINGS',
   HELP: 'HELP',
   MARKET: 'MARKET', // SCOPE PENDING: giữ nguyên, không phát triển thêm

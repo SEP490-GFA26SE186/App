@@ -13,6 +13,7 @@ import { ParentHomeScreen } from '../screens/parent/ParentHomeScreen';
 import { LibraryScreen } from '../screens/parent/LibraryScreen';
 import { StoryDetailScreen } from '../screens/parent/StoryDetailScreen';
 import { StoryWizard } from '../screens/parent/StoryWizard';
+import { StoryEditorScreen } from '../screens/parent/StoryEditorScreen';
 import { EqReportScreen } from '../screens/parent/EqReportScreen';
 import { EqSkillsScreen } from '../screens/parent/EqSkillsScreen';
 import { WalletScreen } from '../screens/parent/WalletScreen';
@@ -154,7 +155,20 @@ export const ParentTabs: React.FC<ParentTabsProps> = ({ currentUser, nav, active
             onRead={setSelectedStoryToRead}
             onStoryLoaded={data.upsertStory}
             onCreditsChanged={refreshCredit}
-            onUnsupported={notSupported}
+            onOpenEditor={(id) => navigate(ROUTES.STORY_EDITOR, { storyId: id })}
+          />
+        );
+      case ROUTES.STORY_EDITOR:
+        return (
+          <StoryEditorScreen
+            key={nav.current.params?.storyId}
+            storyId={nav.current.params?.storyId as string}
+            onBack={goBack}
+            onStoryChanged={data.upsertStory}
+            onDeleted={() => {
+              void data.reload();
+              navigate(ROUTES.LIBRARY);
+            }}
           />
         );
       case ROUTES.CREATE:
@@ -168,6 +182,11 @@ export const ParentTabs: React.FC<ParentTabsProps> = ({ currentUser, nav, active
             onOpenStory={(id) => {
               void data.reload();
               navigate(ROUTES.STORY, { storyId: id });
+            }}
+            onOpenEditor={(id) => {
+              // Thay Wizard (tab Sáng tác) bằng Tủ truyện → Sửa truyện: Back từ editor về Tủ truyện, không về Wizard trống
+              navigate(ROUTES.LIBRARY);
+              navigate(ROUTES.STORY_EDITOR, { storyId: id });
             }}
             onCreditsChanged={refreshCredit}
             onCancel={() => navigate(ROUTES.LIBRARY)}
