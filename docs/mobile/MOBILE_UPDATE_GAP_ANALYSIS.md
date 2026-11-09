@@ -324,3 +324,20 @@ Kiểm tra: `npx tsc --noEmit` PASS; `apps/mobile/tests` 16/16 file PASS (mới:
 - Khi Chi tiết truyện và Sửa truyện cùng nằm trong ngăn xếp, chỉ màn đang hiện mới polling (màn dưới bị unmount).
 - Chưa có nút "Nâng gói" trong khung thiếu credit (GĐ D).
 - Chân dung nhân vật (B3) chưa làm; truyện bật tranh vẫn tự vẽ chân dung còn thiếu ở BE.
+
+## 19. Hotfix Expo Go audio (branch `fix/mobile-expo-go-audio`)
+
+**Lỗi thật** (chủ dự án chạy Expo Go SDK 52 trên Android): `Error: Cannot find native module 'ExpoAudio'` → app sập ngay lúc khởi động.
+
+**Nguyên nhân** (`VERIFIED_FROM_SOURCE`): `src/screens/kid/useKidUiAudio.ts` import tĩnh `createAudioPlayer`, `setAudioModeAsync` từ `expo-audio`. Bản Expo Go SDK 52 không có native module `ExpoAudio`. File này được `KidModeScreen` import, nên lỗi xảy ra khi nạp bundle, trước cả khi vào Kid Mode.
+
+**Cách sửa** (chỉ `useKidUiAudio.ts`):
+- Bỏ import giá trị; giữ `import type { AudioPlayer }`.
+- Nạp tuỳ chọn ở cấp module: `try { ExpoAudio = require('expo-audio') } catch { ExpoAudio = null }`.
+- `ExpoAudio` null → không gọi `GET /kid/ui-audio`, `canPlay` luôn false (không có nút "Nghe"), `play` không làm gì, không throw. Giống trường hợp API âm thanh lỗi đã có.
+- Có module → hành vi giữ nguyên.
+- Không đổi dependency, không đổi `app.json`.
+
+**Kiểm tra:** `npx tsc --noEmit` PASS; 16/16 file test PASS. Thêm 1 ca ở `tests/kidUiAudio.test.ts`: chặn `require('expo-audio')` ném lỗi, gọi thật hook → nạp module không lỗi, không tải câu đọc, không có nút nghe, `play`/`stop`/rời màn không crash. Bản import tĩnh cũ sẽ làm ca này FAIL ngay lúc nạp.
+
+**Hệ quả:** chạy bằng Expo Go SDK 52 thì Kid Mode **không có câu đọc giao diện** (nút "Nghe" ẩn); phần còn lại của Kid Mode dùng bình thường. Bản build thật (development build / APK có `expo-audio`) vẫn có âm thanh. `NOT_VERIFIED_AT_RUNTIME`: chưa chạy lại trên Expo Go; chủ dự án kiểm ở GĐ G.
