@@ -11,6 +11,8 @@ process.env.EXPO_PUBLIC_API_URL = 'http://test.invalid';
 import { kidService } from '../src/services/kidService';
 import { safeStorage, STORAGE_KEYS } from '../src/services/storage';
 import { playableUrl, UI_AUDIO_KEYS } from '../src/utils/kidUiAudio';
+// Chỉ lấy kiểu (để tsc biên dịch kèm file hook); module được nạp bằng require trong ca hotfix, sau khi chặn expo-audio
+import type * as HookModule from '../src/screens/kid/useKidUiAudio';
 
 const src = join(process.cwd(), 'src');
 const read = (rel: string) => readFileSync(join(src, rel), 'utf8');
@@ -90,6 +92,49 @@ const run = async () => {
       assert.doesNotMatch(noComments(read(f)), /expo-speech|Speech\.|narration|generate|synthesize|apiFetch|\/stories\//i, f);
     }
     assert.doesNotMatch(noComments(read('screens/kid/useKidUiAudio.ts')), /useEffect\([^)]*\.play\(/, 'không tự phát');
+  });
+
+  await test('Hotfix Expo Go SDK 52: require("expo-audio") ném lỗi → hook không crash, không tải câu đọc, không có nút nghe', async () => {
+    // Chặn require: expo-audio ném lỗi như Expo Go; react thay bằng hook giả chạy đồng bộ (không cần renderer)
+    const Module = require('node:module') as any;
+    const origLoad = Module._load;
+    const effects: (() => void | (() => void))[] = [];
+    const fakeReact = {
+      useState: (init: unknown) => [typeof init === 'function' ? (init as () => unknown)() : init, () => {}],
+      useRef: (current: unknown) => ({ current }),
+      useCallback: (fn: unknown) => fn,
+      useEffect: (fn: () => void | (() => void)) => {
+        effects.push(fn);
+      },
+    };
+    Module._load = function (request: string, ...rest: unknown[]) {
+      if (request === 'expo-audio') throw new Error("Cannot find native module 'ExpoAudio'");
+      if (request === 'react') return fakeReact;
+      return origLoad.call(this, request, ...rest);
+    };
+    try {
+      const hookPath = require.resolve('../src/screens/kid/useKidUiAudio');
+      delete require.cache[hookPath];
+      const { useKidUiAudio } = require(hookPath) as typeof HookModule; // nạp module KHÔNG được ném lỗi
+      let loads = 0;
+      const source = {
+        getUiAudio: async () => {
+          loads += 1;
+          return { 'prompt.correct': { text: 'Đúng rồi!', audioUrl: 'https://cdn/x.mp3' } };
+        },
+      };
+      const controls = useKidUiAudio(source as any, true);
+      const cleanups = effects.map((run) => run());
+      await new Promise((r) => setTimeout(r, 0));
+      assert.equal(loads, 0, 'không gọi GET /kid/ui-audio khi thiếu module');
+      assert.equal(controls.canPlay(UI_AUDIO_KEYS.correct), false, 'không có nút nghe');
+      assert.doesNotThrow(() => controls.play(UI_AUDIO_KEYS.correct));
+      assert.doesNotThrow(() => controls.stop());
+      assert.equal(controls.playingKey, null);
+      for (const c of cleanups) if (typeof c === 'function') assert.doesNotThrow(c); // rời Kid Mode không crash
+    } finally {
+      Module._load = origLoad;
+    }
   });
 
   console.log(`OK ${passed}/${passed}`);

@@ -3,8 +3,17 @@
 // - Nạp danh sách MỘT lần khi vào Kid Mode; lỗi / rỗng → không có nút nghe, Kid Mode vẫn dùng bình thường.
 // - Chỉ phát khi bé bấm (không tự phát). MỘT player dùng chung: bấm câu mới thì dừng câu cũ (không chồng tiếng).
 // - Rời Kid Mode (unmount) → giải phóng player. Không tạo âm thanh mới, không gọi AI/TTS.
+// - Hotfix: Expo Go SDK 52 không có native module ExpoAudio; import tĩnh làm sập app khi nạp bundle.
+//   Nạp tuỳ chọn: thiếu module → như khi API âm thanh lỗi (không tải câu đọc, không có nút nghe). Build thật vẫn có.
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { createAudioPlayer, setAudioModeAsync, type AudioPlayer } from 'expo-audio';
+import type { AudioPlayer } from 'expo-audio';
+
+let ExpoAudio: typeof import('expo-audio') | null = null;
+try {
+  ExpoAudio = require('expo-audio');
+} catch {
+  ExpoAudio = null;
+}
 import type { KidDataSource } from '../../types/viewModels';
 import { playableUrl, type KidUiAudioControls, type UiAudioAssets } from '../../utils/kidUiAudio';
 
@@ -16,7 +25,7 @@ export const useKidUiAudio = (source: KidDataSource, enabled: boolean): KidUiAud
   const listener = useRef<{ remove: () => void } | null>(null);
 
   useEffect(() => {
-    if (!enabled || !source.getUiAudio) return;
+    if (!enabled || !source.getUiAudio || !ExpoAudio) return;
     let alive = true;
     source
       .getUiAudio()
@@ -53,12 +62,12 @@ export const useKidUiAudio = (source: KidDataSource, enabled: boolean): KidUiAud
   const play = useCallback(
     (key: string) => {
       const url = playableUrl(assets, key);
-      if (!url) return;
+      if (!url || !ExpoAudio) return;
       try {
         if (!player.current) {
           // iOS: vẫn phát khi gạt im lặng; lỗi thì bỏ qua (không chặn phát)
-          setAudioModeAsync({ playsInSilentMode: true }).catch(() => {});
-          player.current = createAudioPlayer(url);
+          ExpoAudio.setAudioModeAsync({ playsInSilentMode: true }).catch(() => {});
+          player.current = ExpoAudio.createAudioPlayer(url);
           listener.current = player.current.addListener('playbackStatusUpdate', (s) => {
             if (s.didJustFinish) setPlayingKey(null);
           });
