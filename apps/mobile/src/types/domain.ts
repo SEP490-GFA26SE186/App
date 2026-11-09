@@ -41,6 +41,8 @@ export interface ChildProfile {
   readingLevel?: 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED' | string;
   interests?: string[];
   avatarUrl?: string;
+  /** Mô tả ngoại hình của nhân vật đại diện (BE child.character.appearance) */
+  appearance?: string;
   favoriteTopics?: string[];
   favoriteThemes?: string[];
 }
