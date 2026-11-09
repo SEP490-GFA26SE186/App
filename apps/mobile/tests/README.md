@@ -94,3 +94,9 @@ node %TEMP%/sw-portrait-tests/tests/characterPortrait.test.js
 npx tsc tests/legal.test.ts --outDir %TEMP%/sw-legal-tests --module commonjs --target es2022 --esModuleInterop --skipLibCheck --jsx react-jsx --types react-native,node
 node %TEMP%/sw-legal-tests/tests/legal.test.js
 ```
+
+`specialistMonitoring.test.ts` (GĐ E1) kiểm 4 màn giám sát của Chuyên gia: đúng method/path/query/body cho `/moderation/listings`, `/strikes`, `/audits`, `/audits/run`, `/ai-flags`, `/ai-flags/:userId/block` (fetch giả), cảnh cáo theo nguồn, lỗi BE đã dịch, tổng quan ghép số như Web, Dialog xác nhận bắt buộc trước chọn đợt kiểm tra / khoá-mở khoá AI, điều hướng màn con. Chạy từ `apps/mobile`:
+```
+npx tsc tests/specialistMonitoring.test.ts --outDir %TEMP%/sw-spec-tests --module commonjs --target es2022 --esModuleInterop --skipLibCheck --jsx react-jsx --types react-native,node
+node %TEMP%/sw-spec-tests/tests/specialistMonitoring.test.js
+```

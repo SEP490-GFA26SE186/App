@@ -160,13 +160,14 @@ export const useMutationRunner = (onStale?: () => unknown) => {
   const [busyKey, setBusyKey] = useState<string | null>(null);
   const lock = useRef(false);
   const run = useCallback(
-    async (key: string, fn: () => Promise<unknown>, successMessage: string): Promise<boolean> => {
+    // successMessage: chuỗi cố định, hoặc hàm nhận kết quả BE (GĐ E1: "Đã chọn N truyện", "Đã cảnh cáo (2/3)")
+    async <R,>(key: string, fn: () => Promise<R>, successMessage: string | ((result: R) => string)): Promise<boolean> => {
       if (lock.current) return false;
       lock.current = true;
       setBusyKey(key);
       try {
-        await fn();
-        toast.show(successMessage, 'success');
+        const result = await fn();
+        toast.show(typeof successMessage === 'function' ? successMessage(result) : successMessage, 'success');
         return true;
       } catch (e: any) {
         guard(e);
@@ -247,6 +248,26 @@ export const ReasonSheet: React.FC<{
   );
 };
 
+/** GĐ E1 – Chọn số nguyên trong [min, max] bằng nút − / + (≥ 44pt), không cần bàn phím số */
+export const NumberStepper: React.FC<{ label: string; value: number; min: number; max: number; onChange: (n: number) => void; suffix?: string }> = ({
+  label,
+  value,
+  min,
+  max,
+  onChange,
+  suffix,
+}) => (
+  <View style={styles.stepper} accessible accessibilityRole="adjustable" accessibilityLabel={label} accessibilityValue={{ min, max, now: value }}>
+    <Text style={styles.stepperLabel}>{label}</Text>
+    <HeyButton title="−" variant="outline" size="sm" onPress={() => onChange(Math.max(min, value - 1))} disabled={value <= min} accessibilityLabel={`Giảm ${label}`} />
+    <Text style={styles.stepperValue}>
+      {value}
+      {suffix ? ` ${suffix}` : ''}
+    </Text>
+    <HeyButton title="+" variant="outline" size="sm" onPress={() => onChange(Math.min(max, value + 1))} disabled={value >= max} accessibilityLabel={`Tăng ${label}`} />
+  </View>
+);
+
 export const SectionTitle: React.FC<{ children: string }> = ({ children }) => (
   <Text style={styles.sectionTitle} accessibilityRole="header">
     {children}
@@ -269,4 +290,7 @@ const styles = StyleSheet.create({
   infoValue: { ...Typography.bodyStrong, color: Colors.text },
   sheetActions: { flexDirection: 'row', gap: Spacing.sm, paddingTop: Spacing.md },
   sectionTitle: { ...Typography.heading, color: Colors.text, marginTop: Spacing.sm },
+  stepper: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, flexWrap: 'wrap' },
+  stepperLabel: { ...Typography.label, color: Colors.text, flexShrink: 1 },
+  stepperValue: { ...Typography.bodyStrong, color: Colors.text, minWidth: 44, textAlign: 'center' },
 });

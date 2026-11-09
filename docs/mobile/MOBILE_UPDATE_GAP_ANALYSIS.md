@@ -421,3 +421,64 @@ Kiểm tra: `npx tsc --noEmit` PASS; `apps/mobile/tests` 18/18 file PASS (mới:
 - `ChildProfile` mang thêm `appearance` (BE `child.character.appearance`, có trong `GET /children` và `GET /children/:id`) để form sửa điền sẵn.
 - Liên kết chân trang Đăng ký ghi "Điều khoản sử dụng" (như Web AuthShell), tiêu đề trang là "Điều khoản dịch vụ" (như Web TermsPage).
 - `NOT_VERIFIED_AT_RUNTIME`: chưa mở trên máy; chủ dự án kiểm ở GĐ G.
+
+## 22. GĐ E1 – Chuyên gia: giám sát (branch `feat/mobile-specialist-monitoring`)
+
+Test thật dồn về GĐ G; đợt này chỉ tsc + test fetch giả. Đọc từ source (`VERIFIED_FROM_SOURCE`) trước khi code. Mọi route dưới đây: `auth, authorize('specialist', 'admin')` (`BE/api/src/modules/monitoring/monitoring.routes.js:18`).
+
+### Endpoint
+
+| Endpoint (routes.js) | Query / body (zod) | Response (service) | Mobile |
+|---|---|---|---|
+| `GET /moderation/listings` (:35) | `status: suspended \| archived` (mặc định suspended) | `{ listings: [{ id, title, status, updatedAt, seller{id, displayName, status}, reportsCount, buyersCount, review{id, reviewType, decidedAt, decision, comment, moderator} \| null }] }` (`listRestrictedListings`:172) | `getRestrictedListings` |
+| `GET /moderation/strikes` (:48) | `sellerId?`, `active?: 'true' \| 'false'` | `{ strikeLimit, strikes: [{ id, source, sourceId, reason, issuedAt, expiresAt, revokedAt, active, issuer{id,name}, seller{id, displayName, status}, appeal{…} \| null }] }` (`listStrikes`:262, `formatStrike`:239) | `getStrikes` |
+| `POST /moderation/strikes` (:54, đã có) | `{ sellerId, source: report \| rejection \| takedown, sourceId?, reason ≥ 10 }` | 201 `{ strikeId, activeStrikes, strikeLimit, sellerSuspended }` | `issueStrike` (mở rộng `source`) |
+| `GET /moderation/audits` (:70) | `open?: 'true' \| 'false'` | `{ audits: [{ reviewId, createdAt, decidedAt, decision, comment, moderator, listing{id, title, status, seller} }] }` (`listAudits`:389) | `getAudits` |
+| `POST /moderation/audits/run` (:76) | `{ count?: 1..20 }` (mặc định `{}` → `moderation.audit_per_week`) | 201 `{ created, reviewIds }` (`runRandomAudits`:382, `scheduleRandomAudits`:350: chỉ truyện đang bán, người bán còn hoạt động, chưa có lượt duyệt mở, không được xem trong 30 ngày) | `runAudits` |
+| `GET /moderation/ai-flags` (:83) | `days: 1..90` (7), `min: 1..100` (2) | `{ days, min, flags: [{ userId, fullName, email, total, blocked, failed, blockedRate, lastBlocked{at, reason, storyTitle} \| null, aiBlockedUntil }] }` (`listAiFlags`:417) | `getAiFlags` |
+| `POST /moderation/ai-flags/:userId/block` (:89) | `{ days: 0..90 (0 = mở khoá), reason?: ≤ 2000 }` | `{ userId, aiBlockedUntil }` (`setAiBlock`:467: chỉ tài khoản phụ huynh, ghi nhật ký `ai.block` / `ai.unblock`) | `setAiBlock` |
+
+### Web (nguồn hành vi)
+- `services/specialistService.js`: `getSpecialistOverview` ghép `queue.length`, hồ sơ người bán chờ, tổng báo cáo mở, và **kiểm tra ngẫu nhiên = số mục `random_audit` trong hàng chờ**.
+- `SuspendedPage.jsx`: tab Đang tạm gỡ / Đã gỡ hẳn; lượt duyệt đang mở → "…: xem lại" (mở Lượt duyệt); nút "Cảnh cáo" (`StrikeModal`, nguồn `takedown`, người bán cố định).
+- `StrikesPage.jsx`: lọc "Chỉ cảnh cáo còn hiệu lực" (mặc định bật), ngưỡng `strikeLimit`, trạng thái (đã gỡ / hiệu lực đến / hết hạn), kháng nghị; nút "Ra cảnh cáo" (`StrikeModal`, nguồn `report`, chọn người bán đã duyệt).
+- `AuditsPage.jsx`: số truyện 1–20 (mặc định 3) + "Chọn đợt ngay"; lượt chưa quyết định → "Kiểm tra" (mở Lượt duyệt).
+- `AiFlagsPage.jsx`: khoảng 7 / 14 / 30 ngày, tối thiểu n lượt bị chặn; khoá 1/3/7/14/30 ngày + lý do (tuỳ chọn); mở khoá (`days: 0`).
+
+### Mobile hiện có
+- `SpecialistNavigator`: thanh tab Hàng chờ (= Tổng quan kiểm duyệt của Web) · Người bán · Báo cáo · Thêm; menu "Thêm" có 4 mục giám sát đang ghi "Dùng trên Web".
+- `ManagementUi`: `ManagementPage` (kéo để tải lại), `ResourceBody`, `FilterChips`, `ReasonSheet`, `useMutationRunner` (chống bấm đúp, toast, lỗi BE nguyên văn).
+
+### Quyết định điều hướng (ít xáo trộn nhất)
+- Không thêm tab: 4 màn giám sát mở từ menu "Thêm" (thay 4 mục "Dùng trên Web" bằng màn thật), là màn con có nút Back như Lượt duyệt.
+- "Tổng quan": dùng màn Hàng chờ hiện có (đã là Tổng quan kiểm duyệt của Web), chỉ thêm ô "Kiểm tra ngẫu nhiên" và một hàng lối tắt tới 4 màn giám sát. Hành vi hàng chờ giữ nguyên.
+
+### File Mobile sẽ sửa
+- `types/management.ts`, `services/moderationService.ts` (6 hàm + `buildSpecialistOverview`).
+- `screens/specialist/{RestrictedListingsScreen,StrikesScreen,AuditsScreen,AiFlagsScreen}.tsx` (mới), `SpecialistQueueScreen.tsx` (thêm ô + lối tắt).
+- `navigation/managementRoutes.ts`, `navigation/SpecialistNavigator.tsx`.
+- `tests/specialistMonitoring.test.ts` (mới), `docs/mobile/ADMIN_SPECIALIST_MOBILE_IMPLEMENTATION.md`, `docs/mobile/LO_TRINH_MOBILE.md`.
+
+### Kết quả GĐ E1 (2026-11-09) — FIXTURE PASS, test thật dồn về GĐ G
+
+| Hạng mục | Trạng thái |
+|---|---|
+| Service + type (6 hàm, `issueStrike` nhận cả `takedown`, `buildSpecialistOverview`) | DONE, FIXTURE PASS |
+| 4 màn giám sát + lối tắt / ô "Kiểm tra ngẫu nhiên chờ xem" ở Tổng quan | DONE, TSC PASS, `NOT_VERIFIED_AT_RUNTIME` |
+| Điều hướng: màn con từ "Thêm" (thay "Dùng trên Web"), badge số kiểm tra chờ xem ở mục menu | DONE |
+
+Kiểm tra: `npx tsc --noEmit` PASS; `apps/mobile/tests` 19/19 file PASS (mới: `specialistMonitoring.test.ts` 10 ca).
+
+**Quyết định UI cho điện thoại**
+- Danh sách dọc dạng thẻ, kéo để tải lại (`ManagementPage`), đủ loading / rỗng / lỗi (`ResourceBody`).
+- Bộ lọc dạng chip (Đang tạm gỡ / Đã gỡ hẳn; Còn hiệu lực / Tất cả; 7 / 14 / 30 ngày). Số nguyên (số truyện cần kiểm, số lượt bị chặn tối thiểu) chọn bằng nút − / + (`NumberStepper` mới trong `ManagementUi`), không cần bàn phím số.
+- Ra cảnh cáo: Truyện tạm gỡ dùng `ReasonSheet` có sẵn (lý do ≥ 10); Cảnh cáo tác giả dùng sheet chọn người bán đã duyệt + lý do.
+- Khoá AI: sheet chọn 1 / 3 / 7 / 14 / 30 ngày + lý do tuỳ chọn, bấm "Khoá" → Dialog xác nhận → gọi BE.
+
+**Thay đổi dùng chung**
+- `useMutationRunner` (ManagementUi): câu báo thành công nhận thêm dạng hàm theo kết quả BE ("Đã chọn N truyện", "Đã cảnh cáo (2/3…)"); cách gọi bằng chuỗi giữ nguyên.
+
+**Điểm còn chưa chắc**
+- `NOT_VERIFIED_AT_RUNTIME`: chưa chạy với BE thật.
+- Dialog xác nhận khoá AI mở từ trong bottom sheet: trên Android là hộp thoại hệ thống nên hiện trên sheet; trên Expo Web cần kiểm thứ tự lớp ở GĐ G.
+- Cảnh cáo tác giả: danh sách người bán để chọn lấy từ `GET /moderation/sellers?status=approved` (như Web), không tìm kiếm; nhiều người bán thì danh sách dài.

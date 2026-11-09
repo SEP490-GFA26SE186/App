@@ -242,3 +242,104 @@ export interface ReportGroup {
   openReview: { id: string; reviewType: ReviewType } | null;
   reports: ContentReport[];
 }
+
+// ---- GĐ E1: giám sát (BE modules/monitoring/monitoring.service.js) ----
+
+export type RestrictedStatus = 'suspended' | 'archived';
+
+/** GET /moderation/listings → listings[] (listRestrictedListings) */
+export interface RestrictedListing {
+  id: string;
+  title: string;
+  status: string;
+  updatedAt: string;
+  seller: { id: string; displayName: string; status: string };
+  reportsCount: number;
+  buyersCount: number;
+  review: {
+    id: string;
+    reviewType: ReviewType;
+    decidedAt: string | null;
+    decision: ReviewDecision | null;
+    comment: string | null;
+    moderator: string | null;
+  } | null;
+}
+
+/** GET /moderation/strikes → strikes[] (formatStrike) */
+export interface Strike {
+  id: string;
+  source: StrikeSource;
+  sourceId: string | null;
+  reason: string;
+  issuedAt: string;
+  expiresAt: string;
+  revokedAt: string | null;
+  active: boolean;
+  issuer: { id: string; name: string } | null;
+  seller: { id: string; displayName: string; status: string } | null;
+  appeal: {
+    id: string;
+    reason: string;
+    status: AppealStatus;
+    createdAt: string;
+    decidedAt: string | null;
+    decisionNote: string | null;
+    decider: string | null;
+  } | null;
+}
+
+export interface StrikesResult {
+  strikeLimit: number;
+  strikes: Strike[];
+}
+
+/** POST /moderation/strikes → 201 */
+export interface IssueStrikeResult {
+  strikeId: string;
+  activeStrikes: number;
+  strikeLimit: number;
+  sellerSuspended: boolean;
+}
+
+/** GET /moderation/audits → audits[] (listAudits) */
+export interface RandomAudit {
+  reviewId: string;
+  createdAt: string;
+  decidedAt: string | null;
+  decision: ReviewDecision | null;
+  comment: string | null;
+  moderator: string | null;
+  listing: { id: string; title: string; status: string; seller: string };
+}
+
+/** POST /moderation/audits/run → 201 */
+export interface RunAuditsResult {
+  created: number;
+  reviewIds: string[];
+}
+
+/** GET /moderation/ai-flags → flags[] (listAiFlags) */
+export interface AiFlag {
+  userId: string;
+  fullName: string | null;
+  email: string;
+  total: number;
+  blocked: number;
+  failed: number;
+  blockedRate: number;
+  lastBlocked: { at: string; reason: string | null; storyTitle: string | null } | null;
+  aiBlockedUntil: string | null;
+}
+
+export interface AiFlagsResult {
+  days: number;
+  min: number;
+  flags: AiFlag[];
+}
+
+/** POST /moderation/ai-flags/:userId/block → { userId, aiBlockedUntil } */
+export interface AiBlockResult {
+  userId: string;
+  aiBlockedUntil: string | null;
+}
