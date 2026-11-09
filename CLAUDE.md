@@ -94,9 +94,9 @@ Ranh giới dự án giữ nguyên: BE, Web, App_v2 chỉ đọc; giữ kiến t
 
 ## 12. Đợt hiện tại: Cập nhật Mobile theo Web (Gap Analysis)
 Bổ sung (không thay) §2–§11. Báo cáo: `docs/mobile/MOBILE_UPDATE_GAP_ANALYSIS.md`.
-Lộ trình: Project "đồ án" → `StoryWeaver/LO_TRINH_MOBILE.md` (nằm ngoài repo; làm theo từng GĐ của lộ trình, xong GĐ nào thì dừng chờ review).
+Lộ trình: `docs/mobile/LO_TRINH_MOBILE.md` (làm theo từng GĐ của lộ trình, xong GĐ nào thì dừng chờ review).
 
-**Tiến độ:** GĐ 0–1 (gap analysis) xong · GĐ 4 dịch lỗi + lý do chân dung xong (`e0aaadd`) · **GĐ A** (sửa sau review, env deploy) trên branch `feat/mobile-error-i18n`.
+**Tiến độ:** GĐ 0–1 (gap analysis) xong · GĐ 4 dịch lỗi + lý do chân dung xong (`e0aaadd`) · GĐ A đã merge vào `main` · **GĐ B1** (Sửa truyện + "Tự viết") trên branch `feat/mobile-story-editor`, chờ review.
 
 **Các giai đoạn** — mỗi giai đoạn xong thì DỪNG chờ chủ dự án review; không tự sang giai đoạn kế:
 - **GĐ 0 – Kiểm tra source (chỉ đọc):** branch, commit mới nhất, `git status` của cả 4 repo; ghi nhận file modified/untracked/deleted; xác định framework/dependency chính. Không `reset`/`checkout`/`restore`/`rebase`/`stash`/xoá file, kể cả để "dọn" thay đổi có sẵn.
