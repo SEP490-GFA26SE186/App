@@ -13,5 +13,6 @@ Mục lục tài liệu của `apps/mobile` (Expo SDK 52, React Native 0.76.9). 
 | [ARCHITECTURE_DECISIONS.md](ARCHITECTURE_DECISIONS.md) | ADR + phụ lục cổng grep G1–G11 |
 | [UI_UX_REDESIGN_PLAN.md](UI_UX_REDESIGN_PLAN.md) | Design system "Warm Storybook Guardian" và lộ trình R0–R9 |
 | [ENVIRONMENT.md](ENVIRONMENT.md) | Cấu hình `EXPO_PUBLIC_API_URL` |
+| [MOBILE_UPDATE_GAP_ANALYSIS.md](MOBILE_UPDATE_GAP_ANALYSIS.md) | Đối chiếu Web – BE – Mobile sau đợt cập nhật 05/11 và việc Mobile cần làm |
 
 Báo cáo QA từng đợt (R1–R9-A), ảnh QA, tiến độ Phase A–E/Safety Gate, audit và kế hoạch cũ đã được gộp vào [MOBILE_STATUS.md](MOBILE_STATUS.md) và xóa khỏi thư mục; bản gốc vẫn khôi phục được: `git show a9160a7:docs/mobile/<tên-file>`.

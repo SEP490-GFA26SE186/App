@@ -485,7 +485,7 @@ Hệ quả: các luồng **không cần** Redis/AI: Auth, PIN, Kid Mode, CRUD b�
 
 | # | Hạng mục | Owner | Endpoint | File dự kiến | Phụ thuộc | Test | Rủi ro | Tiêu chí nghiệm thu |
 |---|---|---|---|---|---|---|---|---|
-| P1-1 | Chạy E2E thật cho luồng đã nối (Auth → Parent đọc → Kid Reader) | Mobile + QA | AU-*, CH-6/8, ST-4/5, BS-2, KD-* | không sửa code | BE + PostgreSQL chạy, tài khoản QA parent | R9B_MANUAL_TEST_PLAN (theo MOBILE_STATUS) | Ghi `play_sessions`/`checkpoint_answers` | Có log request/response thật cho từng bước; cập nhật trạng thái thành REAL E2E VERIFIED |
+| P1-1 | Chạy E2E thật cho luồng đã nối (Auth → Parent đọc → Kid Reader) | Mobile + QA | AU-*, CH-6/8, ST-4/5, BS-2, KD-* | không sửa code | BE + PostgreSQL chạy, tài khoản QA parent | R9B_MANUAL_TEST_PLAN (tài liệu chưa có trong repo) | Ghi `play_sessions`/`checkpoint_answers` | Có log request/response thật cho từng bước; cập nhật trạng thái thành REAL E2E VERIFIED |
 | P1-2 | Gỡ truyện khỏi tủ sách | Mobile | BS-4 | screens/parent/StoryDetailScreen.tsx, navigation/ParentTabs.tsx | — (service có sẵn) | test đơn vị + E2E trên tài khoản QA | Thấp | Gỡ xong, `GET /kid/bookshelf` không còn truyện |
 | P1-3 | Hiển thị trạng thái tủ sách theo bé | Mobile | CH-10 hoặc BS-3 | services/childService.ts hoặc storyService.ts; StoryDetailScreen.tsx | — | test hình dạng response | Thấp | Nút hiển thị đúng "Thêm"/"Gỡ" |
 | P1-4 | Tranh AI | Mobile | ST-3 (`useAiImage`), ST-20, ST-21, ST-1 (`images`) | StoryWizard.tsx, StoryDetailScreen.tsx, services/storyService.ts | Redis + worker + provider ảnh + storage | 402 thiếu credit, 409 đang viết, poll `imageStatus` | **Tốn credit thật** | Truyện có `imageUrl` ở Parent và Kid Reader |

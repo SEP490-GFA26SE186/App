@@ -54,6 +54,7 @@ export const characterService = {
     appearanceDescription: raw.appearance ?? '',
     photoReferenceUrl: raw.portraitImageUrl ?? undefined,
     portraitStatus: raw.portraitStatus ?? null,
+    portraitFailure: raw.portraitFailure ?? null,
     childId: raw.childId ?? null,
   }),
 };
