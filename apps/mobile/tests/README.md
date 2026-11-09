@@ -112,3 +112,9 @@ node %TEMP%/sw-admin-f-tests/tests/adminPlansFinance.test.js
 npx tsc tests/billingPayment.test.ts --outDir %TEMP%/sw-billing-tests --module commonjs --target es2022 --esModuleInterop --skipLibCheck --jsx react-jsx --types react-native,node
 node %TEMP%/sw-billing-tests/tests/billingPayment.test.js
 ```
+
+`marketplace.test.ts` (GĐ D2) kiểm Chợ truyện với fetch giả và Linking giả (không gọi BE, không mở trình duyệt): đúng method/path/query/body 9 hàm `/market/*`; nút theo trạng thái sở hữu (của mình / đã có / nhận miễn phí / mua); mua 0đ không mở trình duyệt, > 0đ qua `checkoutAndOpen`; Dialog trước mọi thao tác ghi; kiểm đánh giá (1–5 sao, ≤ 1000 ký tự, thẻ của BE) và báo cáo (6 loại, ≤ 2000 ký tự) như BE; nhóm cài đặt `market` chỉ đúng 4 khoá + ràng buộc hạn hoàn tiền ≤ ngày giữ doanh thu; lối vào và điều hướng. Chạy từ `apps/mobile`:
+```
+npx tsc tests/marketplace.test.ts --outDir %TEMP%/sw-market-tests --module commonjs --target es2022 --esModuleInterop --skipLibCheck --jsx react-jsx --types react-native,node
+node %TEMP%/sw-market-tests/tests/marketplace.test.js
+```

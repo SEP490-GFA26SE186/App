@@ -4,7 +4,7 @@ Lập ngày 2026-11-09 · Nguồn đối chiếu: GitHub `main` — App `f84c4f9
 Môi trường demo: Web `https://storyweaver.id.vn` · API `https://api.storyweaver.id.vn/api/v1` (lấy từ tài liệu deploy của BE).
 Tài khoản demo **không ghi trong tài liệu hay source**; chủ dự án tự nhập khi test.
 
-> Tiến độ: GĐ A và **GĐ B hoàn tất** (B1, B2, B3, hotfix Expo Go audio, bỏ `baseUrl` trong tsconfig đều đã merge vào `main`). **GĐ C** (trang Chính sách / Điều khoản, ô ngoại hình + gợi ý ở form hồ sơ bé) đã merge. **GĐ E1** (Chuyên gia: giám sát) đã merge. **GĐ F** (Admin: Gói & định giá, Doanh thu & đối soát, Cấu hình AI) đã merge. **GĐ D1** (mua / gia hạn gói qua payOS, lịch sử thanh toán, hoàn tiền) đang làm trên nhánh `feat/mobile-billing-payment`. Tiếp theo: phần còn lại của **D** (Chợ truyện, Bán truyện).
+> Tiến độ: GĐ A và **GĐ B hoàn tất** (B1, B2, B3, hotfix Expo Go audio, bỏ `baseUrl` trong tsconfig đều đã merge vào `main`). **GĐ C** (trang Chính sách / Điều khoản, ô ngoại hình + gợi ý ở form hồ sơ bé) đã merge. **GĐ E1** (Chuyên gia: giám sát) đã merge. **GĐ F** (Admin: Gói & định giá, Doanh thu & đối soát, Cấu hình AI) đã merge. **GĐ D1** (mua / gia hạn gói qua payOS, lịch sử thanh toán, hoàn tiền) đã merge. **GĐ D2** (Chợ truyện: danh sách, chi tiết, người bán, mua, đánh giá, báo cáo, truyện đã mua; Admin nhóm cài đặt `market`) đang làm trên nhánh `feat/mobile-marketplace`. Tiếp theo: **D3** (Bán truyện).
 > Quyết định 2026-11-09: **không test thật sau từng đợt; mọi test thật dồn về GĐ G.** Mỗi đợt chỉ cần tsc + test fetch giả + review.
 > Đã chạy thật trên máy ảo Android (Expo Go SDK 52) với BE deploy: đăng nhập và đọc dữ liệu OK (sau hotfix Expo Go audio).
 >
@@ -62,7 +62,7 @@ Chi tiết:
 
 ### GĐ D – Gói, thanh toán, Chợ truyện, Bán truyện (L)
 1. **D1** – Mua và gia hạn gói: mở link thanh toán payOS bằng trình duyệt ngoài (`Linking`, không thêm thư viện); quay lại app thì tải lại gói. Lịch sử thanh toán + yêu cầu hoàn tiền trong hạn. **Lưu ý:** BE đặt `returnUrl`/`cancelUrl` của payOS về **Web** (`BE/api/src/modules/billing/billing.service.js:58-59`), nên thanh toán xong ba mẹ thấy trang kết quả của Web; ba mẹ tự quay lại app, app kiểm tra đơn khi trở lại (hoặc bấm "Kiểm tra thanh toán").
-2. Chợ truyện: danh sách, lọc theo giá, chi tiết truyện, khung người bán; hồ sơ người bán công khai; mua truyện, truyện đã mua, báo cáo vi phạm.
+2. **D2** – Chợ truyện: danh sách, lọc theo giá, chi tiết truyện, khung người bán; hồ sơ người bán công khai; mua truyện, truyện đã mua, báo cáo vi phạm. Lối vào: mục "Chợ truyện" trong menu Hồ sơ; "Đã mua" trong Tủ truyện. Mua truyện dùng lại luồng payOS của D1 (payOS cũng trả về Web `/parent/marketplace/result`). Trả lời đánh giá (người bán) để sang D3.
 3. Bán truyện: đăng ký người bán, sửa hồ sơ bán; đăng truyện, cập nhật phiên bản; doanh thu, tài khoản ngân hàng, rút tiền.
 
 ### GĐ E – Chuyên gia (M + L)
