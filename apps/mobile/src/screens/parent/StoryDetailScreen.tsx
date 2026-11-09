@@ -134,7 +134,7 @@ export const StoryDetailScreen: React.FC<StoryDetailScreenProps> = ({
         void shelfCheck.reload();
       } catch (e: any) {
         // 422: truyện chưa sẵn sàng cho bé (chưa hoàn tất / thiếu giọng đọc) – BE nêu rõ lý do
-        void dialog.notify('Chưa thêm được', e?.errors?.[0]?.message || e?.message || 'Vui lòng thử lại.');
+        void dialog.notify('Chưa thêm được', e?.message || 'Vui lòng thử lại.');
       } finally {
         setShelfChildId(null);
       }

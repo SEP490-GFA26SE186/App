@@ -221,12 +221,23 @@ const GROUPS: Group[] = [system, database, session, access, zod, auth, kid, chil
 export const ERROR_MESSAGES: Record<string, string> = Object.assign({}, ...GROUPS.map((g) => g.messages));
 export const ERROR_PATTERNS: [RegExp, Translation][] = GROUPS.flatMap((g) => g.patterns ?? []);
 
+// Câu riêng của Mobile, áp TRƯỚC bảng Web: giao diện Mobile gọi "Chế độ Bé", không phải "Kid Mode".
+// Bảng Web ở trên giữ nguyên để dễ đồng bộ.
+const KID_SESSION_ENDED_MOBILE = 'Phiên của bé đã kết thúc, nhờ ba mẹ mở lại Chế độ Bé nhé';
+export const MOBILE_OVERRIDES: Record<string, string> = {
+  'Invalid or already closed kid session': KID_SESSION_ENDED_MOBILE,
+  'Kid session has expired': KID_SESSION_ENDED_MOBILE,
+  'You must set a Kid Exit PIN before entering Kid Mode': 'Ba mẹ cần đặt mã PIN thoát Chế độ Bé trước nhé',
+  'No active session or user found to exit from Kid Mode': 'Phiên Chế độ Bé đã kết thúc, ba mẹ đăng nhập lại nhé',
+};
+
 /** Đổi message của BE sang tiếng Việt nếu có trong bảng dịch, không thì trả lại nguyên văn. */
 export function translateErrorMessage(message: string): string;
 export function translateErrorMessage<T>(message: T): T;
 export function translateErrorMessage(message: unknown): unknown {
   if (typeof message !== 'string') return message;
   const text = message.trim();
+  if (Object.prototype.hasOwnProperty.call(MOBILE_OVERRIDES, text)) return MOBILE_OVERRIDES[text];
   if (Object.prototype.hasOwnProperty.call(ERROR_MESSAGES, text)) return ERROR_MESSAGES[text];
   for (const [pattern, toVi] of ERROR_PATTERNS) {
     const match = text.match(pattern);

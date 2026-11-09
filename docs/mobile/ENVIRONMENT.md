@@ -17,6 +17,16 @@ Cập nhật: A0.2. Mobile đọc địa chỉ API từ biến công khai **`EXP
 
 Backend: cổng mặc định 3000 (`BE/api/src/config/env.js`), API mount tại `/api/v1` (`BE/api/src/app.js`).
 
+## Máy chủ đã deploy (dùng cho chủ dự án test thật)
+- Cấu hình ở `App/apps/mobile/.env.local` (bị `.gitignore` bỏ qua, không commit):
+  ```ini
+  EXPO_PUBLIC_API_URL=https://api.storyweaver.id.vn
+  ```
+- **Chạy trên Android (emulator) hoặc Expo Go**, không dùng Expo Web.
+  - Trình duyệt chặn request khác origin nếu origin đó không có trong `CORS_ORIGIN` của BE (`BE/api/src/config/env.js`). Origin của Expo Web (vd. `http://localhost:8082`) không chắc đã nằm trong cấu hình của máy chủ deploy.
+  - App native không bị CORS chặn.
+- Tài khoản test **không** ghi vào file nào trong repo.
+
 ## Công cụ dev trên màn Đăng nhập (`EXPO_PUBLIC_SHOW_DEV_TOOLS`)
 
 Nút "UI Preview (dev)" và dòng "Máy chủ (dev): …" **mặc định ẩn, kể cả khi chạy dev**. Muốn hiện (để mở Kid UI Preview hoặc kiểm địa chỉ BE):

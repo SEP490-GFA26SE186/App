@@ -188,7 +188,7 @@ export const StoryWizard: React.FC<StoryWizardProps> = ({
   const familyMessage = (err: any): string => {
     if (err?.status === 429) return err.message || 'Hôm nay ba mẹ đã phân tích nhiều lần rồi, mai thử lại nhé';
     if (err?.status >= 500) return 'Chưa phân tích được, ba mẹ thử lại nhé';
-    return err?.errors?.[0]?.message || err?.message || 'Có lỗi xảy ra, ba mẹ thử lại nhé';
+    return err?.message || 'Có lỗi xảy ra, ba mẹ thử lại nhé';
   };
 
   // Chạy một thao tác ghi: chặn bấm đúp, hiện lỗi BE nguyên văn
@@ -212,7 +212,7 @@ export const StoryWizard: React.FC<StoryWizardProps> = ({
       const story = await storyService.createStory(payload);
       onStoryCreated(story);
       setGenerating(story.id);
-    }, (e) => e?.errors?.[0]?.message || e?.message || 'Chưa tạo được truyện.');
+    }, (e) => e?.message || 'Chưa tạo được truyện.');
 
   const submit = () => {
     if (missing) {
