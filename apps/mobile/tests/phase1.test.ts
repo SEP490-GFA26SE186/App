@@ -47,9 +47,13 @@ test('Màn hình: mỗi endpoint có lời gọi từ UI đang dùng', () => {
 });
 
 test('Phase 1 không đụng luồng AI/trả phí', () => {
-  for (const f of ['screens/parent/ChildDetailScreen.tsx', 'components/parent/ChildShelfPanel.tsx', 'components/parent/ShelfItemRow.tsx']) {
+  for (const f of ['components/parent/ChildShelfPanel.tsx', 'components/parent/ShelfItemRow.tsx']) {
     assert.doesNotMatch(noComments(read(f)), /generat|portrait\w*\(|narration|billingService|createStory|analyze/i, f);
   }
+  // GĐ B3: Chi tiết bé có nút vẽ chân dung, nhưng chỉ qua CharacterPortraitAction (xác nhận trừ credit), không tự gọi API AI
+  const child = noComments(read('screens/parent/ChildDetailScreen.tsx'));
+  assert.doesNotMatch(child, /generatePortrait|narration|billingService|createStory|analyze/i);
+  assert.match(child, /<CharacterPortraitAction/);
 });
 
 test('Ngày giờ VN cho /usage: UTC+7, lùi theo ngày', () => {

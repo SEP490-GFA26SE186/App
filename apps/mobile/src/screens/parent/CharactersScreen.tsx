@@ -17,8 +17,10 @@ import { Colors } from '../../theme/colors';
 import { Layout, Radius, Spacing } from '../../theme/spacing';
 import { Typography } from '../../theme/typography';
 import { CharacterView } from '../../types/viewModels';
-import { characterService } from '../../services';
+import { characterService, storyService } from '../../services';
 import type { DataStatus } from '../../stores/useParentData';
+import { CharacterPortraitAction, usePortraitPolling } from '../../components/parent/CharacterPortraitAction';
+import { countDrawingPortraits, portraitFailureText } from '../../utils/characterPortrait';
 import { useAsyncResource } from '../../utils/useAsyncResource';
 import { formatDate } from '../../utils/format';
 
@@ -30,20 +32,15 @@ const PORTRAIT_LABELS: Record<string, string> = {
   failed: 'Chân dung: chưa vẽ được',
 };
 
-/** Lý do chân dung lỗi theo `portraitFailure` của BE (characters/lib/portraitFailure.js); null nếu không lỗi. */
-const portraitFailureText = (c: { portraitStatus?: string | null; portraitFailure?: string | null }): string | null => {
-  if (c.portraitStatus !== 'failed') return null;
-  return c.portraitFailure === 'blocked'
-    ? 'Bộ lọc ảnh không nhận mô tả này (credit đã hoàn). Ba mẹ sửa mô tả, bỏ tên nhân vật hoạt hình, vũ khí, trang phục hở.'
-    : 'Chưa vẽ được do lỗi tạm thời, credit đã hoàn lại.';
-};
-
 interface CharactersScreenProps {
   characters: CharacterView[];
   dataStatus: DataStatus;
   onCharacterSaved: (character: CharacterView, isNew: boolean) => void;
   onCharacterDeleted: (id: string) => void;
   onBack: () => void;
+  /** GĐ B3: số dư credit (null = chưa biết) và tải lại số dư sau khi vẽ chân dung */
+  creditBalance: number | null;
+  onCreditsChanged: () => void;
 }
 
 /** Sheet chi tiết: nạp mới từ BE mỗi lần mở (loading / lỗi + thử lại) */
@@ -92,8 +89,19 @@ export const CharactersScreen: React.FC<CharactersScreenProps> = ({
   onCharacterSaved,
   onCharacterDeleted,
   onBack,
+  creditBalance,
+  onCreditsChanged,
 }) => {
   const dialog = useDialog();
+  // GĐ B3: giá chân dung (đọc một lần) + hỏi lại danh sách khi có chân dung đang vẽ
+  const pricing = useAsyncResource(() => storyService.getAiPricing(), []);
+  usePortraitPolling<CharacterView[]>({
+    drawing: countDrawingPortraits(characters),
+    load: () => characterService.getCharacters(),
+    drawingCount: countDrawingPortraits,
+    onData: (list) => list.forEach((c) => onCharacterSaved(c, false)),
+    onDrawn: onCreditsChanged,
+  });
   const { width: windowWidth } = useWindowDimensions();
   const width = Math.min(windowWidth, Layout.maxContentWidth);
   const cols = columnsFor(width);
@@ -179,7 +187,15 @@ export const CharactersScreen: React.FC<CharactersScreenProps> = ({
                 />
                 {!!c.childId && <Badge label="Nhân vật của bé" tone="info" />}
               </View>
-              {!!portraitFailureText(c) && <Text style={styles.failure}>{portraitFailureText(c)}</Text>}
+              <CharacterPortraitAction
+                characterId={c.id}
+                name={c.name}
+                character={{ appearance: c.appearanceDescription, imageUrl: c.photoReferenceUrl, portraitStatus: c.portraitStatus, portraitFailure: c.portraitFailure }}
+                cost={pricing.data?.images?.characterPortrait}
+                creditBalance={creditBalance}
+                onStarted={(updated) => onCharacterSaved(updated, false)}
+                onCreditsChanged={onCreditsChanged}
+              />
               <View style={styles.actions}>
                 <HeyButton title="Chi tiết" iconName="information-circle-outline" variant="tertiary" size="sm" onPress={() => setDetailId(c.id)} accessibilityLabel={`Xem chi tiết nhân vật ${c.name}`} />
                 <HeyButton title="Sửa" iconName="create-outline" variant="tertiary" size="sm" onPress={() => openForm(c)} accessibilityLabel={`Sửa nhân vật ${c.name}`} />
