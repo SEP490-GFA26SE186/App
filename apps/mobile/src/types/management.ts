@@ -343,3 +343,69 @@ export interface AiBlockResult {
   userId: string;
   aiBlockedUntil: string | null;
 }
+
+// ---- GĐ F: gói, đối soát, cấu hình (BE modules/admin) ----
+
+/** GET /admin/plans → plans[] (formatAdminPlan) */
+export interface AdminPlan {
+  id: string;
+  code: string;
+  name: string;
+  durationMonths: number;
+  priceVnd: number;
+  creditsPerMonth: number;
+  maxChildren: number;
+  maxCharacters: number;
+  canSell: boolean;
+  isActive: boolean;
+  activeSubscribers: number;
+}
+
+/** Trường sửa được của gói (BE planFields) */
+export interface PlanFields {
+  name: string;
+  priceVnd: number;
+  creditsPerMonth: number;
+  maxChildren: number;
+  maxCharacters: number;
+  canSell: boolean;
+  isActive: boolean;
+}
+
+/** POST /admin/plans: thêm mã + thời hạn (không sửa được về sau) */
+export interface CreatePlanBody extends PlanFields {
+  code: string;
+  durationMonths: 1 | 12;
+}
+
+/** GET /admin/finance/reconciliation (finance.service reconciliation) */
+export interface Reconciliation {
+  checkedAt: string;
+  walletsChecked: number;
+  walletMismatches: { userId: string; walletType: string; walletBalance: number; ledgerBalance: number }[];
+  paidWithoutWebhook: { orderId: string; payosOrderCode: number; totalVnd: number; paidAt: string }[];
+  counterDrift: { listingId: string; title: string; purchaseCount: number; paidActual: number; freeClaimCount: number; freeActual: number }[];
+}
+
+export type SettingGroup = 'ai' | 'market' | 'moderation';
+
+/** GET /admin/settings → settings[] (describeSettings) */
+export interface PlatformSetting {
+  key: string;
+  group: SettingGroup | string;
+  label: string;
+  hint: string | null;
+  unit: string;
+  type: 'int' | 'rate' | string;
+  min: number;
+  max: number;
+  value: number;
+  isDefault: boolean;
+  updatedAt: string | null;
+  updatedBy: string | null;
+}
+
+export interface SettingsResult {
+  groups: Record<string, string>;
+  settings: PlatformSetting[];
+}

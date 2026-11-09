@@ -6,10 +6,16 @@ import type {
   AccountRole,
   AccountsPage,
   AdminNavBadges,
+  AdminPlan,
   AppealStatus,
   AuditLogsPage,
+  CreatePlanBody,
   FinanceRange,
   FinanceSummary,
+  PlanFields,
+  PlatformSetting,
+  Reconciliation,
+  SettingsResult,
   RefundRequest,
   RefundStatus,
   StrikeAppeal,
@@ -33,6 +39,11 @@ const listOf = <T,>(value: unknown, what: string): T[] => {
 const post = <T,>(path: string, body?: unknown) =>
   apiFetch<T>(path, { method: 'POST', body: JSON.stringify(body ?? {}) });
 
+const planOrThrow = (data: { plan?: AdminPlan } | null | undefined, what: string): AdminPlan => {
+  if (!data?.plan?.id) throw invalidResponseError(what);
+  return data.plan;
+};
+
 export const adminService = {
   /** GET /admin/overview → { navBadges } (số việc đang chờ) */
   getOverview: async (): Promise<AdminNavBadges> => {
@@ -46,6 +57,43 @@ export const adminService = {
     const data = await apiFetch<FinanceSummary>(`/admin/finance/summary${toQuery({ range })}`);
     if (!data?.revenue || !Array.isArray(data.series) || !data.sellerFunds) throw invalidResponseError('số liệu tài chính');
     return data;
+  },
+
+  // ---- GĐ F: gói, đối soát, cấu hình (admin.routes.js:59-114) ----
+
+  /** GET /admin/plans → { plans } */
+  getAdminPlans: async (): Promise<AdminPlan[]> => listOf<AdminPlan>((await apiFetch<{ plans?: unknown }>('/admin/plans'))?.plans, 'danh sách gói'),
+  /** POST /admin/plans { …planFields, code, durationMonths } → 201 { plan }. Trùng mã → 409 */
+  createPlan: async (body: CreatePlanBody): Promise<AdminPlan> => planOrThrow(await post<{ plan?: AdminPlan }>('/admin/plans', body), 'tạo gói'),
+  /** PUT /admin/plans/:planId { trường đổi } → { plan }. Gói FREE: giá 0, không tắt được (422) */
+  updatePlan: async (planId: string, body: Partial<PlanFields>): Promise<AdminPlan> =>
+    planOrThrow(await apiFetch<{ plan?: AdminPlan }>(`/admin/plans/${planId}`, { method: 'PUT', body: JSON.stringify(body) }), 'sửa gói'),
+
+  /** GET /admin/finance/reconciliation — chỉ báo lệch, không tự sửa tiền */
+  getReconciliation: async (): Promise<Reconciliation> => {
+    const data = await apiFetch<Partial<Reconciliation>>('/admin/finance/reconciliation');
+    if (!data || !Array.isArray(data.walletMismatches) || !Array.isArray(data.paidWithoutWebhook) || !Array.isArray(data.counterDrift)) {
+      throw invalidResponseError('đối soát');
+    }
+    return data as Reconciliation;
+  },
+  /** POST /admin/finance/reconciliation/fix-counters → { fixed } (tính lại bộ đếm lượt mua của truyện) */
+  fixCounters: async (): Promise<{ fixed: number }> => {
+    const data = await post<{ fixed?: number }>('/admin/finance/reconciliation/fix-counters');
+    if (typeof data?.fixed !== 'number') throw invalidResponseError('tính lại bộ đếm');
+    return { fixed: data.fixed };
+  },
+
+  /** GET /admin/settings → { groups, settings } (mọi nhóm; màn Cấu hình AI chỉ lấy nhóm ai) */
+  getSettings: async (): Promise<SettingsResult> => {
+    const data = await apiFetch<Partial<SettingsResult>>('/admin/settings');
+    return { groups: data?.groups ?? {}, settings: listOf<PlatformSetting>(data?.settings, 'cấu hình') };
+  },
+  /** PUT /admin/settings/:key { value } → { setting }. Ngoài khoảng / sai kiểu → 422 */
+  updateSetting: async (key: string, value: number): Promise<PlatformSetting> => {
+    const data = await apiFetch<{ setting?: PlatformSetting }>(`/admin/settings/${encodeURIComponent(key)}`, { method: 'PUT', body: JSON.stringify({ value }) });
+    if (data?.setting?.key !== key) throw invalidResponseError('lưu cấu hình');
+    return data.setting;
   },
 
   /** GET /admin/accounts?role&status&search&page */
