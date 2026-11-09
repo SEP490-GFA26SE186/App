@@ -8,6 +8,7 @@ import type {
   BookshelfCheckDto,
   BookshelfPageDto,
   CheckpointTypeDto,
+  DrawImagesResultDto,
   GenerationDto,
   PaginationDto,
   ShelfItemDto,
@@ -185,6 +186,25 @@ export const storyService = {
   setCover: (storyId: string, sceneId: string | null): Promise<StoryDto> =>
     editorCall(`/stories/${storyId}/cover`, json('PUT', { sceneId }), 'đổi ảnh bìa'),
 
+  // ---- Tranh AI / giọng đọc (GĐ B2). Có thể giữ credit: chỉ gọi khi phụ huynh bấm. ----
+
+  /** Vẽ tranh cả truyện (bật tranh + vẽ mọi cảnh còn thiếu): POST /stories/:id/images → 202. 402 thiếu credit, 409 đang viết, 503 hàng đợi lỗi */
+  drawImages: async (storyId: string): Promise<DrawImagesResultDto> => {
+    const data = await apiFetch<Partial<DrawImagesResultDto>>(`/stories/${storyId}/images`, { method: 'POST' });
+    if (typeof data?.scenes !== 'number') throw invalidResponseError('vẽ tranh');
+    return data as DrawImagesResultDto;
+  },
+
+  /** Vẽ lại một cảnh (trừ credit lần nữa): POST /stories/:id/scenes/:sceneId/image → 202. 409 cảnh đang vẽ, 422 cảnh chưa có mô tả */
+  redrawScene: async (storyId: string, sceneId: string): Promise<DrawImagesResultDto> => {
+    const data = await apiFetch<Partial<DrawImagesResultDto>>(`/stories/${storyId}/scenes/${sceneId}/image`, { method: 'POST' });
+    if (typeof data?.scenes !== 'number') throw invalidResponseError('vẽ lại cảnh');
+    return data as DrawImagesResultDto;
+  },
+
+  /** Thử lại giọng đọc (đoạn lỗi / thiếu): POST /stories/:id/narration/retry → 202 data { story }. 422 chưa hoàn tất / tắt giọng đọc */
+  retryNarration: (storyId: string): Promise<StoryDto> => editorCall(`/stories/${storyId}/narration/retry`, json('POST'), 'thử lại giọng đọc'),
+
   /** Xoá truyện: DELETE /stories/:id (BE xoá mềm, không trả data) */
   deleteStory: async (storyId: string): Promise<boolean> => {
     await apiFetch(`/stories/${storyId}`, { method: 'DELETE' });
@@ -264,6 +284,11 @@ export const storyService = {
       pageCount: raw.pageCount ?? raw.pages?.length,
       checkpointCount: raw.checkpointCount ?? raw.checkpoints?.length,
       detailLoaded: Array.isArray(raw.pages),
+      kind: raw.kind,
+      useAiImage: raw.useAiImage,
+      useTts: raw.useTts,
+      scenes: raw.scenes,
+      narration: raw.narration,
       pages: (raw.pages ?? []).map((p) => ({
         id: p.id,
         pageNumber: p.pageOrder,

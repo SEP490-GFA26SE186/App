@@ -116,6 +116,17 @@ export interface StorySceneDto {
   imageStatus?: string | null;
 }
 
+/** Giọng đọc của truyện (BE lib/narration.js narrationProgress). enabled=false khi tắt giọng đọc */
+export interface NarrationDto {
+  enabled: boolean;
+  total: number;
+  ready: number;
+  pending: number;
+  failed: number;
+  missing: number;
+  complete: boolean;
+}
+
 /** Từ khoá chuyên gia đặt xuất hiện trong chữ (GET /stories/:id). path: pages.<id> | checkpoints.<id> */
 export interface KeywordWarningDto {
   path: string;
@@ -185,6 +196,9 @@ export interface StoryDto {
   /** private | published */
   kind?: string;
   useAiImage?: boolean;
+  useTts?: boolean;
+  /** Tiến độ giọng đọc (BE narrationProgress) – chỉ có ở chi tiết */
+  narration?: NarrationDto;
   /** Cảnh đang làm bìa; null = mặc định (cảnh 1) */
   coverSceneId?: string | null;
   keywordWarnings?: KeywordWarningDto[];
@@ -213,7 +227,18 @@ export interface GenerationDto {
 
 /** GET /stories/ai-pricing */
 export interface AiPricingDto {
+  /** Tranh AI: credit mỗi chân dung / mỗi cảnh, số cảnh tối đa (BE getAiPricing) */
+  images?: { characterPortrait: number; scene: number; maxScenes: number };
   lengths: { length: 'short' | 'medium' | 'long'; pages: number; checkpoints: number; credits: number }[];
+}
+
+/** POST /stories/:id/images | /scenes/:sceneId/image → 202 data (BE queueStoryImages) */
+export interface DrawImagesResultDto {
+  portraits: number;
+  scenes: number;
+  waiting: number;
+  insufficientCredit: boolean;
+  skippedNoCredit?: number;
 }
 
 /** GET /topics (phía phụ huynh) */
