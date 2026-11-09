@@ -544,3 +544,40 @@ Kiểm tra: `npx tsc --noEmit` PASS; `apps/mobile/tests` 20/20 file PASS (mới:
 - Nhóm cài đặt `market` / `moderation` (Web đặt ở trang Gói) chưa làm — đợt này chỉ cho hiện nhóm `ai`.
 - Form gói mở trong bottom sheet, Dialog xác nhận mở chồng lên sheet: Android là hộp thoại hệ thống (hiện trên cùng); Expo Web cần kiểm thứ tự lớp ở GĐ G.
 - `AdminNavigator`: bỏ `useDialog` / `WEB_ONLY_NOTICE` không còn dùng (hằng số vẫn dùng ở khu Chuyên gia cho các mục E2).
+
+## 24. GĐ D1 – Mua / gia hạn gói qua payOS + lịch sử thanh toán + hoàn tiền (branch `feat/mobile-billing-payment`)
+
+**Bước 0 – đối chiếu (đọc trước khi code)**
+
+| Hạng mục | BE (nguồn chuẩn) | Web | Mobile trước D1 | Trạng thái |
+|---|---|---|---|---|
+| Tạo đơn mua gói | `POST /payments/plans/checkout { planId uuid }` → 201 `{ order, checkoutUrl }`; gói 0đ giao ngay, `checkoutUrl: null` (`billing/billing.routes.js:11`, `billing.service.js:35-82`, `billing.validation.js:3`) | `checkoutPlan` → `window.location.assign(checkoutUrl)`; 0đ → toast "Đã chuyển sang …" (`BillingPage.jsx:32-39`) | Không có (Ví chỉ xem) | `NEEDS_API_INTEGRATION` + `NEEDS_FEATURE_UPDATE` |
+| Kiểm tra đơn | `GET /payments/orders/:orderId` (mọi role đăng nhập, chỉ đơn của mình) → `{ order }`; đơn `pending`/`expired` thì BE TỰ hỏi payOS rồi giao gói (`billing.service.js:110-118`) | Trang kết quả hỏi lại 3 s/lần, tối đa ~60 lần; xong thì làm mới gói + credit (`useBilling.js:12-28`, `BillingResultPage.jsx`) | Không có | `NEEDS_API_INTEGRATION` |
+| Nơi payOS trả người dùng về | `returnUrl`/`cancelUrl` = `${env.webUrl}/parent/billing/result?orderId=…` (`billing.service.js:58-59`) — luôn về **Web** | Trang `BillingResultPage` | App không nhận được (không có deep link) | `NEEDS_BACKEND_REVIEW` (đề xuất BE nhận returnUrl/deep link từ app) |
+| Luật nút theo gói | Mua lại đúng gói trả phí đang dùng = gia hạn, cộng `durationMonths` vào `periodEnd` (`billing.store.js:96-102`); gói khác (kể cả 0đ) = kỳ mới bắt đầu ngay, credit còn lại giữ (`startPeriod`, `replacedStatus: 'cancelled'`) | "Gia hạn thêm 1 tháng/1 năm" (gói trả phí đang dùng) · "Đang dùng" (gói 0đ đang dùng, khoá) · "Chuyển về gói này" (0đ) · "Thanh toán"; dòng "Hết hạn mới: … — không mất ngày còn lại" (`BillingPage.jsx:94-131`) | Chỉ có "Xem chi tiết" | `NEEDS_FEATURE_UPDATE` |
+| Lịch sử thanh toán | `GET /payments/orders` (parent) → `{ refundWindowDays, orders: [{ id, totalVnd, paidAt, payosOrderCode, items: [{ id, itemType, title, unitPriceVnd, status, refund, refundable, deadline, reason }] }] }`, chỉ đơn đã trả > 0đ, 100 đơn mới nhất (`admin/admin.routes.js:128`, `refunds/refunds.service.js:52-79`) | `PaymentHistory.jsx`: dòng theo mục, nhãn trạng thái hoàn tiền, ghi chú quản trị viên | Không có | `NEEDS_API_INTEGRATION` |
+| Yêu cầu hoàn tiền | `POST /payments/order-items/:itemId/refund { reason }` (parent), lý do trim 10–2000 ký tự; trong `market.refund_window_days` (mặc định 3) ngày kể từ `paidAt`; 409 đã gửi, 422 quá hạn / chưa trả / đã hoàn (`admin.routes.js:129-135`, `refunds.service.js:31-38, 83-103`) | Nút "Yêu cầu hoàn tiền (đến …)" chỉ khi `refundable`; form lý do ≥ 10 ký tự (`PaymentHistory.jsx`) | Không có | `NEEDS_API_INTEGRATION` |
+| Làm mới credit | — | `refreshCredit` + invalidate subscription | `ParentTabs` → `data.reload()` (gồm `GET /auth/me`) truyền vào Ví qua `onRefreshWallet` | `ALREADY_SUPPORTED` (dùng lại) |
+
+**Quyết định cho Mobile**
+- Không có deep link: app mở `checkoutUrl` bằng `Linking.openURL` (trình duyệt hệ thống). Thanh toán xong payOS đưa ba mẹ về trang kết quả của Web; khi ba mẹ quay lại app (AppState về `active`) hoặc bấm "Kiểm tra thanh toán", app gọi `GET /payments/orders/:orderId` **một lần** (không polling vô hạn). `orderId` chờ chỉ giữ trong state của màn (thoát màn là mất; đơn vẫn được BE/webhook xử lý, lịch sử thanh toán hiện khi đã trả).
+- Luật nút, dòng "Hết hạn mới" (cộng tháng theo lịch như `addMonths` BE) và đoạn giải thích thanh toán chép từ Web. Mọi lần tạo đơn / hoàn tiền qua Dialog xác nhận, chống bấm đúp, lỗi BE hiện câu đã dịch.
+- Nút hoàn tiền: theo `refundable` của BE, thêm kiểm tra `deadline` phía app (dữ liệu cũ quá hạn thì ẩn).
+
+### Kết quả GĐ D1 — FIXTURE PASS · `OWNER_RESERVED` (thanh toán thật do chủ dự án test ở GĐ G)
+
+| File | Thay đổi |
+|---|---|
+| `src/types/api.ts` | `OrderDto`, `CheckoutResultDto`, `RefundDto`, `PaidOrderItemDto`, `PaidOrderDto`, `MyOrdersDto` theo `formatOrder` / `listMyOrders` của BE |
+| `src/services/billingService.ts` | `checkoutPlan`, `getOrder`, `getMyOrders`, `requestRefund` (kiểm dạng dữ liệu, sai → 502) |
+| `src/utils/billing.ts` (mới) | Luật nút theo gói (`planAction`), `extendDate` (như `addMonths` BE), nội dung Dialog, `checkoutAndOpen` (Linking, chỉ `https`, lỗi → không báo thành công), `watchAppReturn` (AppState, không hẹn giờ), `orderView`, `canRequestRefund`, lý do 10–2000 |
+| `src/screens/parent/WalletScreen.tsx` | Nút mua / gia hạn / chuyển gói + "Hết hạn mới", Dialog xác nhận, thẻ kết quả đơn + "Kiểm tra thanh toán", đoạn giải thích thanh toán của Web; tải lại gói + credit (`onRefreshWallet` → `GET /auth/me`) khi đơn xong |
+| `src/components/parent/PaymentHistory.tsx` (mới) | Lịch sử thanh toán, nhãn hoàn tiền, ghi chú quản trị viên, sheet lý do + Dialog |
+| `src/components/management/ManagementUi.tsx` | `ReasonSheet` thêm `maxLength` tuỳ chọn (không đổi chỗ dùng cũ) |
+| `tests/billingPayment.test.ts` (mới), `tests/manage.test.ts`, `tests/phase2.test.ts` | Test D1 (9 ca); 2 assert cũ "Ví chỉ xem" sửa theo phạm vi D1 đã duyệt (vẫn cấm mua credit lẻ) |
+
+- `npx tsc --noEmit`: PASS. Toàn bộ `tests/*.test.ts`: 21/21 PASS (fetch giả).
+- `NOT_VERIFIED_AT_RUNTIME`: chưa mở payOS thật, chưa test `Linking.openURL` trên Android/Expo Go, chưa test AppState khi chuyển qua trình duyệt rồi quay lại.
+- Giới hạn: đơn chờ chỉ giữ trong state của màn — thoát màn trước khi kiểm tra thì mất thẻ kết quả (BE / webhook vẫn giao gói; lịch sử thanh toán hiện đơn đã trả).
+- Dialog xác nhận hoàn tiền mở chồng lên sheet lý do — cùng lưu ý thứ tự lớp trên Expo Web như GĐ F.
+- `NEEDS_BACKEND_REVIEW`: đề xuất BE nhận `returnUrl` / deep link của app (ghi ở `LO_TRINH_MOBILE.md` §6).
