@@ -7,6 +7,7 @@ import type {
   AnalyzeStoryResultDto,
   BookshelfCheckDto,
   BookshelfPageDto,
+  CheckpointTypeDto,
   GenerationDto,
   PaginationDto,
   ShelfItemDto,
@@ -21,7 +22,8 @@ import type {
 
 /** Payload POST /stories (BE stories.validation createStory) */
 export interface CreateStoryPayload {
-  entry: 'topic' | 'family' | 'handwritten';
+  /** Bỏ trống với truyện tự viết (length 'custom'): BE tự đặt handwritten */
+  entry?: 'topic' | 'family' | 'handwritten';
   length: 'short' | 'medium' | 'long' | 'custom';
   title: string;
   topicId?: string;
@@ -32,6 +34,37 @@ export interface CreateStoryPayload {
   useAiImage?: boolean;
   useTts?: boolean;
 }
+
+/** Phương án điểm dừng gửi lên (BE checkpointOption) – perspective: {text,isCorrect}; problem_solving: {text,role,feedback} */
+export interface CheckpointOptionInput {
+  text?: string | null;
+  role?: 'constructive' | 'avoidant' | 'impulsive';
+  isCorrect?: boolean;
+  feedback?: string | null;
+}
+
+/** Body PUT /stories/:id/checkpoints/:cpId (BE updateCheckpoint) */
+export interface UpdateCheckpointBody {
+  question?: string | null;
+  hint?: string | null;
+  answerEmotion?: 'happy' | 'sad' | 'angry' | 'scared' | 'neutral';
+  options?: CheckpointOptionInput[];
+}
+
+/** Body POST /stories/:id/checkpoints (BE createCheckpoint) */
+export interface CreateCheckpointBody {
+  type: CheckpointTypeDto;
+  afterPageId: string;
+  targetToken?: string;
+}
+
+/** Lệnh editor: BE trả `data { story }` (chi tiết đầy đủ) → trả nguyên DTO cho màn Sửa truyện */
+const editorCall = async (path: string, init: RequestInit, what: string): Promise<StoryDto> => {
+  const data = await apiFetch<Partial<StoryResponseDto>>(path, init);
+  if (!data?.story?.id) throw invalidResponseError(what);
+  return data.story;
+};
+const json = (method: string, body?: unknown): RequestInit => ({ method, ...(body !== undefined && { body: JSON.stringify(body) }) });
 
 /** BE giới hạn limit ≤ 100; tối đa MAX_PAGES trang để không lặp vô hạn nếu BE trả sai */
 const PAGE_LIMIT = 100;
@@ -114,6 +147,48 @@ export const storyService = {
     const data = await apiFetch<Partial<StoryResponseDto>>(`/stories/${storyId}/review`, { method: 'POST' });
     if (!data?.story?.id) throw invalidResponseError('xem lại truyện');
     return storyService.formatStory(data.story);
+  },
+
+  // ---- Sửa truyện (Web useStoryEditor). Mọi lệnh trả chi tiết truyện mới nhất (StoryDto). ----
+
+  /** Chi tiết truyện dạng DTO cho màn Sửa truyện: GET /stories/:id → data { story } */
+  getStoryDetail: (id: string): Promise<StoryDto> => editorCall(`/stories/${id}`, {}, 'chi tiết truyện'),
+
+  /** Hoàn tất (POST /stories/:id/review) cho màn Sửa truyện. 422 kèm errors[{path,message}] */
+  reviewStoryDetail: (storyId: string): Promise<StoryDto> => editorCall(`/stories/${storyId}/review`, json('POST'), 'hoàn tất truyện'),
+
+  /** Thêm trang (chỉ truyện tự viết): POST /stories/:id/pages { contentText? } */
+  createPage: (storyId: string, contentText?: string | null): Promise<StoryDto> =>
+    editorCall(`/stories/${storyId}/pages`, json('POST', contentText === undefined ? {} : { contentText }), 'thêm trang'),
+
+  /** Lưu chữ một trang: PUT /stories/:id/pages/:pageId { contentText } (chuỗi trống / null = xoá chữ) */
+  updatePage: (storyId: string, pageId: string, contentText: string | null): Promise<StoryDto> =>
+    editorCall(`/stories/${storyId}/pages/${pageId}`, json('PUT', { contentText }), 'lưu trang'),
+
+  /** Xoá trang (chỉ truyện tự viết): DELETE /stories/:id/pages/:pageId. 409 nếu trang có điểm dừng sau nó */
+  deletePage: (storyId: string, pageId: string): Promise<StoryDto> =>
+    editorCall(`/stories/${storyId}/pages/${pageId}`, json('DELETE'), 'xoá trang'),
+
+  /** Thêm điểm dừng (chỉ truyện tự viết): POST /stories/:id/checkpoints { type, afterPageId, targetToken? } */
+  createCheckpoint: (storyId: string, body: CreateCheckpointBody): Promise<StoryDto> =>
+    editorCall(`/stories/${storyId}/checkpoints`, json('POST', body), 'thêm điểm dừng'),
+
+  /** Sửa điểm dừng: PUT /stories/:id/checkpoints/:cpId { question?, hint?, answerEmotion?, options? } */
+  updateCheckpoint: (storyId: string, checkpointId: string, body: UpdateCheckpointBody): Promise<StoryDto> =>
+    editorCall(`/stories/${storyId}/checkpoints/${checkpointId}`, json('PUT', body), 'lưu điểm dừng'),
+
+  /** Xoá điểm dừng (chỉ truyện tự viết): DELETE /stories/:id/checkpoints/:cpId */
+  deleteCheckpoint: (storyId: string, checkpointId: string): Promise<StoryDto> =>
+    editorCall(`/stories/${storyId}/checkpoints/${checkpointId}`, json('DELETE'), 'xoá điểm dừng'),
+
+  /** Chọn ảnh bìa: PUT /stories/:id/cover { sceneId } – cảnh đã có ảnh; null = mặc định (cảnh 1). Không vẽ tranh */
+  setCover: (storyId: string, sceneId: string | null): Promise<StoryDto> =>
+    editorCall(`/stories/${storyId}/cover`, json('PUT', { sceneId }), 'đổi ảnh bìa'),
+
+  /** Xoá truyện: DELETE /stories/:id (BE xoá mềm, không trả data) */
+  deleteStory: async (storyId: string): Promise<boolean> => {
+    await apiFetch(`/stories/${storyId}`, { method: 'DELETE' });
+    return true;
   },
 
   /** Thêm truyện vào tủ sách của bé: POST /bookshelf (idempotent). 422 = truyện chưa sẵn sàng cho bé */

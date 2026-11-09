@@ -63,6 +63,26 @@ export const CHECKPOINT_TYPES: Record<string, string> = {
   reflection: 'Liên hệ bản thân (không chấm điểm)',
 };
 
+/** Kiểu điểm dừng cần chọn nhân vật được hỏi (nhân vật phụ) – BE NEEDS_TARGET */
+export const NEEDS_TARGET = ['emotion_other', 'perspective'] as const;
+
+/** Bộ 5 cảm xúc cố định (Web EMOTIONS, BE enum emotion) */
+export const EMOTIONS: Record<string, string> = {
+  happy: 'Vui',
+  sad: 'Buồn',
+  angry: 'Giận',
+  scared: 'Sợ',
+  neutral: 'Bình thường',
+};
+
+/** Vai phương án "Giải quyết tình huống" (option_role) – do khung quy định, thứ tự hiển thị cố định */
+export const OPTION_ROLES = [
+  { value: 'constructive', label: 'Xây dựng', tone: 'success' },
+  { value: 'avoidant', label: 'Né tránh', tone: 'neutral' },
+  { value: 'impulsive', label: 'Bốc đồng', tone: 'warning' },
+] as const;
+export type OptionRole = (typeof OPTION_ROLES)[number]['value'];
+
 /** Trạng thái tạo truyện BE (GET /stories/:id/generation) → nhãn UI */
 export const GENERATION_STATES = {
   queued: { label: 'Đang xếp hàng', tone: 'info' },

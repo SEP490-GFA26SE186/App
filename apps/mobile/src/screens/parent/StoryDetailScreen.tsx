@@ -3,7 +3,7 @@
 // theo dõi/chạy AI viết, "Hoàn tất xem lại" (POST /review; lỗi 422 hiển thị errors[]), thêm vào tủ sách của bé (POST /bookshelf).
 // Phase 1: khối "Tủ sách của các bé" – GET /bookshelf/check/:storyId cho biết truyện đang ở giá bé nào; thêm (POST /bookshelf)
 // hoặc gỡ (DELETE /bookshelf/:storyId?childId, có xác nhận) theo từng bé rồi kiểm tra lại. Không đổi luồng xem lại / AI viết / đọc thử.
-// Chưa có: sửa chữ từng trang / điểm dừng (PUT /stories/:id/pages|checkpoints) → "Chưa hỗ trợ".
+// GĐ B1: nút "Sửa truyện" mở StoryEditorScreen (sửa trang / điểm dừng / ảnh bìa / xoá truyện).
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { View, Text, ScrollView, StyleSheet } from 'react-native';
 import { Icon } from '../../components/ui/Icon';
@@ -24,6 +24,7 @@ import { CHECKPOINT_TYPES, STORY_STATUS_LABELS } from '../../constants/story';
 import { storyService } from '../../services';
 import { StoryView } from '../../types/viewModels';
 import { useAsyncResource } from '../../utils/useAsyncResource';
+import { translateErrorMessage } from '../../services/errorMessages';
 
 /** Lý do BE trả (mã) → câu tiếng Việt; mã lạ giữ nguyên chữ BE trả. */
 const READINESS_REASONS: Record<string, string> = {
@@ -40,7 +41,8 @@ interface StoryDetailScreenProps {
   /** BE trả bản truyện mới (chi tiết/đã xem lại/đã viết xong) */
   onStoryLoaded: (story: StoryView) => void;
   onCreditsChanged: () => void;
-  onUnsupported: (what: string) => void;
+  /** Mở màn Sửa truyện */
+  onOpenEditor: (storyId: string) => void;
 }
 
 export const StoryDetailScreen: React.FC<StoryDetailScreenProps> = ({
@@ -51,7 +53,7 @@ export const StoryDetailScreen: React.FC<StoryDetailScreenProps> = ({
   onRead,
   onStoryLoaded,
   onCreditsChanged,
-  onUnsupported,
+  onOpenEditor,
 }) => {
   const toast = useToast();
   const dialog = useDialog();
@@ -114,7 +116,7 @@ export const StoryDetailScreen: React.FC<StoryDetailScreenProps> = ({
         toast.show('Đã xem lại: truyện được đánh dấu xem xong.');
       } catch (e: any) {
         if (e?.status === 422 && e.errors?.length) {
-          setReviewErrors(e.errors.map((x: { message?: string }) => x.message).filter(Boolean));
+          setReviewErrors(e.errors.map((x: { message?: string }) => x.message).filter(Boolean).map((m: string) => translateErrorMessage(m)));
         } else {
           void dialog.notify('Chưa hoàn tất được', e?.message || 'Vui lòng thử lại.');
         }
@@ -253,10 +255,10 @@ export const StoryDetailScreen: React.FC<StoryDetailScreenProps> = ({
           )}
           {pages.length > 0 && (
             <HeyButton
-              title="Chỉnh sửa (chưa hỗ trợ)"
+              title="Sửa truyện"
               iconName="create-outline"
               variant="tertiary"
-              onPress={() => onUnsupported('Chỉnh sửa chữ từng trang')}
+              onPress={() => onOpenEditor(storyId)}
               style={styles.actionBtn}
             />
           )}
@@ -334,7 +336,7 @@ export const StoryDetailScreen: React.FC<StoryDetailScreenProps> = ({
             <StateView
               variant="empty"
               title="Truyện chưa có trang nào"
-              description={notWritten ? 'Bấm “Cho AI viết” để AI viết truyện này.' : 'Truyện tự viết cần thêm trang (chưa hỗ trợ trên Mobile).'}
+              description={notWritten ? 'Bấm “Cho AI viết” để AI viết truyện này.' : 'Truyện tự viết chưa có trang. Bấm “Sửa truyện” để thêm trang.'}
             />
           ) : (
             pages.map((p, i) => (
@@ -358,7 +360,7 @@ export const StoryDetailScreen: React.FC<StoryDetailScreenProps> = ({
               ))}
               <View style={styles.footnoteRow}>
                 <Icon name="lock-closed-outline" size={14} color={Colors.textMuted} />
-                <Text style={styles.footnote}>Điểm dừng câu hỏi do khung sư phạm quy định, không chỉnh trực tiếp.</Text>
+                <Text style={styles.footnote}>{isAi ? 'Điểm dừng của truyện AI do khung sư phạm quy định, chỉ xem.' : 'Sửa điểm dừng trong màn “Sửa truyện”.'}</Text>
               </View>
             </>
           )}

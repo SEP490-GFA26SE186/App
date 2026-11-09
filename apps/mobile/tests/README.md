@@ -70,3 +70,9 @@ node %TEMP%/sw-mgmt-tests/tests/management.test.js
 npx tsc tests/errorMessages.test.ts --outDir %TEMP%/sw-err-tests --module commonjs --target es2022 --esModuleInterop --skipLibCheck --jsx react-jsx --types react-native,node
 node %TEMP%/sw-err-tests/tests/errorMessages.test.js
 ```
+
+`storyEditor.test.ts` (GĐ B1) kiểm màn Sửa truyện và lối "Tự viết": đúng method/path/body cho 8 endpoint editor + review (fetch giả), map lỗi 422 của review theo trang/điểm dừng (từ khoá chặn báo riêng), luật điểm dừng phía client giống BE `editorRules.js`, điểm dừng khoá không có nút Sửa (không gửi PUT), "Tự viết" gửi `length: 'custom'` không có `entry`/`analysisToken`, editor không gọi API AI. Chạy từ `apps/mobile`:
+```
+npx tsc tests/storyEditor.test.ts --outDir %TEMP%/sw-editor-tests --module commonjs --target es2022 --esModuleInterop --skipLibCheck --jsx react-jsx --types react-native,node
+node %TEMP%/sw-editor-tests/tests/storyEditor.test.js
+```
