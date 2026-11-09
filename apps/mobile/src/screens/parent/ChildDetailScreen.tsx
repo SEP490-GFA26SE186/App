@@ -15,7 +15,10 @@ import { Colors } from '../../theme/colors';
 import { Radius, Spacing } from '../../theme/spacing';
 import { Typography } from '../../theme/typography';
 import { ageLabel, childEmoji, formatBirthDate, readingTimeLabel, vnDateDaysAgo } from '../../utils/child';
-import { childService } from '../../services';
+import { childService, storyService } from '../../services';
+import type { ChildDto } from '../../types/api';
+import { CharacterPortraitAction, usePortraitPolling } from '../../components/parent/CharacterPortraitAction';
+import { isPortraitDrawing } from '../../utils/characterPortrait';
 import { useAsyncResource } from '../../utils/useAsyncResource';
 
 interface ChildDetailScreenProps {
@@ -25,6 +28,9 @@ interface ChildDetailScreenProps {
   onBack: () => void;
   onOpenShelf: () => void;
   onOpenStory: (storyId: string) => void;
+  /** GĐ B3: số dư credit (null = chưa biết) và tải lại số dư sau khi vẽ chân dung nhân vật của bé */
+  creditBalance: number | null;
+  onCreditsChanged: () => void;
 }
 
 const USAGE_DAYS = 7;
@@ -38,14 +44,25 @@ const Stat: React.FC<{ value: number | string; label: string }> = ({ value, labe
   </View>
 );
 
-export const ChildDetailScreen: React.FC<ChildDetailScreenProps> = ({ childId, summary, onBack, onOpenShelf, onOpenStory }) => {
+export const ChildDetailScreen: React.FC<ChildDetailScreenProps> = ({ childId, summary, onBack, onOpenShelf, onOpenStory, creditBalance, onCreditsChanged }) => {
   const [daysAgo, setDaysAgo] = useState(0);
   const usageDate = vnDateDaysAgo(daysAgo);
   const profile = useAsyncResource(() => childService.getChild(childId), [childId]);
   const usage = useAsyncResource(() => childService.getChildUsage(childId, usageDate), [childId, usageDate]);
   const shelf = useAsyncResource(() => childService.getChildBookshelf(childId, { limit: 3 }), [childId]);
+  // GĐ B3: hồ sơ mới nhất sau khi vẽ / khi hỏi lại tiến độ chân dung (không nạp lại cả khối → không nháy skeleton)
+  const [live, setLive] = useState<ChildDto | null>(null);
+  const pricing = useAsyncResource(() => storyService.getAiPricing(), []);
+  const refreshChild = () => childService.getChild(childId).then(setLive).catch(() => {});
 
-  const child = profile.data;
+  const child = live ?? profile.data;
+  usePortraitPolling<ChildDto>({
+    drawing: isPortraitDrawing(child?.character) ? 1 : 0,
+    load: () => childService.getChild(childId),
+    drawingCount: (c) => (isPortraitDrawing(c.character) ? 1 : 0),
+    onData: setLive,
+    onDrawn: onCreditsChanged,
+  });
   const name = child?.name ?? summary?.name ?? 'Bé';
   const portrait = child?.character?.portraitImageUrl;
 
@@ -89,6 +106,22 @@ export const ChildDetailScreen: React.FC<ChildDetailScreenProps> = ({ childId, s
               <Text style={styles.bodyStrong}>Ngoại hình nhân vật đại diện: </Text>
               {child.character.appearance}
             </Text>
+          )}
+          {!!child.character?.id && (
+            <CharacterPortraitAction
+              characterId={child.character.id}
+              name={child.name}
+              character={{
+                appearance: child.character.appearance,
+                imageUrl: child.character.portraitImageUrl,
+                portraitStatus: child.character.portraitStatus,
+                portraitFailure: child.character.portraitFailure,
+              }}
+              cost={pricing.data?.images?.characterPortrait}
+              creditBalance={creditBalance}
+              onStarted={() => void refreshChild()}
+              onCreditsChanged={onCreditsChanged}
+            />
           )}
           {!!child.preferredVoice && (
             <Text style={styles.body}>
