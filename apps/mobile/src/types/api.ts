@@ -101,8 +101,26 @@ export interface StoryPageDto {
   pageOrder: number;
   sceneId?: string | null;
   contentText?: string | null;
+  /** human | ai | ai_edited */
+  origin?: string | null;
   audioUrl?: string | null;
   audioStatus?: string | null;
+}
+
+/** Cảnh của truyện (chi tiết). imageStatus: none | queued | generating | ready | failed… */
+export interface StorySceneDto {
+  id: string;
+  sceneOrder?: number;
+  description?: string | null;
+  imageUrl?: string | null;
+  imageStatus?: string | null;
+}
+
+/** Từ khoá chuyên gia đặt xuất hiện trong chữ (GET /stories/:id). path: pages.<id> | checkpoints.<id> */
+export interface KeywordWarningDto {
+  path: string;
+  keyword: string;
+  severity: 'block' | 'warn' | string;
 }
 
 export type StoryStatusDto = 'draft' | 'generating' | 'ready';
@@ -130,8 +148,15 @@ export interface StoryCheckpointDto {
   afterPageId: string;
   afterPageOrder: number | null;
   type: CheckpointTypeDto;
+  /** emotion_other / perspective: nhân vật được hỏi ({NVn}) */
+  targetToken?: string | null;
   question: string | null;
+  /** Kiểu cảm xúc: happy | sad | angry | scared | neutral */
+  answerEmotion?: string | null;
   hint?: string | null;
+  origin?: string | null;
+  scored?: boolean;
+  /** BE: story.length !== 'custom' (câu hỏi theo khung chuyên gia) */
   locked: boolean;
   options: StoryCheckpointOptionDto[];
 }
@@ -155,8 +180,14 @@ export interface StoryDto {
   checkpointCount?: number;
   readiness?: { ready: boolean; reason?: string | null };
   pages?: StoryPageDto[];
-  scenes?: { id: string; imageUrl?: string | null }[];
+  scenes?: StorySceneDto[];
   checkpoints?: StoryCheckpointDto[];
+  /** private | published */
+  kind?: string;
+  useAiImage?: boolean;
+  /** Cảnh đang làm bìa; null = mặc định (cảnh 1) */
+  coverSceneId?: string | null;
+  keywordWarnings?: KeywordWarningDto[];
 }
 
 /** GET /stories/:id, POST /stories, POST /stories/:id/review ... */
