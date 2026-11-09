@@ -1,7 +1,7 @@
 // apps/mobile/src/types/viewModels.ts
 // View model cho UI = kiểu miền (types/domain.ts) + trường BE trả mà UI cần.
 import { FamilyCharacter, Story } from './domain';
-import type { StoryCharacterRefDto, StoryCheckpointDto, StoryLengthDto } from './api';
+import type { NarrationDto, StoryCharacterRefDto, StoryCheckpointDto, StoryLengthDto, StorySceneDto } from './api';
 
 export type CharacterView = FamilyCharacter & {
   /** Trạng thái chân dung AI từ BE (none | queued | ... ) – hiển thị nhãn, không suy diễn */
@@ -26,6 +26,12 @@ export type StoryView = Story & {
   checkpointCount?: number;
   /** true khi `pages` đã nạp từ GET /stories/:id (danh sách tóm tắt không có trang) */
   detailLoaded?: boolean;
+  /** Tranh / giọng đọc (BE trả ở chi tiết; tóm tắt chỉ có cảnh đã có ảnh) */
+  kind?: string;
+  useAiImage?: boolean;
+  useTts?: boolean;
+  scenes?: StorySceneDto[];
+  narration?: NarrationDto;
 };
 
 /**

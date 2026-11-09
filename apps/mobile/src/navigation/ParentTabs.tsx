@@ -156,6 +156,7 @@ export const ParentTabs: React.FC<ParentTabsProps> = ({ currentUser, nav, active
             onStoryLoaded={data.upsertStory}
             onCreditsChanged={refreshCredit}
             onOpenEditor={(id) => navigate(ROUTES.STORY_EDITOR, { storyId: id })}
+            creditBalance={currentUser.creditBalance}
           />
         );
       case ROUTES.STORY_EDITOR:
@@ -169,6 +170,8 @@ export const ParentTabs: React.FC<ParentTabsProps> = ({ currentUser, nav, active
               void data.reload();
               navigate(ROUTES.LIBRARY);
             }}
+            creditBalance={currentUser.creditBalance}
+            onCreditsChanged={refreshCredit}
           />
         );
       case ROUTES.CREATE:
