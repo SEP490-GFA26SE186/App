@@ -87,7 +87,7 @@ export const ParentTabs: React.FC<ParentTabsProps> = ({ currentUser, nav, active
       await storyService.addToShelf(child.id, story.id);
       toast.show(`Đã thêm “${story.title}” lên tủ sách của ${child.name}.`);
     } catch (e: any) {
-      void dialog.notify('Chưa thêm được', e?.errors?.[0]?.message || e?.message || 'Vui lòng thử lại.');
+      void dialog.notify('Chưa thêm được', e?.message || 'Vui lòng thử lại.');
     } finally {
       shelfBusy.current = false;
     }

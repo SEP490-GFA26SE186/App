@@ -8,6 +8,7 @@ process.env.EXPO_PUBLIC_API_URL = 'http://test.invalid';
 
 import { ERROR_MESSAGES, ERROR_PATTERNS, translateErrorMessage as t } from '../src/services/errorMessages';
 import { apiFetch, kidFetch, extractErrorMessage, ApiError } from '../src/services/apiClient';
+import { safeStorage, STORAGE_KEYS } from '../src/services/storage';
 
 const GENERIC = 'Có lỗi xảy ra, ba mẹ thử lại sau nhé';
 
@@ -82,8 +83,16 @@ const cases: [string, () => void | Promise<void>][] = [
     assert.equal(t('Current PIN is incorrect'), 'Mã PIN hiện tại chưa đúng');
     assert.equal(t('PIN must be between 4 and 6 numeric digits'), 'Mã PIN gồm 4 đến 6 chữ số');
     assert.equal(t('Kid Exit PIN has not been set yet. Please set it first.'), 'Tài khoản chưa có mã PIN, ba mẹ đặt PIN trước nhé');
-    assert.equal(t('You must set a Kid Exit PIN before entering Kid Mode'), 'Ba mẹ cần đặt mã PIN thoát Kid Mode trước nhé');
-    assert.equal(t('Kid session has expired'), 'Phiên của bé đã kết thúc, nhờ ba mẹ mở lại Kid Mode nhé');
+  }],
+  ['MOBILE_OVERRIDES áp trước bảng Web: dùng "Chế độ Bé", không còn "Kid Mode"', () => {
+    assert.equal(t('You must set a Kid Exit PIN before entering Kid Mode'), 'Ba mẹ cần đặt mã PIN thoát Chế độ Bé trước nhé');
+    assert.equal(t('Kid session has expired'), 'Phiên của bé đã kết thúc, nhờ ba mẹ mở lại Chế độ Bé nhé');
+    assert.equal(t('Invalid or already closed kid session'), 'Phiên của bé đã kết thúc, nhờ ba mẹ mở lại Chế độ Bé nhé');
+    assert.equal(t('No active session or user found to exit from Kid Mode'), 'Phiên Chế độ Bé đã kết thúc, ba mẹ đăng nhập lại nhé');
+    // Không câu dịch nào (sau override) còn chữ "Kid Mode"
+    for (const key of Object.keys(ERROR_MESSAGES)) assert.ok(!t(key).includes('Kid Mode'), key);
+    // Bảng Web giữ nguyên để đồng bộ
+    assert.equal(ERROR_MESSAGES['Kid session has expired'], 'Phiên của bé đã kết thúc, nhờ ba mẹ mở lại Kid Mode nhé');
   }],
   ['lỗi hồ sơ bé, kể cả giới hạn số bé theo gói', () => {
     assert.equal(t('Child profile not found'), 'Không tìm thấy hồ sơ bé');
@@ -121,6 +130,18 @@ const cases: [string, () => void | Promise<void>][] = [
     respond(500, { success: false, message: 'Invalid `prisma.story.findMany()` invocation: column "x" does not exist' });
     await rejectsWith(apiFetch('/stories', { skipAuth: true }), 500, GENERIC);
     await rejectsWith(kidFetch('/kid/shelf'), 500, GENERIC);
+  }],
+  ['refresh token gặp 500: ẩn message kỹ thuật, KHÔNG xoá phiên', async () => {
+    safeStorage.setItem(STORAGE_KEYS.ACCESS_TOKEN, 'OLD_AT');
+    safeStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, 'RT');
+    (globalThis as any).fetch = async (url: string) =>
+      url.endsWith('/auth/refresh-tokens')
+        ? new Response(JSON.stringify({ success: false, message: 'Invalid `prisma.authToken.findFirst()` invocation' }), { status: 500 })
+        : new Response(JSON.stringify({ success: false, message: 'Invalid or expired access token' }), { status: 401 });
+    await rejectsWith(apiFetch('/children'), 500, GENERIC);
+    assert.equal(safeStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN), 'OLD_AT');
+    assert.equal(safeStorage.getItem(STORAGE_KEYS.REFRESH_TOKEN), 'RT');
+    safeStorage.clear();
   }],
   ['apiFetch 502/503: giữ câu tiếng Việt BE cố ý trả', async () => {
     respond(503, { success: false, message: 'Hệ thống giọng đọc đang tạm gián đoạn. Vui lòng thử lại sau ít phút.' });

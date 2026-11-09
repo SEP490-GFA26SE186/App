@@ -182,3 +182,10 @@ Mỗi nhóm làm xong thì dừng chờ review.
   - Message trường lỗi ở các chỗ này vẫn có thể là tiếng Anh.
   - `StoryWizard` thuộc phần OWNER-RESERVED (§11), nên không sửa.
 - Bảng dịch phải bảo trì thủ công song song với Web.
+
+### Xử lý sau review (GĐ A, branch `feat/mobile-error-i18n`)
+- **Câu "Kid Mode":** thêm `MOBILE_OVERRIDES` trong `services/errorMessages.ts`, áp trước bảng Web. 4 message liên quan Kid Mode/phiên của bé nay dùng "Chế độ Bé". Bảng Web giữ nguyên.
+  - Hai câu khác của Mobile cũ ("Mật khẩu hiện tại chưa đúng", "hồ sơ bé này trong tài khoản") vẫn theo Web.
+- **4 chỗ đọc `errors[0].message`** (`ParentTabs.tsx:90`, `StoryDetailScreen.tsx:137`, `StoryWizard.tsx:191, 215`) đổi sang `e.message`. Vì `extractErrorMessage` đã lấy `errors[0].message` rồi dịch, hành vi giữ nguyên nhưng có dịch.
+  - `StoryDetailScreen.tsx:117` (danh sách lỗi kiểm duyệt `errors.map`) không đổi.
+- **Refresh token 5xx** (`apiClient.ts:119`) dùng `errorMessageFor`: lỗi 500 bị ẩn. Logic giữ phiên không đổi, đã có test.

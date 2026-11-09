@@ -116,7 +116,7 @@ const refreshAccessToken = async (): Promise<string> => {
       if (!res.ok) {
         if (res.status >= 500) {
           // Lỗi máy chủ tạm thời: KHÔNG xóa phiên
-          throw new ApiError(extractErrorMessage(data, `Lỗi máy chủ (${res.status})`), res.status);
+          throw new ApiError(errorMessageFor(res.status, data, `Lỗi máy chủ (${res.status})`), res.status);
         }
         // 4xx: refresh token bị BE từ chối → phiên thực sự không còn hợp lệ
         safeStorage.removeItem(STORAGE_KEYS.ACCESS_TOKEN);
