@@ -17,7 +17,8 @@ export interface CreateChildPayload {
   name: string;
   birthDate?: string;
   preferredVoice?: string;
-  appearance?: string;
+  /** Ngoại hình của bé (≤500). Sửa hồ sơ: null = xoá mô tả (BE updateChild nullable) */
+  appearance?: string | null;
 }
 
 // Mọi hàm ở đây throw ApiError khi BE lỗi/từ chối/trả sai hình dạng.
@@ -124,5 +125,7 @@ export const childService = {
     birthDate: raw.birthDate ?? undefined,
     age: typeof raw.age === 'number' ? raw.age : 0,
     avatarUrl: raw.character?.portraitImageUrl ?? undefined,
+    // GĐ C: mô tả ngoại hình của nhân vật đại diện (để form sửa hồ sơ bé điền sẵn)
+    appearance: raw.character?.appearance ?? undefined,
   }),
 };

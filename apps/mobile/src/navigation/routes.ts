@@ -18,6 +18,9 @@ export const ROUTES = {
   STORY_EDITOR: 'STORY_EDITOR', // GĐ B1: Sửa truyện (mở từ Chi tiết truyện hoặc sau khi tạo truyện "Tự viết")
   SETTINGS: 'SETTINGS',
   HELP: 'HELP',
+  // GĐ C: trang pháp lý mở từ Trợ giúp (khi chưa đăng nhập: AppNavigator)
+  PRIVACY: 'PRIVACY',
+  TERMS: 'TERMS',
   MARKET: 'MARKET', // SCOPE PENDING: giữ nguyên, không phát triển thêm
 } as const;
 
