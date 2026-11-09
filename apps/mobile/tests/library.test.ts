@@ -92,7 +92,7 @@ test('Tủ truyện: lưới theo bề ngang, bộ lọc segmented dùng STORY_F
 
 test('Chi tiết truyện: giữ nguyên hành động và lời gọi BE (xem lại, thêm vào tủ sách, đọc thử, cho AI viết)', () => {
   const d = noComments(read('screens/parent/StoryDetailScreen.tsx'));
-  for (const call of ['storyService.getStory(', 'storyService.reviewStory(', 'storyService.addToShelf(', 'onRead(story)', "setRunner('start')", "onUnsupported('Chỉnh sửa chữ từng trang')", 'e?.status === 422']) {
+  for (const call of ['storyService.getStory(', 'storyService.reviewStory(', 'storyService.addToShelf(', 'onRead(story)', "setRunner('start')", 'onOpenEditor(storyId)', 'e?.status === 422']) {
     assert.ok(d.includes(call), `thiếu ${call}`);
   }
 });
