@@ -24,7 +24,9 @@ import { CharactersScreen } from '../screens/parent/CharactersScreen';
 import { SettingsScreen } from '../screens/parent/SettingsScreen';
 import { HelpScreen } from '../screens/parent/HelpScreen';
 import { LegalScreen } from '../screens/legal/LegalScreen';
-import { MarketplaceScreen } from '../screens/scope-pending/MarketplaceScreen';
+import { MarketplaceScreen } from '../screens/parent/market/MarketplaceScreen';
+import { ListingDetailScreen } from '../screens/parent/market/ListingDetailScreen';
+import { SellerProfileScreen } from '../screens/parent/market/SellerProfileScreen';
 import { SellerDashboard } from '../screens/scope-pending/SellerDashboard';
 import { authService, storyService } from '../services';
 import { useAuth, useKidSession, useParentData } from '../stores/SessionProvider';
@@ -95,7 +97,6 @@ export const ParentTabs: React.FC<ParentTabsProps> = ({ currentUser, nav, active
     }
   };
 
-  // SCOPE PENDING (D5): lối vào Chợ truyện chỉ hiện ở __DEV__, ẩn khỏi production
   const balance = currentUser.creditBalance;
   const moreItems: MoreMenuItem[] = [
     { key: 'children', group: 'Gia đình', icon: 'people-outline', title: 'Bé nhà mình', description: 'Hồ sơ từng bé', onPress: () => navigate(ROUTES.CHILDREN) },
@@ -106,9 +107,9 @@ export const ParentTabs: React.FC<ParentTabsProps> = ({ currentUser, nav, active
     // Vào Kid Mode dùng đúng đường cũ (openKidMode → BE xác nhận); không đổi xác thực hay PIN
     { key: 'kid', group: 'An toàn trẻ em', icon: 'happy', title: 'Chế độ Bé', description: data.selectedChild ? `Cho ${data.selectedChild.name} đọc truyện, thoát bằng mã PIN` : 'Thêm hồ sơ bé trước khi vào Chế độ Bé', highlight: true, onPress: () => kid.openKidMode() },
     { key: 'help', group: 'Hỗ trợ', icon: 'help-circle-outline', title: 'Trợ giúp', description: 'Câu hỏi thường gặp', onPress: () => navigate(ROUTES.HELP) },
-    { key: 'market', group: 'Hỗ trợ', icon: 'cart-outline', title: 'Chợ truyện', description: 'Chưa kết nối máy chủ', badge: 'Đang chờ quyết định phạm vi', onPress: () => navigate(ROUTES.MARKET) },
+    // GĐ D2: Chợ truyện (Web đặt ở menu bên "Sáng tác & Chợ truyện"); Mobile dùng lại mục có sẵn trong Hồ sơ
+    { key: 'market', group: 'Chợ truyện', icon: 'storefront-outline', title: 'Chợ truyện', description: 'Truyện đã được chuyên gia duyệt từ các gia đình khác', onPress: () => navigate(ROUTES.MARKET) },
   ];
-  const visibleMoreItems = moreItems.filter((item) => __DEV__ || item.key !== 'market');
 
   const renderRoute = () => {
     switch (nav.current.route) {
@@ -143,6 +144,8 @@ export const ParentTabs: React.FC<ParentTabsProps> = ({ currentUser, nav, active
             onOpenStory={(s) => navigate(ROUTES.STORY, { storyId: s.id })}
             onAddToShelf={addToShelf}
             onCreateStory={() => navigate(ROUTES.CREATE)}
+            onOpenListing={(listingId) => navigate(ROUTES.MARKET_LISTING, { listingId })}
+            onOpenMarket={() => navigate(ROUTES.MARKET)}
           />
         );
       case ROUTES.STORY:
@@ -210,7 +213,7 @@ export const ParentTabs: React.FC<ParentTabsProps> = ({ currentUser, nav, active
       case ROUTES.WALLET:
         return <WalletScreen currentUser={currentUser} onRefreshWallet={() => void data.reload()} onBack={goBack} />;
       case ROUTES.MORE:
-        return <MoreScreen currentUser={currentUser} items={visibleMoreItems} onLogout={auth.logout} />;
+        return <MoreScreen currentUser={currentUser} items={moreItems} onLogout={auth.logout} />;
       case ROUTES.CHILDREN:
         return (
           <ChildrenScreen
@@ -277,15 +280,26 @@ export const ParentTabs: React.FC<ParentTabsProps> = ({ currentUser, nav, active
       case ROUTES.TERMS:
         return <LegalScreen doc="terms" onBack={goBack} />;
       case ROUTES.MARKET:
-        // SCOPE PENDING: giữ nguyên màn hiện có, không phát triển thêm
-        return (
-          <MarketplaceScreen
-            stories={data.stories}
-            currentUser={currentUser}
-            onStoryPurchased={() => {}}
-            onSelectStoryToRead={setSelectedStoryToRead}
+        return <MarketplaceScreen onBack={goBack} onOpenListing={(listingId) => navigate(ROUTES.MARKET_LISTING, { listingId })} />;
+      case ROUTES.MARKET_LISTING:
+        return nav.current.params?.listingId ? (
+          <ListingDetailScreen
+            key={nav.current.params.listingId}
+            listingId={nav.current.params.listingId}
+            onBack={goBack}
+            onOpenSeller={(sellerId) => navigate(ROUTES.MARKET_SELLER, { sellerId })}
+            onOpenKidMode={() => kid.openKidMode()}
           />
-        );
+        ) : null;
+      case ROUTES.MARKET_SELLER:
+        return nav.current.params?.sellerId ? (
+          <SellerProfileScreen
+            key={nav.current.params.sellerId}
+            sellerId={nav.current.params.sellerId}
+            onBack={goBack}
+            onOpenListing={(listingId) => navigate(ROUTES.MARKET_LISTING, { listingId })}
+          />
+        ) : null;
       default:
         return null;
     }
