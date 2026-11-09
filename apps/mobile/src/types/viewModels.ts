@@ -6,6 +6,8 @@ import type { StoryCharacterRefDto, StoryCheckpointDto, StoryLengthDto } from '.
 export type CharacterView = FamilyCharacter & {
   /** Trạng thái chân dung AI từ BE (none | queued | ... ) – hiển thị nhãn, không suy diễn */
   portraitStatus?: string | null;
+  /** Lý do chân dung `failed` từ BE: 'blocked' (bộ lọc chặn) | 'error' (lỗi tạm thời) | null */
+  portraitFailure?: string | null;
   /** Có giá trị = nhân vật đại diện của một bé (không xóa được, đổi tên ở hồ sơ bé) */
   childId?: string | null;
 };

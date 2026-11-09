@@ -61,7 +61,8 @@ const run = async () => {
     assert.deepEqual([last().method, path(last()), last().body], ['POST', '/auth/verify-email', { token: 'abc' }]);
 
     respond({ success: false, message: 'Mã xác thực không hợp lệ hoặc đã được sử dụng' }, 400);
-    await assert.rejects(authService.verifyEmail('x'), /Mã xác thực không hợp lệ/);
+    // Câu BE được chỉnh giọng qua bảng dịch (services/errorMessages.ts, giống Web)
+    await assert.rejects(authService.verifyEmail('x'), /Mã xác thực không đúng hoặc đã được dùng/);
   });
 
   await test('Chi tiết nhân vật / gói / năng lực / kỹ năng con: GET đúng path', async () => {
