@@ -38,7 +38,7 @@ Xung đột Web ↔ BE: Web cho bấm "Đã chuyển trả — duyệt" khi tr�
 | Specialist | Lượt duyệt | `.../claim`, `.../pages/:id/view`, `.../decision` | MOCK ONLY | API INTEGRATED | nghe giọng đọc: WEB ONLY |
 | Specialist | Hồ sơ người bán | `/moderation/sellers`, `/decision` | MISSING | API INTEGRATED | |
 | Specialist | Báo cáo vi phạm | `/moderation/reports`, dismiss, suspend, strikes, hide review | MISSING | API INTEGRATED | |
-| Specialist | Truyện tạm gỡ, Cảnh cáo, Kiểm tra ngẫu nhiên, Cảnh báo AI | `/moderation/listings`, `/strikes`, `/audits`, `/ai-flags` | MISSING | WEB ONLY (chưa làm) | |
+| Specialist | Truyện tạm gỡ, Cảnh cáo, Kiểm tra ngẫu nhiên, Cảnh báo AI | `/moderation/listings`, `/strikes`, `/audits`, `/audits/run`, `/ai-flags`, `/ai-flags/:userId/block` | MISSING | API INTEGRATED (GĐ E1, FIXTURE PASS) | màn con mở từ "Thêm" + lối tắt ở Tổng quan; chọn đợt kiểm tra và khoá/mở khoá AI có Dialog xác nhận; ra cảnh cáo như Web |
 | Specialist | Kỹ năng con, Mẫu câu hỏi, Chuyện mẫu, Soát câu hỏi AI, Tham số báo cáo, Từ khoá chặn | các module tương ứng | MISSING | WEB ONLY (chưa làm) | quản trị nội dung dạng bảng/form lớn |
 
 ## 3. Quyết định thiết kế
@@ -134,3 +134,13 @@ Không đụng: `ModeratorAdminScreen.tsx` (mock cũ, không còn đường vào
 - Role: `authService.formatUser` không còn mặc định `PARENT`. Role thiếu/rỗng/không phải chuỗi → lỗi dữ liệu 502 (đăng nhập báo lỗi; khởi động app → màn lỗi có Thử lại/Đăng xuất). Role lạ → màn "chưa dùng được". Test: `management.test.ts`.
 - Đã xoá `src/screens/scope-pending/ModeratorAdminScreen.tsx`, nhánh MODERATOR/ADMIN trong `ParentTabs.tsx` và `'MODERATOR'` khỏi `Role` (không còn nơi dùng). Giữ nguyên `SellerDashboard`, `MarketplaceScreen`, `ParentNavigator`. Mục 5 và 9 ở trên đã lỗi thời về điểm này.
 - `App/CLAUDE.md` §2.4 cập nhật phạm vi Admin/Specialist; §10 giữ nguyên.
+
+## 12. GĐ E1 – Giám sát của Chuyên gia (2026-11-09, branch `feat/mobile-specialist-monitoring`)
+
+4 màn trước đây WEB ONLY nay đã có trên Mobile: **Truyện tạm gỡ**, **Cảnh cáo tác giả**, **Kiểm tra ngẫu nhiên**, **Cảnh báo AI** (`screens/specialist/{RestrictedListingsScreen,StrikesScreen,AuditsScreen,AiFlagsScreen}.tsx`).
+- Mở từ menu "Thêm" (thay 4 mục "Dùng trên Web") và hàng lối tắt ở Tổng quan kiểm duyệt; là màn con, không thêm tab.
+- Tổng quan kiểm duyệt (tab Hàng chờ) thêm ô "Kiểm tra ngẫu nhiên chờ xem" (số mục `random_audit` trong hàng chờ, như Web `getSpecialistOverview`).
+- Chọn đợt kiểm tra (`POST /moderation/audits/run`) và khoá / mở khoá AI (`POST /moderation/ai-flags/:userId/block`) luôn qua Dialog xác nhận.
+- Ra cảnh cáo như Web: Truyện tạm gỡ (nguồn `takedown`, người bán cố định) và Cảnh cáo tác giả (nguồn `report`, chọn người bán đã duyệt).
+- Kiểm thử: `tests/specialistMonitoring.test.ts` — FIXTURE PASS; E2E với BE thật dồn về GĐ G.
+- Còn WEB ONLY: Kỹ năng con, Mẫu câu hỏi, Chuyện mẫu, Soát câu hỏi AI, Tham số báo cáo, Từ khoá chặn (GĐ E2).
