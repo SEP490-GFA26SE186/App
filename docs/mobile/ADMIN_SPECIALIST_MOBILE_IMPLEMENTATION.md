@@ -31,9 +31,9 @@ Xung đột Web ↔ BE: Web cho bấm "Đã chuyển trả — duyệt" khi tr�
 | Admin | Hoàn tiền | `/admin/refunds`, `/decision` | MISSING | API INTEGRATED | |
 | Admin | Kháng nghị | `/admin/appeals`, `/decision` | MISSING | API INTEGRATED | |
 | Admin | Nhật ký kiểm toán | `GET /admin/audit-logs` | MISSING | API INTEGRATED | chỉ đọc |
-| Admin | Gói & định giá | `/admin/plans` | MISSING | WEB ONLY (chưa làm) | menu báo "Dùng trên Web" |
-| Admin | Cấu hình AI | `/admin/settings` | MISSING | WEB ONLY (chưa làm) | |
-| Admin | Doanh thu & đối soát | `/admin/finance/reconciliation` | MISSING | WEB ONLY (chưa làm) | |
+| Admin | Gói & định giá | `/admin/plans` (GET, POST, PUT /:planId) | MISSING | API INTEGRATED (GĐ F, FIXTURE PASS) | thẻ gói + sheet tạo/sửa, Dialog xác nhận liệt kê thay đổi; nhóm cài đặt market/moderation của trang Web chưa làm |
+| Admin | Cấu hình AI | `/admin/settings`, `PUT /admin/settings/:key` | MISSING | API INTEGRATED (GĐ F, FIXTURE PASS) | chỉ nhóm `ai`; mỗi giá trị lưu qua Dialog xác nhận |
+| Admin | Doanh thu & đối soát | `/admin/finance/summary`, `/reconciliation`, `/reconciliation/fix-counters` | MISSING | API INTEGRATED (GĐ F, FIXTURE PASS) | thẻ + danh sách; "Tính lại bộ đếm" qua Dialog xác nhận |
 | Specialist | Hàng chờ duyệt | `GET /moderation/submissions` | MOCK ONLY | API INTEGRATED | |
 | Specialist | Lượt duyệt | `.../claim`, `.../pages/:id/view`, `.../decision` | MOCK ONLY | API INTEGRATED | nghe giọng đọc: WEB ONLY |
 | Specialist | Hồ sơ người bán | `/moderation/sellers`, `/decision` | MISSING | API INTEGRATED | |
@@ -144,3 +144,12 @@ Không đụng: `ModeratorAdminScreen.tsx` (mock cũ, không còn đường vào
 - Ra cảnh cáo như Web: Truyện tạm gỡ (nguồn `takedown`, người bán cố định) và Cảnh cáo tác giả (nguồn `report`, chọn người bán đã duyệt).
 - Kiểm thử: `tests/specialistMonitoring.test.ts` — FIXTURE PASS; E2E với BE thật dồn về GĐ G.
 - Còn WEB ONLY: Kỹ năng con, Mẫu câu hỏi, Chuyện mẫu, Soát câu hỏi AI, Tham số báo cáo, Từ khoá chặn (GĐ E2).
+
+## 13. GĐ F – Admin: Gói & định giá, Doanh thu & đối soát, Cấu hình AI (2026-11-10, branch `feat/mobile-admin-plans-finance`)
+
+3 màn trước đây WEB ONLY nay đã có trên Mobile (`screens/admin/{PlansScreen,FinanceScreen,AiConfigScreen}.tsx`), mở từ menu "Thêm" (thay 3 mục "Dùng trên Web"), là màn con, không thêm tab.
+- Gói & định giá: thẻ gói; sheet tạo / sửa theo `planFields` của BE (mã + thời hạn chỉ khi tạo; gói FREE khoá giá và công tắc mở bán); lưu qua Dialog xác nhận liệt kê thay đổi, nhắc giá / credit chỉ áp dụng lần mua sau.
+- Doanh thu & đối soát: chọn khoảng thời gian; 3 thẻ + danh sách phân tích doanh thu; 3 mục đối soát; "Tính lại bộ đếm" qua Dialog xác nhận, báo "Đã tính lại N truyện" theo BE.
+- Cấu hình AI: chỉ khoá nhóm `ai`; mỗi giá trị kiểm như `settingError` của BE và lưu qua Dialog xác nhận; đoạn "Nhà cung cấp" chép từ Web, không hiện khoá API.
+- Kiểm thử: `tests/adminPlansFinance.test.ts` — FIXTURE PASS; E2E với BE thật dồn về GĐ G.
+- Còn WEB ONLY: nhóm cài đặt `market` (chợ truyện & hoàn tiền) và `moderation` (giám sát nội dung) — Web đặt ở trang Gói & định giá.

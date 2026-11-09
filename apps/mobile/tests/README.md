@@ -100,3 +100,9 @@ node %TEMP%/sw-legal-tests/tests/legal.test.js
 npx tsc tests/specialistMonitoring.test.ts --outDir %TEMP%/sw-spec-tests --module commonjs --target es2022 --esModuleInterop --skipLibCheck --jsx react-jsx --types react-native,node
 node %TEMP%/sw-spec-tests/tests/specialistMonitoring.test.js
 ```
+
+`adminPlansFinance.test.ts` (GĐ F) kiểm 3 màn Admin: đúng method/path/body cho `/admin/plans` (GET, POST, PUT), `/admin/finance/reconciliation` (+ `fix-counters`), `/admin/settings` (GET, PUT) với fetch giả, lỗi BE (409 / 422) không thành công giả, validate form gói khớp `planFields` + luật gói FREE, Dialog xác nhận bắt buộc trước mọi thao tác ghi, Cấu hình AI chỉ hiện nhóm `ai`, điều hướng màn con. Chạy từ `apps/mobile`:
+```
+npx tsc tests/adminPlansFinance.test.ts --outDir %TEMP%/sw-admin-f-tests --module commonjs --target es2022 --esModuleInterop --skipLibCheck --jsx react-jsx --types react-native,node
+node %TEMP%/sw-admin-f-tests/tests/adminPlansFinance.test.js
+```
