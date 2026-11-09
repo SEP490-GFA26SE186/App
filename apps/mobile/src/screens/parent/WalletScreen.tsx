@@ -1,11 +1,14 @@
 // apps/mobile/src/screens/parent/WalletScreen.tsx
-// B10/C12 – Gói dịch vụ & Credit, CHỈ XEM (Web: BillingPage). Dữ liệu từ BE: số dư (GET /auth/me), gói hiện tại + mức dùng
+// B10/C12 – Gói dịch vụ & Credit (Web: BillingPage). Dữ liệu từ BE: số dư (GET /auth/me), gói hiện tại + mức dùng
 // (GET /subscriptions/me), danh sách gói (GET /plans), lịch sử credit (GET /subscriptions/me/credit-history).
-// Không có nạp credit (BE không có endpoint), không rút tiền, không thanh toán/nâng gói (SCOPE PENDING).
-// Phase 2: "Xem chi tiết" trên thẻ gói mở sheet chỉ đọc từ GET /plans/:id (không mua/nâng gói, không gọi thanh toán).
+// Không có nạp credit lẻ (BE không có endpoint), không rút tiền.
+// Phase 2: "Xem chi tiết" trên thẻ gói mở sheet chỉ đọc từ GET /plans/:id.
+// GĐ D1: nút mua / gia hạn / chuyển gói theo luật Web → Dialog xác nhận → POST /payments/plans/checkout → mở trang payOS bằng
+// Linking. payOS trả ba mẹ về Web (BE chưa nhận returnUrl của app) nên khi app quay lại `active` hoặc bấm "Kiểm tra thanh toán"
+// thì hỏi GET /payments/orders/:id MỘT lần (không polling); xong thì tải lại gói + credit. Lịch sử thanh toán + hoàn tiền bên dưới.
 // R8: thẻ số dư lớn, mức dùng có thanh, gói dạng thẻ, lịch sử nhóm theo ngày (cộng/trừ có dấu, không chỉ dựa vào màu).
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { View, Text, ScrollView, StyleSheet } from 'react-native';
+import { AppState, Linking, View, Text, ScrollView, StyleSheet } from 'react-native';
 import { HeyCard } from '../../components/ui/HeyCard';
 import { HeyButton } from '../../components/ui/HeyButton';
 import { HeyProgressBar } from '../../components/ui/HeyProgressBar';
@@ -14,13 +17,18 @@ import { Icon, IconName } from '../../components/ui/Icon';
 import { StateView } from '../../components/ui/StateView';
 import { ScreenHeader } from '../../components/ui/ScreenHeader';
 import { Sheet } from '../../components/ui/Sheet';
+import { useDialog } from '../../components/ui/Dialog';
+import { useMutationRunner } from '../../components/management/ManagementUi';
+import { PaymentHistory } from '../../components/parent/PaymentHistory';
 import { Colors } from '../../theme/colors';
 import { Radius, Spacing } from '../../theme/spacing';
 import { FontFamily, Typography } from '../../theme/typography';
 import { SessionUser } from '../../types/sessionUser';
 import { billingService } from '../../services/billingService';
 import { useAsyncResource } from '../../utils/useAsyncResource';
-import type { CreditEntryDto, PlanDto } from '../../types/api';
+import { PAYMENT_NOTE, PlanAction, checkoutAndOpen, checkoutConfirm, orderView, planAction, watchAppReturn } from '../../utils/billing';
+import { money as formatMoney } from '../../utils/format';
+import type { CreditEntryDto, OrderDto, PlanDto } from '../../types/api';
 
 interface WalletScreenProps {
   currentUser: SessionUser;
@@ -67,7 +75,7 @@ const PlanDetailSheet: React.FC<{ planId: string | null; onClose: () => void }> 
   const res = useAsyncResource(() => (planId ? billingService.getPlan(planId) : Promise.resolve(null)), [planId]);
   const p = res.data;
   return (
-    <Sheet visible={!!planId} title={p?.name ?? 'Chi tiết gói'} description="Chỉ xem. Ứng dụng chưa hỗ trợ mua hay nâng gói." onClose={onClose}>
+    <Sheet visible={!!planId} title={p?.name ?? 'Chi tiết gói'} description="Thông tin gói."onClose={onClose}>
       <View style={styles.planDetail}>
         {res.status === 'loading' ? (
           <StateView variant="loading" title="Đang tải gói..." />
@@ -92,7 +100,15 @@ const PlanDetailSheet: React.FC<{ planId: string | null; onClose: () => void }> 
   );
 };
 
-const PlanRow: React.FC<{ plan: PlanDto; current: boolean; onOpen?: () => void }> = ({ plan, current, onOpen }) => (
+const PlanRow: React.FC<{ plan: PlanDto; current: boolean; onOpen?: () => void; action?: PlanAction; busy?: boolean; locked?: boolean; onBuy?: () => void }> = ({
+  plan,
+  current,
+  onOpen,
+  action,
+  busy,
+  locked,
+  onBuy,
+}) => (
   <HeyCard variant={current ? 'info' : 'surface'} style={styles.planCard}>
     <View style={styles.planTop}>
       <Text style={styles.cardTitle}>{plan.name}</Text>
@@ -105,11 +121,56 @@ const PlanRow: React.FC<{ plan: PlanDto; current: boolean; onOpen?: () => void }
     <Line icon="diamond-outline" text={`${plan.creditsPerMonth} credit mỗi tháng`} />
     <Line icon="happy-outline" text={`Tối đa ${plan.maxChildren} bé`} />
     <Line icon="people-outline" text={`Tối đa ${plan.maxCharacters} nhân vật`} />
+    {plan.canSell != null && <Line icon="storefront-outline" text={plan.canSell ? 'Được đăng bán truyện trên Chợ truyện' : 'Chưa đăng bán truyện'} />}
+    {!!action && !!onBuy && (
+      <HeyButton
+        title={action.label}
+        iconName={action.kind === 'current' ? 'checkmark' : action.kind === 'renew' ? 'refresh' : 'card-outline'}
+        variant={action.kind === 'current' ? 'outline' : 'primary'}
+        size="md"
+        onPress={onBuy}
+        loading={busy}
+        disabled={action.disabled || locked}
+        accessibilityLabel={`${action.label} — gói ${plan.name}`}
+      />
+    )}
+    {!!action?.newExpiry && <Text style={styles.expiry}>Hết hạn mới: {action.newExpiry} — không mất ngày còn lại</Text>}
     {!!onOpen && (
       <HeyButton title="Xem chi tiết" iconName="information-circle-outline" variant="tertiary" size="sm" onPress={onOpen} accessibilityLabel={`Xem chi tiết gói ${plan.name}`} style={styles.planBtn} />
     )}
   </HeyCard>
 );
+
+/** Kết quả đơn vừa tạo / vừa kiểm tra (Web BillingResultPage) */
+const OrderResultCard: React.FC<{
+  result: { order: OrderDto; planName: string };
+  checking: boolean;
+  error: string | null;
+  onCheck: () => void;
+  onClose: () => void;
+}> = ({ result, checking, error, onCheck, onClose }) => {
+  const v = orderView(result.order.status);
+  const color = v.tone === 'success' ? Colors.successText : v.tone === 'danger' ? Colors.danger : Colors.tealStrong;
+  return (
+    <HeyCard style={styles.card}>
+      <View style={styles.planTop} accessible accessibilityLiveRegion="polite">
+        <Icon name={v.tone === 'success' ? 'checkmark-circle' : v.tone === 'danger' ? 'close-circle' : 'time-outline'} size={28} color={color} />
+        <Text style={[styles.cardTitle, styles.flex1]}>{v.title}</Text>
+      </View>
+      <Text style={styles.text}>{v.text}</Text>
+      <Text style={styles.hint}>
+        {result.planName} • {formatMoney(result.order.totalVnd)}
+        {result.order.payosOrderCode != null ? ` • mã ${result.order.payosOrderCode}` : ''}
+      </Text>
+      {!!error && <Text style={styles.error}>{error}</Text>}
+      {v.final ? (
+        <HeyButton title="Đóng" variant="tertiary" size="sm" onPress={onClose} style={styles.refresh} />
+      ) : (
+        <HeyButton title="Kiểm tra thanh toán" iconName="refresh" size="md" onPress={onCheck} loading={checking} disabled={checking} />
+      )}
+    </HeyCard>
+  );
+};
 
 const UsageBar: React.FC<{ label: string; used: number; max: number }> = ({ label, used, max }) => (
   <View style={styles.usage} accessible accessibilityLabel={`${label}: ${used} trên ${max}`}>
@@ -127,6 +188,13 @@ export const WalletScreen: React.FC<WalletScreenProps> = ({ currentUser, onRefre
   const sub = useAsyncResource(() => billingService.getSubscription(), []);
   const plans = useAsyncResource(() => billingService.getPlans(), []);
   const [planId, setPlanId] = useState<string | null>(null);
+  const dialog = useDialog();
+  const { run, busy, busyKey } = useMutationRunner();
+  // Đơn đang chờ thanh toán (chỉ trong state của màn) + kết quả lần kiểm tra gần nhất
+  const [pending, setPending] = useState<{ orderId: string; planName: string } | null>(null);
+  const [result, setResult] = useState<{ order: OrderDto; planName: string } | null>(null);
+  const [checkState, setCheckState] = useState<{ checking: boolean; error: string | null }>({ checking: false, error: null });
+  const [paymentsKey, setPaymentsKey] = useState(0);
 
   // Lịch sử credit: trang đầu + "Xem thêm"
   const [entries, setEntries] = useState<CreditEntryDto[]>([]);
@@ -171,7 +239,59 @@ export const WalletScreen: React.FC<WalletScreenProps> = ({ currentUser, onRefre
     void sub.reload();
     void plans.reload();
     void loadHistory(1);
+    setPaymentsKey((k) => k + 1);
   };
+
+  // Mua / gia hạn / chuyển gói: Dialog trước, rồi tạo đơn và mở payOS (gói 0đ: BE đổi gói ngay)
+  const buy = async (plan: PlanDto) => {
+    const s0 = sub.data;
+    if (busy || pending || !s0 || !plan.id) return;
+    const action = planAction(plan, s0);
+    if (action.disabled) return;
+    if (!(await dialog.confirm(checkoutConfirm(plan, action, s0)))) return;
+    const out: { r?: { order: OrderDto; opened: boolean } } = {};
+    const ok = await run(
+      `buy:${plan.id}`,
+      async () => (out.r = await checkoutAndOpen(plan.id as string, billingService.checkoutPlan, Linking)),
+      (r) => (r.opened ? 'Đã mở trang thanh toán payOS' : `Đã chuyển sang ${plan.name}`)
+    );
+    if (!ok || !out.r || !alive.current) return;
+    setCheckState({ checking: false, error: null });
+    if (out.r.opened) {
+      setPending({ orderId: out.r.order.id, planName: plan.name });
+      setResult({ order: out.r.order, planName: plan.name });
+    } else {
+      setResult(null);
+      refreshAll();
+    }
+  };
+
+  // Hỏi BE trạng thái đơn đang chờ MỘT lần (BE tự hỏi payOS); xong (đã trả / huỷ / hết hạn) thì bỏ đơn chờ, tải lại gói + credit
+  const checkingRef = useRef(false);
+  const checkOrder = async () => {
+    const p = pending;
+    if (!p || checkingRef.current) return;
+    checkingRef.current = true;
+    setCheckState({ checking: true, error: null });
+    try {
+      const order = await billingService.getOrder(p.orderId);
+      if (!alive.current) return;
+      setResult({ order, planName: order.items[0]?.plan?.name ?? p.planName });
+      setCheckState({ checking: false, error: null });
+      if (order.status !== 'pending') {
+        setPending(null);
+        refreshAll();
+      }
+    } catch (e: any) {
+      if (alive.current) setCheckState({ checking: false, error: e?.message || 'Không kiểm tra được đơn thanh toán.' });
+    } finally {
+      checkingRef.current = false;
+    }
+  };
+  // Ba mẹ quay lại app sau trang payOS / Web → kiểm tra một lần (ref để luôn dùng state mới nhất)
+  const checkRef = useRef(checkOrder);
+  checkRef.current = checkOrder;
+  useEffect(() => watchAppReturn(AppState, () => void checkRef.current()), []);
 
   // Nhóm theo ngày (giữ thứ tự BE trả)
   const groups = useMemo(() => {
@@ -234,14 +354,26 @@ export const WalletScreen: React.FC<WalletScreenProps> = ({ currentUser, onRefre
       {plans.status === 'error' && (
         <StateView variant="error" title="Chưa tải được danh sách gói" description={plans.error ?? ''} actionLabel="Thử lại" onAction={() => void plans.reload()} />
       )}
+      {result && <OrderResultCard result={result} checking={checkState.checking} error={checkState.error} onCheck={() => void checkOrder()} onClose={() => setResult(null)} />}
       {plans.data?.map((p) => (
-        <PlanRow key={p.code} plan={p} current={p.code === s?.plan.code} onOpen={p.id ? () => setPlanId(p.id ?? null) : undefined} />
+        <PlanRow
+          key={p.code}
+          plan={p}
+          current={p.code === s?.plan.code}
+          onOpen={p.id ? () => setPlanId(p.id ?? null) : undefined}
+          action={s && p.id ? planAction(p, s) : undefined}
+          busy={busyKey === `buy:${p.id}`}
+          locked={busy || !!pending}
+          onBuy={() => void buy(p)}
+        />
       ))}
       <PlanDetailSheet planId={planId} onClose={() => setPlanId(null)} />
       <View style={styles.noteRow}>
         <Icon name="information-circle-outline" size={18} color={Colors.textMuted} />
-        <Text style={styles.note}>Nâng cấp gói và thanh toán chưa được hỗ trợ trên ứng dụng. Ứng dụng không cho nạp hay rút tiền.</Text>
+        <Text style={styles.note}>{PAYMENT_NOTE}</Text>
       </View>
+
+      <PaymentHistory reloadKey={paymentsKey} />
 
       <Text style={styles.sectionTitle} accessibilityRole="header">
         Lịch sử credit
@@ -308,6 +440,9 @@ const styles = StyleSheet.create({
   price: { ...Typography.title, fontSize: 20, color: Colors.text },
   noteRow: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.sm, marginVertical: Spacing.sm },
   note: { ...Typography.caption, color: Colors.textMuted, flex: 1 },
+  expiry: { ...Typography.caption, color: Colors.textMuted, textAlign: 'center' },
+  error: { ...Typography.caption, color: Colors.danger },
+  flex1: { flex: 1 },
   group: { gap: Spacing.xs },
   groupDate: { ...Typography.label, color: Colors.textMuted, marginTop: Spacing.xs },
   entry: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },

@@ -4,7 +4,7 @@ Lập ngày 2026-11-09 · Nguồn đối chiếu: GitHub `main` — App `f84c4f9
 Môi trường demo: Web `https://storyweaver.id.vn` · API `https://api.storyweaver.id.vn/api/v1` (lấy từ tài liệu deploy của BE).
 Tài khoản demo **không ghi trong tài liệu hay source**; chủ dự án tự nhập khi test.
 
-> Tiến độ: GĐ A và **GĐ B hoàn tất** (B1, B2, B3, hotfix Expo Go audio, bỏ `baseUrl` trong tsconfig đều đã merge vào `main`). **GĐ C** (trang Chính sách / Điều khoản, ô ngoại hình + gợi ý ở form hồ sơ bé) đã merge. **GĐ E1** (Chuyên gia: giám sát) đã merge. **GĐ F** (Admin: Gói & định giá, Doanh thu & đối soát, Cấu hình AI) đang làm trên nhánh `feat/mobile-admin-plans-finance`. Tiếp theo: **D** (gói, thanh toán, Chợ truyện, Bán truyện).
+> Tiến độ: GĐ A và **GĐ B hoàn tất** (B1, B2, B3, hotfix Expo Go audio, bỏ `baseUrl` trong tsconfig đều đã merge vào `main`). **GĐ C** (trang Chính sách / Điều khoản, ô ngoại hình + gợi ý ở form hồ sơ bé) đã merge. **GĐ E1** (Chuyên gia: giám sát) đã merge. **GĐ F** (Admin: Gói & định giá, Doanh thu & đối soát, Cấu hình AI) đã merge. **GĐ D1** (mua / gia hạn gói qua payOS, lịch sử thanh toán, hoàn tiền) đang làm trên nhánh `feat/mobile-billing-payment`. Tiếp theo: phần còn lại của **D** (Chợ truyện, Bán truyện).
 > Quyết định 2026-11-09: **không test thật sau từng đợt; mọi test thật dồn về GĐ G.** Mỗi đợt chỉ cần tsc + test fetch giả + review.
 > Đã chạy thật trên máy ảo Android (Expo Go SDK 52) với BE deploy: đăng nhập và đọc dữ liệu OK (sau hotfix Expo Go audio).
 >
@@ -61,7 +61,7 @@ Chi tiết:
 - Thêm trang Điều khoản và Chính sách bảo mật, lấy nội dung từ Web.
 
 ### GĐ D – Gói, thanh toán, Chợ truyện, Bán truyện (L)
-1. Mua và gia hạn gói: mở link thanh toán payOS bằng trình duyệt ngoài (`Linking`, không thêm thư viện); quay lại app thì tải lại gói.
+1. **D1** – Mua và gia hạn gói: mở link thanh toán payOS bằng trình duyệt ngoài (`Linking`, không thêm thư viện); quay lại app thì tải lại gói. Lịch sử thanh toán + yêu cầu hoàn tiền trong hạn. **Lưu ý:** BE đặt `returnUrl`/`cancelUrl` của payOS về **Web** (`BE/api/src/modules/billing/billing.service.js:58-59`), nên thanh toán xong ba mẹ thấy trang kết quả của Web; ba mẹ tự quay lại app, app kiểm tra đơn khi trở lại (hoặc bấm "Kiểm tra thanh toán").
 2. Chợ truyện: danh sách, lọc theo giá, chi tiết truyện, khung người bán; hồ sơ người bán công khai; mua truyện, truyện đã mua, báo cáo vi phạm.
 3. Bán truyện: đăng ký người bán, sửa hồ sơ bán; đăng truyện, cập nhật phiên bản; doanh thu, tài khoản ngân hàng, rút tiền.
 
@@ -86,5 +86,7 @@ Chi tiết:
 A → B → C → E1 → F → D → E2 → G
 
 ## 6. Quyết định chờ chủ dự án
+
+- **Đề xuất cho BE (D1):** cho `POST /payments/plans/checkout` nhận thêm `returnUrl` (hoặc tham số `client=app`) trong danh sách cho phép, ví dụ deep link `storyweaver://billing/result?orderId=…`, để payOS đưa ba mẹ thẳng về app thay vì về Web. Khi có, Mobile chỉ cần thêm scheme + bắt link (cần duyệt vì đụng cấu hình Expo). Hiện tại Mobile không đổi BE và vẫn chạy được nhờ kiểm tra đơn khi quay lại app.
 
 - **Demo trên iPhone?** App giữ Expo SDK 52, mà Expo Go trên iOS (App Store) chỉ chạy được SDK mới nhất, nên iPhone không mở được app bằng Expo Go. Muốn chạy trên iPhone phải build riêng (development build / TestFlight, cần tài khoản Apple Developer) hoặc nâng SDK (trái quyết định đã duyệt). **Đề xuất: demo bằng Android**: Expo Go trên Google Play cũng chỉ theo SDK mới nhất, nhưng Android cài được bản Expo Go cũ cho SDK 52 (file APK) hoặc một bản build APK của app. Cần kiểm lại trên máy demo ở GĐ G.

@@ -136,7 +136,8 @@ const run = async () => {
     ]) {
       assert.doesNotMatch(noComments(read(f)), /generat|portrait\w*\(|narration|checkout|createStory|analyze|Speech|expo-av|expo-audio/i, f);
     }
-    assert.doesNotMatch(noComments(read('services/billingService.ts')), /method: 'POST'|checkout|purchase/i);
+    // GĐ D1 (đã duyệt) thêm POST /payments/plans/checkout và POST .../refund — kiểm ở billingPayment.test.ts; vẫn không có mua credit lẻ
+    assert.doesNotMatch(noComments(read('services/billingService.ts')), /purchase|topup|top-up/i);
     assert.doesNotMatch(noComments(read('screens/parent/CharactersScreen.tsx')), /generatePortrait|\/portrait/);
   });
 

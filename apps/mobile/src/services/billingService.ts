@@ -1,7 +1,18 @@
 // apps/mobile/src/services/billingService.ts
-// C12 – CHỈ XEM gói, quota, lịch sử credit. Không nạp credit / thanh toán (SCOPE PENDING; BE không có top-up).
+// C12 – gói, quota, lịch sử credit. GĐ D1 – mua / gia hạn gói qua payOS, lịch sử thanh toán, yêu cầu hoàn tiền
+// (BE billing.routes.js + admin.routes.js parentRefundRouter, gắn ở /payments). Không nạp credit lẻ (BE không có top-up).
 import { apiFetch, invalidResponseError } from './apiClient';
-import type { CreditEntryDto, PaginationDto, PlanDetailDto, PlanDto, SubscriptionMeDto } from '../types/api';
+import type {
+  CheckoutResultDto,
+  CreditEntryDto,
+  MyOrdersDto,
+  OrderDto,
+  PaginationDto,
+  PlanDetailDto,
+  PlanDto,
+  RefundDto,
+  SubscriptionMeDto,
+} from '../types/api';
 
 export const billingService = {
   /** Danh sách gói (công khai): GET /plans → data { plans } */
@@ -32,5 +43,36 @@ export const billingService = {
     );
     if (!Array.isArray(data?.entries) || !data.pagination) throw invalidResponseError('lịch sử credit');
     return { entries: data.entries, pagination: data.pagination };
+  },
+
+  /** Tạo đơn mua / gia hạn gói: POST /payments/plans/checkout { planId } → { order, checkoutUrl } (checkoutUrl null với gói 0đ) */
+  checkoutPlan: async (planId: string): Promise<CheckoutResultDto> => {
+    const data = await apiFetch<Partial<CheckoutResultDto>>('/payments/plans/checkout', { method: 'POST', body: JSON.stringify({ planId }) });
+    if (!data?.order?.id || (data.checkoutUrl !== null && typeof data.checkoutUrl !== 'string')) throw invalidResponseError('đơn thanh toán');
+    return { order: data.order, checkoutUrl: data.checkoutUrl };
+  },
+
+  /** Trạng thái đơn: GET /payments/orders/:orderId → { order }. Đơn còn chờ thì BE tự hỏi payOS trước khi trả */
+  getOrder: async (orderId: string): Promise<OrderDto> => {
+    const data = await apiFetch<{ order?: OrderDto }>(`/payments/orders/${encodeURIComponent(orderId)}`);
+    if (!data?.order?.status) throw invalidResponseError('trạng thái đơn');
+    return data.order;
+  },
+
+  /** Lịch sử thanh toán (đơn đã trả > 0đ) + hạn hoàn tiền từng mục: GET /payments/orders */
+  getMyOrders: async (): Promise<MyOrdersDto> => {
+    const data = await apiFetch<Partial<MyOrdersDto>>('/payments/orders');
+    if (!Array.isArray(data?.orders) || typeof data.refundWindowDays !== 'number') throw invalidResponseError('lịch sử thanh toán');
+    return { refundWindowDays: data.refundWindowDays, orders: data.orders };
+  },
+
+  /** Yêu cầu hoàn tiền một mục: POST /payments/order-items/:itemId/refund { reason } (10–2000 ký tự) → 201 { refund } */
+  requestRefund: async (itemId: string, reason: string): Promise<RefundDto> => {
+    const data = await apiFetch<{ refund?: RefundDto }>(`/payments/order-items/${encodeURIComponent(itemId)}/refund`, {
+      method: 'POST',
+      body: JSON.stringify({ reason: reason.trim() }),
+    });
+    if (!data?.refund?.id) throw invalidResponseError('yêu cầu hoàn tiền');
+    return data.refund;
   },
 };

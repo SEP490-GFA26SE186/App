@@ -106,3 +106,9 @@ node %TEMP%/sw-spec-tests/tests/specialistMonitoring.test.js
 npx tsc tests/adminPlansFinance.test.ts --outDir %TEMP%/sw-admin-f-tests --module commonjs --target es2022 --esModuleInterop --skipLibCheck --jsx react-jsx --types react-native,node
 node %TEMP%/sw-admin-f-tests/tests/adminPlansFinance.test.js
 ```
+
+`billingPayment.test.ts` (GĐ D1) kiểm mua / gia hạn gói và hoàn tiền với fetch giả, Linking giả, AppState giả (không gọi BE, không mở trình duyệt): đúng method/path/body cho `POST /payments/plans/checkout`, `GET /payments/orders/:id`, `GET /payments/orders`, `POST /payments/order-items/:id/refund`; nút theo gói hiện tại khớp Web (gia hạn / đang dùng / chuyển về / thanh toán, hết hạn mới); Dialog trước khi tạo đơn; mở đúng `checkoutUrl`, không mở được thì báo lỗi; quay lại app thì kiểm tra đơn đúng một lần, không polling; ẩn nút hoàn tiền khi quá hạn. Chạy từ `apps/mobile`:
+```
+npx tsc tests/billingPayment.test.ts --outDir %TEMP%/sw-billing-tests --module commonjs --target es2022 --esModuleInterop --skipLibCheck --jsx react-jsx --types react-native,node
+node %TEMP%/sw-billing-tests/tests/billingPayment.test.js
+```

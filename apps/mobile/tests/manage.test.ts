@@ -40,9 +40,11 @@ test('Giữ nguyên lời gọi BE: xóa/sửa bé và nhân vật, báo cáo EQ
   }
 });
 
-test('Ví chỉ xem: không gọi thanh toán/nạp/nâng gói; EQ không tự tính điểm/số liệu', () => {
+test('Ví: không nạp credit lẻ; mua gói (GĐ D1) chỉ qua Dialog + checkoutAndOpen; EQ không tự tính điểm/số liệu', () => {
   const w = noComments(read('screens/parent/WalletScreen.tsx'));
-  assert.doesNotMatch(w, /billingService\.(create|pay|purchase|checkout|topup|upgrade|subscribe)/i);
+  // GĐ D1 (đã duyệt) cho mua / gia hạn gói: chỉ truyền billingService.checkoutPlan vào checkoutAndOpen (test chi tiết: billingPayment.test.ts)
+  assert.doesNotMatch(w, /billingService\.(create|pay|purchase|topup|upgrade|subscribe)/i);
+  assert.deepEqual(w.match(/billingService\.checkout\w*/g), ['billingService.checkoutPlan']);
   const eq = noComments(read('screens/parent/EqReportScreen.tsx'));
   assert.doesNotMatch(eq, /Math\.random|\bscore\b|%/, 'EQ chỉ hiện mức BE trả');
   assert.match(eq, /competencies\.filter\(\(c\) => c\.level != null\)\.length/); // chỉ đếm từ dữ liệu BE

@@ -457,6 +457,63 @@ export interface CreditEntryDto {
     | null;
 }
 
+// ---- GĐ D1: thanh toán gói (BE billing/lib/billing.js formatOrder, refunds/refunds.service.js listMyOrders) ----
+
+/** pending → paid | cancelled | expired | failed */
+export type OrderStatus = 'pending' | 'paid' | 'cancelled' | 'expired' | 'failed';
+
+export interface OrderDto {
+  id: string;
+  status: OrderStatus;
+  totalVnd: number;
+  payosOrderCode: number | null;
+  paidAt: string | null;
+  expiresAt: string | null;
+  createdAt: string;
+  items: { itemType: 'plan' | 'listing'; planId: string | null; listingId: string | null; unitPriceVnd: number; plan?: PlanDto; listing?: { id: string; title: string } }[];
+}
+
+export interface CheckoutResultDto {
+  order: OrderDto;
+  /** null với gói 0đ (BE giao ngay, không qua payOS) */
+  checkoutUrl: string | null;
+}
+
+export interface RefundDto {
+  id: string;
+  status: 'pending' | 'approved' | 'rejected';
+  reason: string;
+  decisionNote: string | null;
+  bankTransactionRef: string | null;
+  createdAt: string;
+  handledAt: string | null;
+}
+
+export interface PaidOrderItemDto {
+  id: string;
+  itemType: 'plan' | 'listing';
+  title: string | null;
+  unitPriceVnd: number;
+  status: string;
+  refund: RefundDto | null;
+  refundable: boolean;
+  deadline?: string;
+  reason?: 'requested' | 'refunded' | 'not_paid' | 'expired';
+}
+
+export interface PaidOrderDto {
+  id: string;
+  totalVnd: number;
+  paidAt: string;
+  payosOrderCode: number | null;
+  items: PaidOrderItemDto[];
+}
+
+export interface MyOrdersDto {
+  refundWindowDays: number;
+  orders: PaidOrderDto[];
+}
+
 // ---- Phase 2: EQ skills / sub-skills / character detail / plan detail / kid / health ----
 /** GET /eq-skills → data { skills } (công khai) */
 export interface EqSkillDto {
