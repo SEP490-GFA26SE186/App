@@ -88,3 +88,9 @@ node %TEMP%/sw-media-tests/tests/storyMedia.test.js
 npx tsc tests/characterPortrait.test.ts --outDir %TEMP%/sw-portrait-tests --module commonjs --target es2022 --esModuleInterop --skipLibCheck --jsx react-jsx --types react-native,node
 node %TEMP%/sw-portrait-tests/tests/characterPortrait.test.js
 ```
+
+`legal.test.ts` (GĐ C) kiểm trang Chính sách bảo mật / Điều khoản dịch vụ: đủ 9 / 10 đề mục, chép nguyên văn từ Web (đọc thẳng `Web/src/pages/legal/*.jsx` nếu workspace có Web cạnh App, không có thì bỏ qua), liên kết ở Đăng nhập / Đăng ký / Trợ giúp, Back về đúng màn trước, form hồ sơ bé có ô ngoại hình + gợi ý và chỉ gửi `null` khi xoá mô tả đang có. Chạy từ `apps/mobile`:
+```
+npx tsc tests/legal.test.ts --outDir %TEMP%/sw-legal-tests --module commonjs --target es2022 --esModuleInterop --skipLibCheck --jsx react-jsx --types react-native,node
+node %TEMP%/sw-legal-tests/tests/legal.test.js
+```

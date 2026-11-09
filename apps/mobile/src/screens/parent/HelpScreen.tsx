@@ -10,8 +10,15 @@ import { Radius, Spacing, Touch } from '../../theme/spacing';
 import { Typography } from '../../theme/typography';
 import { focusRing } from '../../theme/focus';
 import { FAQS } from '../../constants/faq';
+import type { LegalDocKey } from '../../constants/legal';
 
-export const HelpScreen: React.FC<{ onBack: () => void }> = ({ onBack }) => {
+// GĐ C: hai mục pháp lý cuối trang (Web HelpPage.jsx:25-28)
+const LEGAL_ITEMS: { doc: LegalDocKey; label: string; icon: 'shield-checkmark-outline' | 'document-text-outline' }[] = [
+  { doc: 'privacy', label: 'Chính sách bảo mật', icon: 'shield-checkmark-outline' },
+  { doc: 'terms', label: 'Điều khoản dịch vụ', icon: 'document-text-outline' },
+];
+
+export const HelpScreen: React.FC<{ onBack: () => void; onOpenLegal: (doc: LegalDocKey) => void }> = ({ onBack, onOpenLegal }) => {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
   return (
     <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -38,6 +45,20 @@ export const HelpScreen: React.FC<{ onBack: () => void }> = ({ onBack }) => {
           </HeyCard>
         );
       })}
+      {LEGAL_ITEMS.map((l) => (
+        <HeyCard key={l.doc} style={styles.card}>
+          <Pressable
+            onPress={() => onOpenLegal(l.doc)}
+            accessibilityRole="link"
+            accessibilityLabel={l.label}
+            style={(s) => [styles.head, s.pressed && styles.pressed, focusRing(s)]}
+          >
+            <Icon name={l.icon} size={22} color={Colors.brandStrong} />
+            <Text style={styles.q}>{l.label}</Text>
+            <Icon name="chevron-forward" size={22} color={Colors.textMuted} />
+          </Pressable>
+        </HeyCard>
+      ))}
     </ScrollView>
   );
 };

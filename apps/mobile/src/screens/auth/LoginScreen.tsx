@@ -10,6 +10,8 @@ import { Elevation } from '../../theme/shadows';
 import { Radius, Spacing, Touch } from '../../theme/spacing';
 import { FontFamily, Typography } from '../../theme/typography';
 import { focusRing } from '../../theme/focus';
+import { LegalLinks } from '../../components/auth/LegalLinks';
+import type { LegalDocKey } from '../../constants/legal';
 import {
   authService,
   getApiBaseUrl,
@@ -31,6 +33,8 @@ interface LoginScreenProps {
   initialMessage?: string | null;
   /** Chỉ truyền khi __DEV__: mở Kid UI Preview (ADR-020). Không có prop = không có lối vào. */
   onOpenPreview?: () => void;
+  /** GĐ C: mở Chính sách bảo mật / Điều khoản (chưa đăng nhập) */
+  onOpenLegal: (doc: LegalDocKey) => void;
 }
 
 export const LoginScreen: React.FC<LoginScreenProps> = ({
@@ -38,6 +42,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
   onGoRegister,
   initialMessage,
   onOpenPreview,
+  onOpenLegal,
 }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -198,6 +203,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
               <Text style={styles.envWarn}>{API_NOT_CONFIGURED_MESSAGE}</Text>
             </View>
           )}
+          <LegalLinks onOpen={onOpenLegal} />
         </View>
       </ScrollView>
       <ForgotPasswordSheet visible={forgotOpen} initialEmail={email} onClose={() => setForgotOpen(false)} />
