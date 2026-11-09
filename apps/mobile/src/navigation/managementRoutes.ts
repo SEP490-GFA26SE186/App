@@ -38,6 +38,11 @@ export const SPECIALIST_ROUTES = {
   REPORTS: 'SPEC_REPORTS',
   MENU: 'SPEC_MENU',
   REVIEW: 'SPEC_REVIEW',
+  // GĐ E1: giám sát — màn con mở từ "Thêm" / lối tắt ở Tổng quan (không thêm tab)
+  RESTRICTED: 'SPEC_RESTRICTED',
+  STRIKES: 'SPEC_STRIKES',
+  AUDITS: 'SPEC_AUDITS',
+  AI_FLAGS: 'SPEC_AI_FLAGS',
 } as const;
 
 export type ManagementRoute =
