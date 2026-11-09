@@ -189,3 +189,75 @@ Mỗi nhóm làm xong thì dừng chờ review.
 - **4 chỗ đọc `errors[0].message`** (`ParentTabs.tsx:90`, `StoryDetailScreen.tsx:137`, `StoryWizard.tsx:191, 215`) đổi sang `e.message`. Vì `extractErrorMessage` đã lấy `errors[0].message` rồi dịch, hành vi giữ nguyên nhưng có dịch.
   - `StoryDetailScreen.tsx:117` (danh sách lỗi kiểm duyệt `errors.map`) không đổi.
 - **Refresh token 5xx** (`apiClient.ts:119`) dùng `errorMessageFor`: lỗi 500 bị ẩn. Logic giữ phiên không đổi, đã có test.
+
+## 17. GĐ B1 – Màn Sửa truyện + lối "Tự viết" (branch `feat/mobile-story-editor`)
+
+Đối chiếu đọc từ source (`VERIFIED_FROM_SOURCE`) trước khi code. Đường dẫn BE tính từ `BE/api/src/modules/stories/`. Web: `Web/src/pages/parent/studio/StoryEditorPage.jsx`, `components/parent/studio/*`, `hooks/useStudio.js`.
+
+### Endpoint (mọi lệnh editor trả `data { story }` = chi tiết đầy đủ, như GET /stories/:id)
+
+| Endpoint | Body (zod `stories.validation.js`) | Luật BE | Mobile |
+|---|---|---|---|
+| `POST /stories/:id/pages` (routes:34) | `{ contentText?: string\|null }` (≤2000), mặc định `{}` (:152) | Chỉ truyện `custom` (`lockCustom`, editor.service:56). Số trang trong `custom_limits` (seed: 4–20, `customRules.js:10`) | `storyService.createPage` |
+| `PUT /stories/:id/pages/:pageId` (:37) | `{ contentText: string\|null }` (:147) | Mọi truyện của chủ. Chữ trống → null. Tên thật đổi sang token, còn sót tên → 422. Đổi chữ thì xoá audio | `updatePage` |
+| `DELETE /stories/:id/pages/:pageId` (:38) | — | Chỉ `custom`. Trang có điểm dừng sau nó → 409 (editor.service:217). Dưới số trang tối thiểu → 422 | `deletePage` |
+| `POST /stories/:id/checkpoints` (:40) | `{ type, afterPageId, targetToken? }` (:182). `targetToken` (`{NVn}`) chỉ cho `emotion_other`/`perspective` | Chỉ `custom`. Không đặt sau trang 1; mỗi trang tối đa 1 điểm dừng; `reflection` chỉ sau trang cuối; tối đa `max_checkpoints` (seed 6). Nhân vật được hỏi phải là nhân vật phụ (`resolveCheckpointTarget`, editorRules:88) | `createCheckpoint` |
+| `PUT /stories/:id/checkpoints/:cpId` (:43) | `{ question?, hint?, answerEmotion?, options? }` (:166), cần ít nhất 1 trường | Truyện không phải `custom` → 422. `checkCheckpointEdit` (editorRules:32): kiểu cảm xúc có câu hỏi thì phải có `answerEmotion`; `perspective`: đúng 3 phương án `{text,isCorrect}`, đúng 1 đúng; `problem_solving`: 3 phương án `{text,role,feedback}` đủ 3 vai; kiểu khác không có phương án | `updateCheckpoint` |
+| `DELETE /stories/:id/checkpoints/:cpId` (:44) | — | Chỉ `custom` | `deleteCheckpoint` |
+| `PUT /stories/:id/cover` (:30, chỉ `parent`) | `{ sceneId: uuid\|null }` (:205) | Cảnh phải thuộc truyện và đã có ảnh (`imageStatus='ready'`), không thì 422. Chỉ truyện `private` | `setCover` |
+| `DELETE /stories/:id` (:27) | — | Xoá mềm (`deletedAt`). Trả `success` không có `data` | `deleteStory` |
+| `POST /stories/:id/review` (:46, đã có) | — | Thiếu → 422 `errors[{path: 'pages.<id>'\|'checkpoints.<id>', message}]` (`findReviewGaps`, editorRules:116). Đủ thì kiểm từ khoá chặn → 422 message "Có từ không phù hợp cho bé…" (`keywords.js:42`). Thành công: đặt `reviewedAt` **và đẩy job giọng đọc TTS** | `reviewStoryDetail` (bản trả DTO cho editor) |
+
+Luật chung:
+- Truyện `status === 'generating'` → mọi lệnh ghi 409 (`stories.access.js:36`).
+- `checkpoint.locked = story.length !== 'custom'` (`lib/storyFormat.js:126`). Web khoá thêm khi `entry === 'family'`.
+- Chữ trả về giữ token `{NVn}`; Web đổi sang tên khi hiển thị/sửa (`utils/storyNames.js`) và gửi lại chữ có tên.
+- `keywordWarnings[{path, keyword, severity}]` trong chi tiết: Web hiện nhắc "từ nên cân nhắc".
+
+### Tạo truyện "Tự viết"
+`POST /stories` với `length: 'custom'`, không `entry`/`analysisToken`, `useAiImage: false`, `topicId` tuỳ chọn (Web `CreateStoryPage.jsx:262`). BE đặt `entry = handwritten` và tạo sẵn 4 trang trống, chưa có điểm dừng (`lib/skeleton.js:8, 35`).
+
+### Ngoài phạm vi B1
+- Không đụng `/generate`, `/images`, `/scenes/:id/image`, `/narration/retry`, `/analyze`, `/characters/:id/portrait`.
+- `SubSkillPicker` của Web chỉ dùng cho luồng `/analyze` (Kể chuyện nhà mình) → không thuộc B1.
+- Web hiển thị thêm `NarrationPanel`, `ShelfPanel`, `GenerationPanel`, `ScenePicture`, nút "Đăng bán". B1 không làm; Mobile đã có tủ sách và AI viết ở `StoryDetailScreen`.
+
+### File Mobile sẽ sửa
+- `types/api.ts`: bổ sung trường BE đã trả (origin, answerEmotion, targetToken, scenes, coverSceneId, keywordWarnings…).
+- `services/storyService.ts`: 8 hàm mới + `getStoryDetail`, `reviewStoryDetail`.
+- `utils/storyEditor.ts` (mới): fillNames, form/body điểm dừng, kiểm tra phía client, `gapsByPath`.
+- `screens/parent/StoryEditorScreen.tsx` (mới).
+- `navigation/routes.ts` (route `STORY_EDITOR`), `navigation/ParentTabs.tsx`.
+- `screens/parent/StoryDetailScreen.tsx`: nút "Sửa truyện" + dịch lỗi `errors.map` (:117).
+- `screens/parent/StoryWizard.tsx`: bật lối "Tự viết".
+- `tests/storyEditor.test.ts` (mới).
+
+### Kết quả GĐ B1 (2026-11-09) — FIXTURE PASS, chưa test BE thật
+
+| Hạng mục | Trạng thái |
+|---|---|
+| Service + type (8 endpoint + `getStoryDetail`, `reviewStoryDetail`) | DONE, FIXTURE PASS |
+| Màn `StoryEditorScreen` (route `STORY_EDITOR`) | DONE, TSC PASS, `NOT_VERIFIED_AT_RUNTIME` |
+| Wizard "Tự viết" | DONE, FIXTURE PASS (quét mã nguồn) |
+| `StoryDetailScreen`: nút "Sửa truyện", dịch lỗi `errors.map` | DONE |
+
+Kiểm tra: `npx tsc --noEmit` PASS; `apps/mobile/tests` 15/15 file PASS (mới: `storyEditor.test.ts` 12 ca). Sửa 1 câu mong đợi trong `tests/library.test.ts` (nút "Chỉnh sửa (chưa hỗ trợ)" → `onOpenEditor(storyId)`), là hệ quả trực tiếp của B1.
+
+**Quyết định UI cho điện thoại**
+- Một cột dọc: thẻ trang (ô nhập nhiều dòng, đếm "n tiếng", "Chưa lưu"/"Đã lưu", Hoàn tác + Lưu trang) → điểm dừng thụt lề ngay dưới trang → nút "Thêm điểm dừng sau trang n".
+- Điểm dừng hiện tóm tắt trong danh sách; sửa trong bottom sheet (`Sheet`, có tránh bàn phím). Cảm xúc chọn bằng chip; phương án đúng (perspective) chọn bằng nút radio 44pt cạnh từng ô.
+- Thêm điểm dừng bằng sheet: danh sách kiểu dạng radio, chỉ hiện kiểu hợp lệ cho trang đó (reflection chỉ ở trang cuối; kiểu hỏi nhân vật khác chỉ khi có nhân vật phụ), chọn nhân vật bằng chip.
+- Điểm dừng khoá (truyện AI / Kể chuyện nhà mình): hiện đủ câu hỏi, cảm xúc đúng, gợi ý, phương án + dòng khoá, không có nút Sửa/Xoá.
+- Ảnh bìa: dải ảnh cuộn ngang (chỉ cảnh `imageStatus = ready`), ẩn cả khối khi không có cảnh nào có ảnh.
+- Thanh "Hoàn tất truyện" cố định ở đáy (như chân trang Wizard). Hoàn tất bị 422 → băng đỏ tóm tắt, tô đỏ thẻ lỗi, cuộn tới chỗ đầu tiên.
+- Xoá truyện là nút phụ ở cuối danh sách, luôn qua Dialog xác nhận.
+- Chống bấm đúp: một thao tác ghi tại một thời điểm, mọi nút ghi bị khoá khi đang chạy. Chữ đang sửa của các trang khác được giữ khi một lệnh khác trả truyện mới.
+- Truyện đang AI viết → trạng thái chờ + "Tải lại"; truyện AI chưa có chữ → hướng dẫn quay lại Chi tiết truyện để cho AI viết.
+
+**Điểm còn chưa chắc / chưa làm**
+- `NOT_VERIFIED_AT_RUNTIME`: chưa chạy app, chưa gọi BE thật (cuộn tới lỗi, bàn phím trên Android, bottom sheet dài cần kiểm tay).
+- **Hoàn tất (review) đẩy job giọng đọc TTS** khi truyện bật giọng đọc → có chi phí phía server. Chủ dự án tự test.
+- Chưa hiện tiến độ giọng đọc / nút thử lại giọng đọc (Web `NarrationPanel`, `FinishBarStatus`) → B2/B3.
+- Wizard "Tự viết" không hiện công tắc giọng đọc (giữ UI cũ), gửi `useTts: true` như mặc định của Web.
+- `StoryDetailScreen` vẫn còn câu "Truyện tự viết cần thêm trang (chưa hỗ trợ trên Mobile)" ở trạng thái rỗng và chú thích "Điểm dừng… không chỉnh trực tiếp": không sửa vì phạm vi chỉ cho đổi nút mở editor. Truyện tự viết luôn có ≥ 4 trang nên trạng thái rỗng hiếm gặp.
+- Giới hạn `custom_limits` (4–20 trang, ≤ 6 điểm dừng) không hard-code ở Mobile; vượt giới hạn thì hiện lỗi 422 của BE.
