@@ -76,3 +76,9 @@ node %TEMP%/sw-err-tests/tests/errorMessages.test.js
 npx tsc tests/storyEditor.test.ts --outDir %TEMP%/sw-editor-tests --module commonjs --target es2022 --esModuleInterop --skipLibCheck --jsx react-jsx --types react-native,node
 node %TEMP%/sw-editor-tests/tests/storyEditor.test.js
 ```
+
+`storyMedia.test.ts` (GĐ B2) kiểm tranh AI và giọng đọc: đúng method/path cho `POST /stories/:id/images`, `/scenes/:sceneId/image`, `/narration/retry` (fetch giả), lỗi 402/409/503 không thành công giả, công thức chi phí tranh + 3 mức cảnh báo credit, payload Wizard (`useAiImage`/`useTts` từng lối), poller dừng khi xong / lỗi / quá trần / rời màn (hẹn giờ giả), tải lại credit sau khi vẽ. Chạy từ `apps/mobile`:
+```
+npx tsc tests/storyMedia.test.ts --outDir %TEMP%/sw-media-tests --module commonjs --target es2022 --esModuleInterop --skipLibCheck --jsx react-jsx --types react-native,node
+node %TEMP%/sw-media-tests/tests/storyMedia.test.js
+```
