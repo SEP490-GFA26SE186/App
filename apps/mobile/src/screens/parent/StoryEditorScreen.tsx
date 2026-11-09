@@ -1,7 +1,7 @@
 // apps/mobile/src/screens/parent/StoryEditorScreen.tsx
 // GĐ B1 – Sửa truyện (Web: pages/parent/studio/StoryEditorPage.jsx + components/parent/studio/{PageEditor,CheckpointEditor,CoverPicker,SaveBar}).
 // Chỉ API không phải AI: sửa/thêm/xoá trang, sửa/thêm/xoá điểm dừng, chọn ảnh bìa (cảnh đã có ảnh), xoá truyện, hoàn tất (review).
-// Không vẽ tranh, không cho AI viết, không thử lại giọng đọc (B2/B3). Mọi lệnh trả chi tiết truyện mới nhất → thay state.
+// GĐ B2: StoryMediaPanel (giọng đọc + tranh AI). Không cho AI viết ở đây (Chi tiết truyện). Mọi lệnh trả chi tiết truyện mới nhất → thay state.
 // Điện thoại: danh sách dọc; điểm dừng sửa trong bottom sheet; thanh "Hoàn tất" cố định ở đáy; một thao tác ghi tại một thời điểm.
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { View, Text, ScrollView, Image, Pressable, KeyboardAvoidingView, Platform, StyleSheet } from 'react-native';
@@ -23,6 +23,7 @@ import { focusRing } from '../../theme/focus';
 import { spaceActivates } from '../../utils/keyboard';
 import { CHECKPOINT_TYPES, EMOTIONS, OPTION_ROLES, STORY_STATUS_LABELS } from '../../constants/story';
 import { storyService } from '../../services';
+import { StoryMediaPanel } from '../../components/parent/StoryMediaPanel';
 import type { CheckpointTypeDto, StoryCheckpointDto, StoryDto, StoryPageDto } from '../../types/api';
 import type { StoryView } from '../../types/viewModels';
 import {
@@ -55,6 +56,9 @@ interface StoryEditorScreenProps {
   onStoryChanged: (story: StoryView) => void;
   /** Đã xoá truyện: về Tủ truyện và làm mới danh sách */
   onDeleted: () => void;
+  /** GĐ B2: số dư credit (null = chưa biết) và tải lại số dư sau khi vẽ tranh */
+  creditBalance: number | null;
+  onCreditsChanged: () => void;
 }
 
 const ORIGIN_LABELS: Record<string, string> = { ai: 'AI viết', ai_edited: 'AI viết, ba mẹ sửa' };
@@ -290,7 +294,7 @@ const AddCheckpointSheet: React.FC<{
 // Màn chính
 // ---------------------------------------------------------------------------
 
-export const StoryEditorScreen: React.FC<StoryEditorScreenProps> = ({ storyId, onBack, onStoryChanged, onDeleted }) => {
+export const StoryEditorScreen: React.FC<StoryEditorScreenProps> = ({ storyId, onBack, onStoryChanged, onDeleted, creditBalance, onCreditsChanged }) => {
   const toast = useToast();
   const dialog = useDialog();
   const [story, setStory] = useState<StoryDto | null>(null);
@@ -528,6 +532,9 @@ export const StoryEditorScreen: React.FC<StoryEditorScreenProps> = ({ storyId, o
             <Text style={styles.bannerText}>{banner}</Text>
           </View>
         )}
+
+        {/* GĐ B2: giọng đọc + tranh từng cảnh (vẽ / vẽ tiếp / vẽ lại) */}
+        <StoryMediaPanel storyId={storyId} story={story} creditBalance={creditBalance} disabled={anyBusy} onUpdated={apply} onCreditsChanged={onCreditsChanged} />
 
         {scenes.length > 0 && (
           <HeyCard style={styles.card}>
