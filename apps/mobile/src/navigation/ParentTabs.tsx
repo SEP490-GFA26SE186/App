@@ -183,6 +183,11 @@ export const ParentTabs: React.FC<ParentTabsProps> = ({ currentUser, nav, active
               void data.reload();
               navigate(ROUTES.STORY, { storyId: id });
             }}
+            onOpenEditor={(id) => {
+              // Thay Wizard (tab Sáng tác) bằng Tủ truyện → Sửa truyện: Back từ editor về Tủ truyện, không về Wizard trống
+              navigate(ROUTES.LIBRARY);
+              navigate(ROUTES.STORY_EDITOR, { storyId: id });
+            }}
             onCreditsChanged={refreshCredit}
             onCancel={() => navigate(ROUTES.LIBRARY)}
           />

@@ -3,7 +3,8 @@
 // 1) Cách tạo (lối vào + nội dung)  2) Nhân vật (đúng 1 nhân vật chính)  3) Độ dài + tên truyện (+ "Bé sẽ tập gì?" với lối nhà mình).
 // C8: nối BE thật. Lối "Chuyện mẫu": POST /stories → POST /generate → poll /generation.
 // Lối "Kể chuyện nhà mình": POST /stories/analyze → xác nhận → POST /stories (analysisToken) → generate → poll.
-// Lối "Tự viết": trình soạn trang/điểm dừng chưa có trên Mobile → "Chưa hỗ trợ", không gọi API.
+// Lối "Tự viết" (GĐ B1): POST /stories { length: 'custom', topicId?, useAiImage: false } (không entry/analysisToken,
+// Web CreateStoryPage:262) → mở màn Sửa truyện. Không gọi AI, không tốn credit.
 // Credit do BE giữ/hoàn; Mobile chỉ hiển thị giá (GET /stories/ai-pricing) và số dư (GET /auth/me). R6 chỉ đổi phần hiển thị:
 // toàn bộ state, quy tắc kiểm tra (`missing`), thứ tự nhân vật, gọi API và xử lý lỗi giữ nguyên như trước.
 import React, { useEffect, useMemo, useRef, useState } from 'react';
@@ -46,6 +47,8 @@ interface StoryWizardProps {
   onStoryCreated: (story: StoryView) => void;
   /** AI viết xong: mở truyện */
   onOpenStory: (storyId: string) => void;
+  /** Đã tạo truyện "Tự viết": mở màn Sửa truyện */
+  onOpenEditor: (storyId: string) => void;
   /** Số dư credit có thể đã đổi (giữ/hoàn) */
   onCreditsChanged: () => void;
   onCancel: () => void;
@@ -81,6 +84,7 @@ export const StoryWizard: React.FC<StoryWizardProps> = ({
   onCharacterCreated,
   onStoryCreated,
   onOpenStory,
+  onOpenEditor,
   onCreditsChanged,
   onCancel,
 }) => {
@@ -228,6 +232,21 @@ export const StoryWizard: React.FC<StoryWizardProps> = ({
         characters: orderedCharacters(),
         useTts,
       });
+    } else if (entry === 'handwritten') {
+      // Tự viết: chuyện mẫu không bắt buộc; BE đặt entry = handwritten và tạo sẵn các trang trống
+      const chosenTopicId = templates.some((t) => t.id === topicId) ? (topicId as string) : null;
+      void run(async () => {
+        const story = await storyService.createStory({
+          ...(chosenTopicId && { topicId: chosenTopicId }),
+          length: 'custom',
+          title: title.trim(),
+          characters: orderedCharacters(),
+          useAiImage: false,
+          useTts,
+        });
+        onStoryCreated(story);
+        onOpenEditor(story.id);
+      }, (e) => e?.message || 'Chưa tạo được truyện.');
     } else if (entry === 'family') {
       void run(async () => {
         setAnalysis(
@@ -277,9 +296,9 @@ export const StoryWizard: React.FC<StoryWizardProps> = ({
   const familyConfirm = entry === 'family' && !!analysis;
 
   // Nút chính của chân trang (đổi theo bước)
-  let primary: { title: string; icon: 'arrow-forward' | 'search' | 'sparkles'; onPress: () => void; disabled?: boolean };
+  let primary: { title: string; icon: 'arrow-forward' | 'search' | 'sparkles' | 'create-outline'; onPress: () => void; disabled?: boolean };
   if (!last) primary = { title: 'Tiếp tục', icon: 'arrow-forward', onPress: goNext };
-  else if (entry === 'handwritten') primary = { title: 'Tạo truyện tự viết (chưa hỗ trợ)', icon: 'sparkles', onPress: () => {}, disabled: true };
+  else if (entry === 'handwritten') primary = { title: 'Tạo truyện và bắt đầu viết', icon: 'create-outline', onPress: submit };
   else if (familyConfirm) primary = { title: `Tạo truyện${costText}`, icon: 'sparkles', onPress: createFamily };
   else if (entry === 'family') primary = { title: 'Xem bé sẽ tập gì', icon: 'search', onPress: submit };
   else primary = { title: `Tạo truyện${costText}`, icon: 'sparkles', onPress: submit };
@@ -368,11 +387,21 @@ export const StoryWizard: React.FC<StoryWizardProps> = ({
 
             {entry === 'handwritten' && (
               <HeyCard style={styles.block}>
-                <StateView
-                  variant="unsupported"
-                  title="Trình soạn truyện tự viết chưa được hỗ trợ"
-                  description="Ba mẹ vẫn có thể chọn nhân vật và đặt tên để chuẩn bị; việc viết từng trang sẽ có khi kết nối máy chủ."
-                />
+                <Text style={styles.blockTitle}>Chọn chuyện mẫu (không bắt buộc)</Text>
+                <Text style={styles.hint}>Truyện tự viết không bắt buộc chọn chuyện mẫu. Sau khi tạo, ba mẹ viết từng trang và điểm dừng.</Text>
+                <View accessibilityRole="radiogroup" style={styles.list}>
+                  <Choice selected={!templates.some((t) => t.id === topicId)} label="Không chọn chuyện mẫu" onPress={() => { setTopicId(null); setError(''); }}>
+                    <Text style={styles.choiceTitle}>Không chọn chuyện mẫu</Text>
+                  </Choice>
+                  {templates.map((t) => (
+                    <Choice key={t.id} selected={topicId === t.id} label={`${t.title}. ${t.description}`} onPress={() => { setTopicId(t.id); setError(''); }}>
+                      <Text style={styles.choiceTitle}>{t.title}</Text>
+                      <Text style={styles.choiceDesc} numberOfLines={2}>
+                        {t.description}
+                      </Text>
+                    </Choice>
+                  ))}
+                </View>
               </HeyCard>
             )}
           </>
