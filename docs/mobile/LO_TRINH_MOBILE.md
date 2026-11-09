@@ -4,8 +4,11 @@ Lập ngày 2026-11-09 · Nguồn đối chiếu: GitHub `main` — App `f84c4f9
 Môi trường demo: Web `https://storyweaver.id.vn` · API `https://api.storyweaver.id.vn/api/v1` (lấy từ tài liệu deploy của BE).
 Tài khoản demo **không ghi trong tài liệu hay source**; chủ dự án tự nhập khi test.
 
-> Tiến độ: GĐ A và GĐ B1 đã merge vào `main`. **GĐ B2** (tranh AI, giọng đọc, làm mới credit) đang làm trên nhánh `feat/mobile-story-ai-media`.
+> Tiến độ: GĐ A, B1, B2 và hotfix Expo Go audio đã merge vào `main`. **GĐ B3** (chân dung nhân vật AI) đang làm trên nhánh `feat/mobile-character-portrait`. GĐ B hoàn tất khi B3 merge.
 > Quyết định 2026-11-09: **không test thật sau từng đợt; mọi test thật dồn về GĐ G.** Mỗi đợt chỉ cần tsc + test fetch giả + review.
+> Đã chạy thật trên máy ảo Android (Expo Go SDK 52) với BE deploy: đăng nhập và đọc dữ liệu OK (sau hotfix Expo Go audio).
+>
+> **Cách chạy với BE deploy:** mở terminal mới (không đặt `$env:EXPO_PUBLIC_API_URL`, để app đọc `apps/mobile/.env.local`), `cd App/apps/mobile`, chạy `npx expo start -c`, bật máy ảo Android trước rồi bấm `a`.
 
 ## 1. Mục tiêu và nguyên tắc
 
