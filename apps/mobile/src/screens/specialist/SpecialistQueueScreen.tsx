@@ -5,7 +5,8 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { HeyCard } from '../../components/ui/HeyCard';
 import { Badge } from '../../components/ui/Badge';
-import { Icon } from '../../components/ui/Icon';
+import { Icon, IconName } from '../../components/ui/Icon';
+import { HeyButton } from '../../components/ui/HeyButton';
 import { KpiCard, ManagementPage, ResourceBody } from '../../components/management/ManagementUi';
 import { Colors } from '../../theme/colors';
 import { Radius, Spacing, Touch } from '../../theme/spacing';
@@ -21,6 +22,8 @@ export interface SpecialistOverview {
   queue: QueueItem[];
   sellerApplications: number;
   openReports: number;
+  /** GĐ E1: số mục kiểm tra ngẫu nhiên trong hàng chờ (Web getSpecialistOverview navBadges.audits) */
+  audits: number;
 }
 
 const QueueRow: React.FC<{ q: QueueItem; onPress: () => void }> = ({ q, onPress }) => {
@@ -64,7 +67,9 @@ export const SpecialistQueueScreen: React.FC<{
   error: string | null;
   onReload: () => Promise<unknown>;
   onOpenReview: (reviewId: string) => void;
-}> = ({ overview, status, error, onReload, onOpenReview }) => (
+  /** GĐ E1: lối tắt tới các màn giám sát */
+  shortcuts?: { key: string; icon: IconName; label: string; onPress: () => void }[];
+}> = ({ overview, status, error, onReload, onOpenReview, shortcuts = [] }) => (
   <ManagementPage title="Tổng quan kiểm duyệt" subtitle="Hàng chờ gồm truyện nộp bán, hậu kiểm báo cáo và kiểm tra ngẫu nhiên. Cũ nhất lên trước." onRefresh={onReload}>
     <ResourceBody
       status={status}
@@ -85,7 +90,17 @@ export const SpecialistQueueScreen: React.FC<{
             <View style={styles.kpiCell}>
               <KpiCard icon="flag-outline" label="Báo cáo vi phạm đang mở" value={String(overview.openReports)} />
             </View>
+            <View style={styles.kpiCell}>
+              <KpiCard icon="list-outline" label="Kiểm tra ngẫu nhiên chờ xem" value={String(overview.audits)} />
+            </View>
           </View>
+          {shortcuts.length > 0 && (
+            <View style={styles.shortcuts}>
+              {shortcuts.map((s) => (
+                <HeyButton key={s.key} title={s.label} iconName={s.icon} variant="outline" size="sm" onPress={s.onPress} />
+              ))}
+            </View>
+          )}
           <Text style={styles.section} accessibilityRole="header">
             Hàng chờ duyệt truyện
           </Text>
@@ -118,4 +133,5 @@ const styles = StyleSheet.create({
   title: { ...Typography.bodyStrong, color: Colors.text },
   muted: { ...Typography.caption, color: Colors.textMuted },
   badges: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.xs },
+  shortcuts: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
 });
