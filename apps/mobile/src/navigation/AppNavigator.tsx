@@ -10,6 +10,8 @@ import { useAuth, useKidSession } from '../stores/SessionProvider';
 import { LoginScreen } from '../screens/auth/LoginScreen';
 import { RegisterScreen } from '../screens/auth/RegisterScreen';
 import { BootScreen, BootErrorScreen } from '../screens/auth/BootScreen';
+import { LegalScreen } from '../screens/legal/LegalScreen';
+import type { LegalDocKey } from '../constants/legal';
 import { KidModeScreen } from '../screens/kid/KidModeScreen';
 import { kidService } from '../services/kidService';
 import { ParentTabs } from './ParentTabs';
@@ -113,8 +115,29 @@ const RegisterScreenWithBack: React.FC<React.ComponentProps<typeof RegisterScree
   return <RegisterScreen {...props} />;
 };
 
+// GĐ C: trang pháp lý khi chưa đăng nhập — nút Back trên màn và phím Back Android đều quay về Đăng nhập / Đăng ký đang mở.
+const LegalScreenWithBack: React.FC<{ doc: LegalDocKey; onBack: () => void }> = ({ doc, onBack }) => {
+  useEffect(() => {
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      onBack();
+      return true;
+    });
+    return () => sub.remove();
+  }, [onBack]);
+  return <LegalScreen doc={doc} onBack={onBack} />;
+};
+
 export const AppNavigator: React.FC<{ onOpenPreview?: () => void }> = ({ onOpenPreview }) => {
   const auth = useAuth();
+  const [legal, setLegal] = useState<LegalDocKey | null>(null);
+
+  if (legal && (auth.appPhase === 'LOGIN' || auth.appPhase === 'REGISTER')) {
+    return (
+      <Screen>
+        <LegalScreenWithBack doc={legal} onBack={() => setLegal(null)} />
+      </Screen>
+    );
+  }
 
   switch (auth.appPhase) {
     case 'BOOTING':
@@ -137,13 +160,14 @@ export const AppNavigator: React.FC<{ onOpenPreview?: () => void }> = ({ onOpenP
             onLoginSuccess={auth.startSession}
             onGoRegister={auth.showRegister}
             onOpenPreview={onOpenPreview}
+            onOpenLegal={setLegal}
           />
         </Screen>
       );
     case 'REGISTER':
       return (
         <Screen>
-          <RegisterScreenWithBack onRegisterSuccess={auth.startSession} onGoLogin={auth.showLogin} />
+          <RegisterScreenWithBack onRegisterSuccess={auth.startSession} onGoLogin={auth.showLogin} onOpenLegal={setLegal} />
         </Screen>
       );
     default:

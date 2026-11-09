@@ -23,6 +23,7 @@ import { ChildDetailScreen } from '../screens/parent/ChildDetailScreen';
 import { CharactersScreen } from '../screens/parent/CharactersScreen';
 import { SettingsScreen } from '../screens/parent/SettingsScreen';
 import { HelpScreen } from '../screens/parent/HelpScreen';
+import { LegalScreen } from '../screens/legal/LegalScreen';
 import { MarketplaceScreen } from '../screens/scope-pending/MarketplaceScreen';
 import { SellerDashboard } from '../screens/scope-pending/SellerDashboard';
 import { authService, storyService } from '../services';
@@ -270,7 +271,11 @@ export const ParentTabs: React.FC<ParentTabsProps> = ({ currentUser, nav, active
           <SettingsScreen currentUser={currentUser} onUserUpdate={auth.setCurrentUser} onLogout={auth.logout} onBack={goBack} />
         );
       case ROUTES.HELP:
-        return <HelpScreen onBack={goBack} />;
+        return <HelpScreen onBack={goBack} onOpenLegal={(doc) => navigate(doc === 'privacy' ? ROUTES.PRIVACY : ROUTES.TERMS)} />;
+      case ROUTES.PRIVACY:
+        return <LegalScreen doc="privacy" onBack={goBack} />;
+      case ROUTES.TERMS:
+        return <LegalScreen doc="terms" onBack={goBack} />;
       case ROUTES.MARKET:
         // SCOPE PENDING: giữ nguyên màn hiện có, không phát triển thêm
         return (

@@ -9,6 +9,8 @@ import { Elevation } from '../../theme/shadows';
 import { Radius, Spacing, Touch } from '../../theme/spacing';
 import { FontFamily, Typography } from '../../theme/typography';
 import { focusRing } from '../../theme/focus';
+import { LegalLinks } from '../../components/auth/LegalLinks';
+import type { LegalDocKey } from '../../constants/legal';
 import { authService } from '../../services';
 import { SessionUser } from '../../types/sessionUser';
 import { EMAIL_REGEX, MIN_REGISTER_PASSWORD, USERNAME_REGEX } from '../../utils/validation';
@@ -16,11 +18,14 @@ import { EMAIL_REGEX, MIN_REGISTER_PASSWORD, USERNAME_REGEX } from '../../utils/
 interface RegisterScreenProps {
   onRegisterSuccess: (user: SessionUser) => void;
   onGoLogin: () => void;
+  /** GĐ C: mở Chính sách bảo mật / Điều khoản (chưa đăng nhập) */
+  onOpenLegal: (doc: LegalDocKey) => void;
 }
 
 export const RegisterScreen: React.FC<RegisterScreenProps> = ({
   onRegisterSuccess,
   onGoLogin,
+  onOpenLegal,
 }) => {
   const [fullName, setFullName] = useState('');
   const [username, setUsername] = useState('');
@@ -219,6 +224,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
               <Text style={styles.loginLink}>Đăng nhập ngay</Text>
             </Pressable>
           </View>
+          <LegalLinks onOpen={onOpenLegal} />
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
