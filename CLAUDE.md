@@ -22,7 +22,7 @@ Mục tiêu hiện tại (xem §12): **cập nhật Mobile theo những gì Web/
 1. **Giữ Expo SDK 52** (phương án A). Không nâng SDK, không migrate sang App_v2/SDK 58.
 2. App là repo chính; App_v2 chỉ tham khảo.
 3. **P0 = Parent + Kid Mode.**
-4. Seller, Marketplace, Payment = **SCOPE PENDING**: không phát triển thêm, không kết nối mới.
+4. Seller, Marketplace, Payment: **được triển khai theo lộ trình** (§12), không còn SCOPE_PENDING. Phần gọi API thật/giao dịch vẫn theo §11.
    Admin/Specialist Mobile: đã làm các chức năng quản trị chính, lời gọi API viết theo contract BE — Admin: Tổng quan, Việc chờ, Tài khoản, Rút tiền, Hoàn tiền, Kháng nghị, Nhật ký kiểm toán; Specialist: Hàng chờ, Lượt duyệt, Hồ sơ người bán, Báo cáo vi phạm. Kiểm thử: FIXTURE PASS (BE giả); **E2E với BE thật: NOT VERIFIED / BLOCKED**. Tính năng chưa làm và việc chờ duyệt: `docs/mobile/ADMIN_SPECIALIST_MOBILE_IMPLEMENTATION.md`. Mở rộng phạm vi cần chủ dự án duyệt; tuân thủ §10.
 5. **Không tự ý xóa tính năng/màn hình hiện có.** Muốn xóa phải được duyệt.
 
@@ -48,7 +48,7 @@ Mục tiêu hiện tại (xem §12): **cập nhật Mobile theo những gì Web/
 - Mục lục: `docs/mobile/README.md`. Giao diện: `UI_UX_REDESIGN_PLAN.md`. Hiện trạng chính thức: `MOBILE_STATUS.md` (đối chiếu với source/Git).
 - API/nghiệp vụ: `API_MAPPING.md`, `BUSINESS_FLOW_MATRIX.md`, `ARCHITECTURE_DECISIONS.md`, `ENVIRONMENT.md`. Tích hợp API: `API_INTEGRATION_STATUS_REPORT.md` (+ `_AUDIT`, `_PHASE_1`, `_PHASE_2`), test: `API_SWAGGER_TEST_MATRIX.md`, `MOBILE_API_MANUAL_TEST_MATRIX.md`. Admin/Specialist: `ADMIN_SPECIALIST_MOBILE_IMPLEMENTATION.md`.
 - Đợt cập nhật theo Web: `MOBILE_UPDATE_GAP_ANALYSIS.md` (§12).
-- Báo cáo/kế hoạch cũ (QA R1–R9, `AUDIT_REPORT.md`, `IMPLEMENTATION_PLAN.md`) đã xóa: `git show a9160a7:docs/mobile/<tên-file>`.
+- Báo cáo/kế hoạch cũ (QA R1–R9-A, `AUDIT_REPORT.md`, `IMPLEMENTATION_PLAN.md`) đã xóa: `git show a9160a7:docs/mobile/<tên-file>`.
 - Không chép lại nguyên tài liệu vào CLAUDE.md; không tạo file memory/handoff/tài liệu trùng lặp.
 
 ## 6. Quy trình mỗi task
@@ -75,34 +75,28 @@ Bổ sung (không thay) §2–§3, §6–§8 và `AGENTS.md`; quyền sửa theo
 - Thành công với BE giả/fixture/mock chỉ được ghi là FIXTURE PASS, không bao giờ là tích hợp thật hay E2E PASS.
 - Thao tác BE nhạy cảm/không hoàn tác (duyệt/từ chối nội dung, rút tiền, hoàn tiền, cảnh cáo, khoá tài khoản, đổi cấu hình, xoá dữ liệu, tiêu credit, gọi AI) trên dữ liệu thật cần chủ dự án cho phép rõ ràng cho từng lần.
 
-## 11. Bảo vệ AI / Tạo truyện / API trả phí (chỉ chủ dự án)
-Chủ dự án độc quyền kiểm soát mọi luồng AI, tiêu credit, thanh toán và tạo truyện. Bổ sung (không thay) §10. **Cấm tuyệt đối nếu chưa có phép riêng, rõ ràng của chủ dự án:**
-1. Triển khai/thay đổi Story Wizard, sinh truyện AI, phân tích truyện, chỉnh sửa truyện hoặc luồng tạo truyện.
-2. Triển khai/thay đổi sinh tranh AI hoặc chân dung nhân vật.
-3. Triển khai/thay đổi giọng đọc AI phía server, sinh TTS hoặc luồng thử lại giọng đọc.
-4. Gọi bất kỳ AI provider, model, worker, hàng đợi sinh nội dung hay dịch vụ bên thứ ba trả phí.
-5. Gửi request API sinh truyện, tranh, audio, chân dung hoặc tiêu credit.
-6. Chạy test tự động, E2E, smoke test, demo script hay seed script có thể kích hoạt các luồng trên.
-7. Khởi động worker/tiến trình nền có thể tự kích hoạt sinh AI.
-8. Đổi số dư credit, mua gói, thu tiền, hoàn tiền hoặc bất kỳ giao dịch tài chính nào.
-9. Dùng tài khoản/dữ liệu thật hoặc demo cho thao tác test trả phí hay phá huỷ.
-10. Gián tiếp sửa logic tạo truyện, AI hay credit đang ổn định qua component dùng chung.
+## 11. AI / Tạo truyện / API trả phí: Claude viết code, chủ dự án chạy thật
+Bổ sung (không thay) §10.
 
-**Mọi task tích hợp/cập nhật API (gồm đợt §12):**
-- LOẠI TRỪ toàn bộ tạo truyện, Story Editor, sinh AI, sinh tranh, chân dung AI, sinh giọng đọc và luồng trả phí; không sửa UI, service call, hook, cấu hình hay tích hợp BE của chúng.
-- Chủ dự án tự triển khai và tự kiểm thử thủ công các phần đó.
-- Được đọc mã liên quan (READ-ONLY) để viết tài liệu và phân tích phụ thuộc.
-- Ghi rõ các mục này là **OWNER-RESERVED / NOT IMPLEMENTED** trong báo cáo tích hợp; không tính API owner-reserved là "mới nối".
+**ĐƯỢC (theo task đã duyệt trong lộ trình §12):** viết code, UI, service, hook, type và nối API cho Story Wizard, Story Editor, sinh truyện/phân tích truyện, sinh tranh, chân dung nhân vật, giọng đọc (TTS), thanh toán/gói/credit, Seller/Marketplace. Viết unit test chỉ dùng fetch giả (không chạm mạng).
 
-**Được phép:**
-- Triển khai chức năng Mobile không-AI, không-trả-phí đã được duyệt rõ ràng.
-- Phân tích tĩnh, TypeScript check, build verification, miễn không kích hoạt API trả phí thật hay sinh nội dung nền.
-- Không tự khởi chạy luồng ứng dụng có thể tiêu credit. Thao tác có thể phát sinh chi phí hoặc chạm phần được bảo vệ: DỪNG trước khi chạy và xin phép rõ ràng.
+**VẪN CẤM Claude tự làm (chỉ chủ dự án làm, chủ dự án tự test thật):**
+1. Gửi bất kỳ request thật nào tới API sinh truyện, phân tích, tranh, chân dung, audio/TTS, hay API tiêu credit/token.
+2. Gọi AI provider, model, worker, hàng đợi sinh nội dung hay dịch vụ bên thứ ba trả phí.
+3. Chạy E2E, smoke test, demo script, seed script hay test nào có thể chạm BE thật và kích hoạt các luồng trên.
+4. Khởi động worker/tiến trình nền có thể tự kích hoạt sinh AI.
+5. Mua gói, thu tiền, hoàn tiền, rút tiền, đổi số dư credit hay bất kỳ giao dịch tài chính nào.
+6. Dùng tài khoản/dữ liệu thật hoặc demo cho thao tác trả phí hay phá huỷ. Không ghi tài khoản/mật khẩu vào file nào.
+
+**Báo cáo:** phần đã viết code nhưng chưa được chủ dự án test thật ghi là `OWNER_RESERVED` (chờ chủ dự án test), không ghi PASS/E2E. Thao tác có thể phát sinh chi phí: DỪNG và xin phép rõ ràng.
 
 Ranh giới dự án giữ nguyên: BE, Web, App_v2 chỉ đọc; giữ kiến trúc Mobile; giữ tính năng Parent/Kid/Admin/Specialist ổn định; không refactor ngoài phạm vi; không thêm dependency khi chưa duyệt; không tự commit/push.
 
 ## 12. Đợt hiện tại: Cập nhật Mobile theo Web (Gap Analysis)
 Bổ sung (không thay) §2–§11. Báo cáo: `docs/mobile/MOBILE_UPDATE_GAP_ANALYSIS.md`.
+Lộ trình: Project "đồ án" → `StoryWeaver/LO_TRINH_MOBILE.md` (nằm ngoài repo; làm theo từng GĐ của lộ trình, xong GĐ nào thì dừng chờ review).
+
+**Tiến độ:** GĐ 0–1 (gap analysis) xong · GĐ 4 dịch lỗi + lý do chân dung xong (`e0aaadd`) · **GĐ A** (sửa sau review, env deploy) trên branch `feat/mobile-error-i18n`.
 
 **Các giai đoạn** — mỗi giai đoạn xong thì DỪNG chờ chủ dự án review; không tự sang giai đoạn kế:
 - **GĐ 0 – Kiểm tra source (chỉ đọc):** branch, commit mới nhất, `git status` của cả 4 repo; ghi nhận file modified/untracked/deleted; xác định framework/dependency chính. Không `reset`/`checkout`/`restore`/`rebase`/`stash`/xoá file, kể cả để "dọn" thay đổi có sẵn.
@@ -114,7 +108,7 @@ Bổ sung (không thay) §2–§11. Báo cáo: `docs/mobile/MOBILE_UPDATE_GAP_AN
 2. BE: method + URL, params/query/body, response, `authorize(...)`, validation (zod), business rule, side effect. Không xác minh được → `NEEDS_BACKEND_REVIEW`.
 3. Mobile: tìm screen/service/type/navigation tương ứng; kiểm tra đã thực sự gọi API chưa, type có khớp BE không. Không kết luận "thiếu" chỉ vì cấu trúc file khác Web.
 
-**Trạng thái mỗi tính năng (dùng đúng nhãn):** `ALREADY_SUPPORTED` · `NEEDS_UI_UPDATE` · `NEEDS_FEATURE_UPDATE` · `NEEDS_API_INTEGRATION` · `NEEDS_API_FIX` · `NEEDS_NEW_SCREEN` · `NEEDS_BACKEND_REVIEW` · `NOT_NEEDED_ON_MOBILE`. Thêm `OWNER-RESERVED` cho phần thuộc §11 và `SCOPE PENDING` cho Seller/Marketplace/Payment (§2.4) — liệt kê nhưng không đề xuất triển khai khi chưa được duyệt.
+**Trạng thái mỗi tính năng (dùng đúng nhãn):** `ALREADY_SUPPORTED` · `NEEDS_UI_UPDATE` · `NEEDS_FEATURE_UPDATE` · `NEEDS_API_INTEGRATION` · `NEEDS_API_FIX` · `NEEDS_NEW_SCREEN` · `NEEDS_BACKEND_REVIEW` · `NOT_NEEDED_ON_MOBILE`. Thêm `OWNER_RESERVED` cho phần chờ chủ dự án test thật (§11) và `SCOPE_PENDING` cho phần ngoài lộ trình, chưa được duyệt.
 
 **Mức bằng chứng cho mỗi nhận định:** `VERIFIED_FROM_SOURCE` (kèm `file:line`) · `DOCUMENTED` · `INFERRED` · `NOT_VERIFIED_AT_RUNTIME`.
 
