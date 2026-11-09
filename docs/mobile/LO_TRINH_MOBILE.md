@@ -4,7 +4,7 @@ Lập ngày 2026-11-09 · Nguồn đối chiếu: GitHub `main` — App `f84c4f9
 Môi trường demo: Web `https://storyweaver.id.vn` · API `https://api.storyweaver.id.vn/api/v1` (lấy từ tài liệu deploy của BE).
 Tài khoản demo **không ghi trong tài liệu hay source**; chủ dự án tự nhập khi test.
 
-> Tiến độ: GĐ A và **GĐ B hoàn tất** (B1, B2, B3, hotfix Expo Go audio, bỏ `baseUrl` trong tsconfig đều đã merge vào `main`). **GĐ C** (trang Chính sách / Điều khoản, ô ngoại hình + gợi ý ở form hồ sơ bé) đã merge. **GĐ E1** (Chuyên gia: Truyện tạm gỡ, Cảnh cáo, Kiểm tra ngẫu nhiên, Cảnh báo AI) đang làm trên nhánh `feat/mobile-specialist-monitoring`. Tiếp theo: **F** (Admin).
+> Tiến độ: GĐ A và **GĐ B hoàn tất** (B1, B2, B3, hotfix Expo Go audio, bỏ `baseUrl` trong tsconfig đều đã merge vào `main`). **GĐ C** (trang Chính sách / Điều khoản, ô ngoại hình + gợi ý ở form hồ sơ bé) đã merge. **GĐ E1** (Chuyên gia: giám sát) đã merge. **GĐ F** (Admin: Gói & định giá, Doanh thu & đối soát, Cấu hình AI) đang làm trên nhánh `feat/mobile-admin-plans-finance`. Tiếp theo: **D** (gói, thanh toán, Chợ truyện, Bán truyện).
 > Quyết định 2026-11-09: **không test thật sau từng đợt; mọi test thật dồn về GĐ G.** Mỗi đợt chỉ cần tsc + test fetch giả + review.
 > Đã chạy thật trên máy ảo Android (Expo Go SDK 52) với BE deploy: đăng nhập và đọc dữ liệu OK (sau hotfix Expo Go audio).
 >

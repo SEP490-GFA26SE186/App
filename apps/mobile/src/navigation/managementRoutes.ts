@@ -30,6 +30,10 @@ export const ADMIN_ROUTES = {
   REFUNDS: 'ADMIN_REFUNDS',
   APPEALS: 'ADMIN_APPEALS',
   AUDIT_LOGS: 'ADMIN_AUDIT_LOGS',
+  // GĐ F: màn con mở từ "Thêm" (không thêm tab)
+  PLANS: 'ADMIN_PLANS',
+  FINANCE: 'ADMIN_FINANCE',
+  AI_CONFIG: 'ADMIN_AI_CONFIG',
 } as const;
 
 export const SPECIALIST_ROUTES = {

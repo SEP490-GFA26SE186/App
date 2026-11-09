@@ -482,3 +482,65 @@ Kiểm tra: `npx tsc --noEmit` PASS; `apps/mobile/tests` 19/19 file PASS (mới:
 - `NOT_VERIFIED_AT_RUNTIME`: chưa chạy với BE thật.
 - Dialog xác nhận khoá AI mở từ trong bottom sheet: trên Android là hộp thoại hệ thống nên hiện trên sheet; trên Expo Web cần kiểm thứ tự lớp ở GĐ G.
 - Cảnh cáo tác giả: danh sách người bán để chọn lấy từ `GET /moderation/sellers?status=approved` (như Web), không tìm kiếm; nhiều người bán thì danh sách dài.
+
+## 23. GĐ F – Admin: Gói & định giá, Doanh thu & đối soát, Cấu hình AI (branch `feat/mobile-admin-plans-finance`)
+
+Test thật dồn về GĐ G; đợt này chỉ tsc + test fetch giả. Đọc từ source (`VERIFIED_FROM_SOURCE`) trước khi code. Mọi route: `auth, authorize('admin')` (`BE/api/src/modules/admin/admin.routes.js:13`).
+
+### Endpoint
+
+| Endpoint (admin.routes.js) | Body / query (zod) | Response / luật (service) | Mobile |
+|---|---|---|---|
+| `GET /admin/plans` (:59) | — | `{ plans: [{ id, code, name, durationMonths, priceVnd, creditsPerMonth, maxChildren, maxCharacters, canSell, isActive, activeSubscribers }] }` (`listAdminPlans`:124, giá rẻ trước) | `getAdminPlans` |
+| `POST /admin/plans` (:60) | `planFields` (:50): `name` 2–100, `priceVnd` số nguyên 0–100.000.000, `creditsPerMonth` 0–10.000, `maxChildren` 1–20, `maxCharacters` 1–200, `canSell`, `isActive` + `code` `^[A-Z0-9_]{2,40}$` (tự viết hoa), `durationMonths` 1 \| 12 | 201 `{ plan }`. Trùng mã → 409 "Mã gói đã tồn tại." (`createPlan`:133) | `createPlan` |
+| `PUT /admin/plans/:planId` (:76) | các trường `planFields` tuỳ chọn, ít nhất 1 trường (không sửa `code`, `durationMonths`) | `{ plan }`. Gói `FREE`: giá luôn 0, không tắt được → 422 (`updatePlan`:146). Giá / credit mới chỉ áp dụng cho lần mua sau | `updatePlan` |
+| `GET /admin/finance/summary?range` (:107, đã có) | `today \| 7d \| 30d \| 90d \| year` | `{ revenue, series, newParents, activePaidSubscriptions, sellerFunds }` (`finance.service.js` `summary`:51) | dùng lại `getFinanceSummary` |
+| `GET /admin/finance/reconciliation` (:113) | — | `{ checkedAt, walletsChecked, walletMismatches[{ userId, walletType, walletBalance, ledgerBalance }], paidWithoutWebhook[{ orderId, payosOrderCode, totalVnd, paidAt }], counterDrift[{ listingId, title, purchaseCount, paidActual, freeClaimCount, freeActual }] }` (`reconciliation`:88). Chỉ báo, không tự sửa tiền | `getReconciliation` |
+| `POST /admin/finance/reconciliation/fix-counters` (:114) | — | `{ fixed }` — tính lại bộ đếm lượt mua / nhận miễn phí của truyện theo quyền đọc thực tế, ghi nhật ký (`fixCounters`:126) | `fixCounters` |
+| `GET /admin/settings` (:84) | — | `{ groups: { ai, market, moderation }, settings: [{ key, group, label, hint, unit, type: int \| rate, min, max, value, isDefault, updatedAt, updatedBy }] }` (`getSettings`:168, `describeSettings`) | `getSettings` |
+| `PUT /admin/settings/:key` (:85) | `{ value: number }`; `key` ≤ 60 | `{ setting }`. `settingError` (`lib/settingsRegistry.js:68`): khoá ngoài registry, không phải số, `int` phải nguyên, ngoài [min, max], thời hạn hoàn tiền > số ngày giữ doanh thu → 422 (`updateSetting`:173, ghi nhật ký) | `updateSetting` |
+
+Nhóm `ai` trong registry (`SETTINGS_REGISTRY`, `lib/settingsRegistry.js:7`): `ai_cost.story_text.short/medium/long`, `ai_cost.character_portrait`, `ai_cost.scene_image` (credit, 0–100), `finance.usd_vnd` (đ / 1 USD, 15.000–40.000). Kiểu `rate` (tỉ lệ 0..1, hiện %) chỉ có ở nhóm `market`.
+
+### Web (nguồn hành vi)
+- `PlansPage.jsx`: bảng gói + "Thêm gói" / sửa trong modal. Form: mã + thời hạn (chỉ khi tạo), tên, giá, credit/tháng, số bé, số nhân vật, "Được bán truyện", "Đang mở bán". Gói `FREE` khoá giá và công tắc mở bán. Cùng trang có nhóm cài đặt `market`, `moderation`.
+- `FinanceReportPage.jsx`: chọn khoảng thời gian; 3 thẻ (khách đã trả, phần nền tảng giữ, phải trả người bán); biểu đồ; bảng phân tích (doanh thu gói, doanh thu truyện, − phần người bán, = hoa hồng, đã hoàn). Cuối trang: đối soát 3 mục (ví lệch sổ cái, đơn trả chưa có webhook, truyện lệch bộ đếm) + "Kiểm lại" + "Tính lại bộ đếm" (chỉ hiện khi có lệch).
+- `AiConfigPage.jsx` + `components/admin/SettingsGroup.jsx` (`group="ai"`): mỗi dòng nhãn, gợi ý, "mặc định" / "sửa lần cuối … bởi …", ô số, đơn vị, nút lưu. Đoạn "Nhà cung cấp" giải thích khoá API nằm ở biến môi trường của dịch vụ ai/.
+
+### Mobile hiện có
+- `AdminNavigator`: tab Tổng quan · Việc chờ · Tài khoản · Thêm; menu "Thêm" có 3 mục "Dùng trên Web": Gói & định giá, Cấu hình AI, Doanh thu & đối soát.
+- `AdminDashboardScreen` đã dùng `getFinanceSummary` (KPI, biểu đồ, quỹ người bán) với `FINANCE_RANGES`.
+- `ManagementUi`: `ManagementPage`, `ResourceBody`, `FilterChips`, `KpiCard`, `InfoRow`, `useMutationRunner` (nhận câu báo dạng hàm từ E1), `NumberStepper`.
+
+### Quyết định điều hướng
+Giống E1: 3 màn con mở từ menu "Thêm", thay 3 mục "Dùng trên Web"; không thêm tab, không đổi 4 màn admin đang có.
+
+### Ngoài phạm vi F
+- Nhóm cài đặt `market` và `moderation` (Web đặt ở trang Gói): yêu cầu đợt này chỉ hiện nhóm `ai`.
+- Biểu đồ doanh thu ở màn Doanh thu: đã có ở Tổng quan Admin; màn này hiện số liệu dạng thẻ + danh sách.
+
+### File Mobile sẽ sửa
+- `types/management.ts`, `services/adminService.ts` (7 hàm), `utils/adminConfig.ts` (mới: validate form gói, lọc nhóm `ai`, đổi giá trị cài đặt).
+- `screens/admin/{PlansScreen,FinanceScreen,AiConfigScreen}.tsx` (mới), `navigation/managementRoutes.ts`, `navigation/AdminNavigator.tsx`.
+- `tests/adminPlansFinance.test.ts` (mới), `docs/mobile/ADMIN_SPECIALIST_MOBILE_IMPLEMENTATION.md`, `docs/mobile/LO_TRINH_MOBILE.md`.
+
+### Kết quả GĐ F (2026-11-10) — FIXTURE PASS, test thật dồn về GĐ G
+
+| Hạng mục | Trạng thái |
+|---|---|
+| Service + type (7 hàm; `getFinanceSummary` dùng lại) | DONE, FIXTURE PASS |
+| 3 màn Admin + điều hướng (màn con từ "Thêm", bỏ 3 mục "Dùng trên Web") | DONE, TSC PASS, `NOT_VERIFIED_AT_RUNTIME` |
+
+Kiểm tra: `npx tsc --noEmit` PASS; `apps/mobile/tests` 20/20 file PASS (mới: `adminPlansFinance.test.ts` 9 ca).
+
+**Quyết định UI cho điện thoại**
+- Gói: thẻ dọc thay bảng 7 cột của Web; form trong bottom sheet, số nhập bằng bàn phím số, thời hạn bằng chip, 2 công tắc. Sửa gói chỉ gửi trường đã đổi; không đổi gì thì báo "Chưa có gì thay đổi", không gọi BE.
+- Doanh thu: 3 thẻ KPI + danh sách phân tích dạng hàng (`InfoRow`); không lặp biểu đồ (đã có ở Tổng quan Admin). Đối soát: 3 mục có biểu tượng đạt / lệch, nút "Kiểm lại", nút "Tính lại bộ đếm" chỉ hiện khi có truyện lệch.
+- Cấu hình AI: mỗi khoá một hàng (nhãn, gợi ý, ai sửa lần cuối, ô số + đơn vị, nút Lưu chỉ bật khi đổi giá trị).
+- Mọi thao tác ghi: Dialog xác nhận → `useMutationRunner` (chống bấm đúp, toast theo kết quả BE, lỗi BE đã dịch).
+
+**Điểm còn chưa chắc / chưa làm**
+- `NOT_VERIFIED_AT_RUNTIME`: chưa chạy với BE thật.
+- Nhóm cài đặt `market` / `moderation` (Web đặt ở trang Gói) chưa làm — đợt này chỉ cho hiện nhóm `ai`.
+- Form gói mở trong bottom sheet, Dialog xác nhận mở chồng lên sheet: Android là hộp thoại hệ thống (hiện trên cùng); Expo Web cần kiểm thứ tự lớp ở GĐ G.
+- `AdminNavigator`: bỏ `useDialog` / `WEB_ONLY_NOTICE` không còn dùng (hằng số vẫn dùng ở khu Chuyên gia cho các mục E2).
