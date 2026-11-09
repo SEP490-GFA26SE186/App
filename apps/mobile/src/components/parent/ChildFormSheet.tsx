@@ -12,6 +12,8 @@ import { Colors } from '../../theme/colors';
 import { Typography } from '../../theme/typography';
 import { childService } from '../../services';
 import { CHILD_NAME_MAX, validateBirthDate } from '../../utils/validation';
+import { AppearanceHints } from './AppearanceHints';
+import { CHILD_APPEARANCE_MAX, childAppearancePayload } from '../../utils/child';
 
 interface ChildFormSheetProps {
   visible: boolean;
@@ -25,7 +27,8 @@ export const ChildFormSheet: React.FC<ChildFormSheetProps> = ({ visible, child, 
   const editing = !!child;
   const [name, setName] = useState('');
   const [birthDate, setBirthDate] = useState('');
-  const [errors, setErrors] = useState<{ name?: string; birthDate?: string }>({});
+  const [appearance, setAppearance] = useState('');
+  const [errors, setErrors] = useState<{ name?: string; birthDate?: string; appearance?: string }>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const submittingRef = useRef(false);
@@ -35,6 +38,7 @@ export const ChildFormSheet: React.FC<ChildFormSheetProps> = ({ visible, child, 
     if (!visible) return;
     setName(child?.name ?? '');
     setBirthDate(child?.birthDate ?? '');
+    setAppearance(child?.appearance ?? '');
     setErrors({});
     setFormError(null);
   }, [visible, child?.id]);
@@ -46,11 +50,12 @@ export const ChildFormSheet: React.FC<ChildFormSheetProps> = ({ visible, child, 
 
   const submit = async () => {
     if (submittingRef.current) return;
-    const next: { name?: string; birthDate?: string } = {};
+    const next: { name?: string; birthDate?: string; appearance?: string } = {};
     if (!name.trim()) next.name = 'Ba mẹ nhập tên bé nhé';
     else if (name.trim().length > CHILD_NAME_MAX) next.name = `Tên tối đa ${CHILD_NAME_MAX} ký tự`;
     const dateError = validateBirthDate(birthDate);
     if (dateError) next.birthDate = dateError;
+    if (appearance.trim().length > CHILD_APPEARANCE_MAX) next.appearance = `Mô tả tối đa ${CHILD_APPEARANCE_MAX} ký tự`;
     setErrors(next);
     setFormError(null);
     if (Object.keys(next).length) return;
@@ -58,7 +63,8 @@ export const ChildFormSheet: React.FC<ChildFormSheetProps> = ({ visible, child, 
     submittingRef.current = true;
     setSubmitting(true);
     try {
-      const payload = { name: name.trim(), birthDate: birthDate.trim() };
+      const look = childAppearancePayload(appearance, child?.appearance, editing);
+      const payload = { name: name.trim(), birthDate: birthDate.trim(), ...(look !== undefined && { appearance: look }) };
       const saved = child ? await childService.updateChild(child.id, payload) : await childService.createChild(payload);
       onSaved(saved);
       onClose();
@@ -99,6 +105,24 @@ export const ChildFormSheet: React.FC<ChildFormSheetProps> = ({ visible, child, 
         autoCorrect={false}
         autoCapitalize="none"
       />
+      <HeyInput
+        label="Ngoại hình của bé (không bắt buộc)"
+        placeholder="Mô tả ngoại hình của bé: tóc, dáng người, trang phục hay mặc…"
+        value={appearance}
+        onChangeText={(t) => {
+          setAppearance(t);
+          setErrors((e) => ({ ...e, appearance: undefined }));
+        }}
+        error={errors.appearance}
+        hint={
+          editing && child?.appearance?.trim() && !appearance.trim()
+            ? 'Để trống sẽ gỡ nhân vật đại diện (kèm chân dung) của bé.'
+            : `AI dùng mô tả này để vẽ bé thành nhân vật chính trong truyện · ${appearance.trim().length}/${CHILD_APPEARANCE_MAX}`
+        }
+        multiline
+        numberOfLines={3}
+      />
+      <AppearanceHints value={appearance} />
       {!!formError && (
         <View style={styles.formErrorBox} accessibilityRole="alert">
           <Icon name="alert-circle" size={18} color={Colors.danger} />
