@@ -341,3 +341,62 @@ Kiểm tra: `npx tsc --noEmit` PASS; `apps/mobile/tests` 16/16 file PASS (mới:
 **Kiểm tra:** `npx tsc --noEmit` PASS; 16/16 file test PASS. Thêm 1 ca ở `tests/kidUiAudio.test.ts`: chặn `require('expo-audio')` ném lỗi, gọi thật hook → nạp module không lỗi, không tải câu đọc, không có nút nghe, `play`/`stop`/rời màn không crash. Bản import tĩnh cũ sẽ làm ca này FAIL ngay lúc nạp.
 
 **Hệ quả:** chạy bằng Expo Go SDK 52 thì Kid Mode **không có câu đọc giao diện** (nút "Nghe" ẩn); phần còn lại của Kid Mode dùng bình thường. Bản build thật (development build / APK có `expo-audio`) vẫn có âm thanh. `NOT_VERIFIED_AT_RUNTIME`: chưa chạy lại trên Expo Go; chủ dự án kiểm ở GĐ G.
+
+## 20. GĐ B3 – Chân dung nhân vật AI (branch `feat/mobile-character-portrait`)
+
+Test thật dồn về GĐ G; đợt này chỉ tsc + test fetch giả. Đọc từ source (`VERIFIED_FROM_SOURCE`) trước khi code.
+
+### Endpoint
+
+| Endpoint | Response | Luật / lỗi BE | Mobile |
+|---|---|---|---|
+| `POST /characters/:id/portrait` (`characters.routes.js:24`) | 202 `data { character, aiRequestId }` (`characters.controller.js:48`) | `startPortrait` (`stories.images.service.js:50`): không thấy nhân vật → 404; chưa có `appearance` → 422 "Hãy mô tả ngoại hình nhân vật trước khi tạo chân dung."; quyền AI bị khoá → 403; đang vẽ (`queued`/`generating`) → 409 "Chân dung nhân vật này đang được vẽ."; thiếu credit → 402 "Không đủ credit" (`creditLedger.js:40`); hàng đợi lỗi → 503. Giữ credit `ai_cost.character_portrait`, vẽ lỗi thì worker hoàn | `characterService.generatePortrait` (map qua `formatCharacter` có sẵn) |
+| `GET /characters` (đã có) | `data { characters }` | `portraitStatus` (`none / queued / generating / ready / failed`), `portraitImageUrl`, `portraitFailure` (`blocked / error / null`, `lib/portraitFailure.js`) | polling khi có chân dung đang vẽ |
+| `GET /children/:id` (đã có) | `data { child: { character } }` | nhân vật đại diện của bé | polling ở Chi tiết bé |
+| `GET /stories/ai-pricing` (đã có) | `images.characterPortrait` | giá một chân dung | hiện chi phí trên nút |
+
+### Web (nguồn hành vi)
+- `components/parent/CharacterPortrait.jsx`: nút "Tạo chân dung AI" / "Vẽ lại" kèm "· N credit"; khoá khi chưa có mô tả; đang vẽ hiện vòng xoay "AI đang vẽ chân dung… (khoảng 30 giây)"; lỗi hiện lý do theo `portraitFailure`; 402 → "Ba mẹ không đủ credit để vẽ chân dung". Dùng ở `FamilyCharactersPage.jsx:147` và thẻ nhân vật của bé `children/CharacterCard.jsx:44`.
+- `hooks/useStudio.js:127-139`: hỏi lại GET /characters mỗi 4 s khi có chân dung đang vẽ; số chân dung đang vẽ giảm → tải lại credit; bấm vẽ thành công → tải lại credit.
+- `components/parent/AppearanceHints.jsx` (commit `a6aeb5b`): một câu gợi ý cách tả ngoại hình + cảnh báo khi mô tả có chi tiết dễ bị bộ lọc chặn (nhân vật có bản quyền, vũ khí, trang phục hở, "ốm/gầy/béo"). Chỉ nhắc, không chặn lưu.
+
+### Mobile hiện có
+- `CharactersScreen` đã hiện nhãn trạng thái chân dung và lý do lỗi (`portraitFailure`, GĐ A); chưa có nút vẽ.
+- `ChildDetailScreen` hiện ảnh + mô tả `child.character`; chưa có nút vẽ.
+- `CharacterFormSheet` chưa có gợi ý mô tả.
+- `ParentTabs.refreshCredit` dùng lại để tải lại credit.
+
+### Khác Web có chủ đích (theo yêu cầu đợt này)
+- Bấm vẽ luôn qua **Dialog xác nhận ghi rõ "trừ N credit"**; Web bấm là vẽ ngay.
+- Khoá nút khi không đủ credit (số dư < giá) và khi chưa tải được giá (không xác nhận được số credit sẽ trừ).
+- Polling có trần (như B2), Web không có trần.
+
+### File Mobile sẽ sửa
+- `services/characterService.ts` (`generatePortrait`).
+- `utils/characterPortrait.ts` (mới): trạng thái nút, câu lỗi, poller, gợi ý mô tả.
+- `components/parent/CharacterPortraitAction.tsx` (mới): nút + trạng thái + xác nhận + hook polling.
+- `screens/parent/CharactersScreen.tsx`, `screens/parent/ChildDetailScreen.tsx`, `navigation/ParentTabs.tsx`, `components/parent/CharacterFormSheet.tsx`.
+- `tests/characterPortrait.test.ts` (mới), `docs/mobile/LO_TRINH_MOBILE.md`.
+
+### Kết quả GĐ B3 (2026-11-09) — FIXTURE PASS, test thật dồn về GĐ G
+
+| Hạng mục | Trạng thái |
+|---|---|
+| `characterService.generatePortrait` | DONE, FIXTURE PASS |
+| `CharacterPortraitAction` ở màn Nhân vật + Chi tiết bé (nút, trạng thái đang vẽ, lý do lỗi, Dialog xác nhận, polling 4 s) | DONE, TSC PASS, `NOT_VERIFIED_AT_RUNTIME` |
+| Gợi ý mô tả ngoại hình trong `CharacterFormSheet` | DONE |
+
+Kiểm tra: `npx tsc --noEmit` PASS; `apps/mobile/tests` 17/17 file PASS (mới: `characterPortrait.test.ts` 8 ca). `tests/phase1.test.ts`: ràng buộc "Chi tiết bé không đụng luồng AI" đổi thành "không tự gọi API AI, chân dung chỉ qua `CharacterPortraitAction`" (hệ quả trực tiếp của B3).
+
+**Quyết định UI cho điện thoại**
+- Nút "Vẽ chân dung AI · N credit" / "Vẽ lại · N credit" là nút phụ nhỏ trên từng thẻ nhân vật; lý do khoá hiện ngay dưới nút (thiếu mô tả / không đủ credit / chưa tải được giá).
+- Đang vẽ: thay nút bằng vòng xoay + "AI đang vẽ chân dung… (khoảng 30 giây)".
+- Lỗi: câu theo `portraitFailure` (chữ đỏ) + nút "Vẽ lại".
+- Chi tiết bé: nút nằm cuối thẻ hồ sơ, dưới mô tả ngoại hình của nhân vật đại diện. Sau khi vẽ / khi hỏi lại tiến độ chỉ thay dữ liệu hồ sơ, không nạp lại cả khối (không nháy skeleton).
+- Gợi ý mô tả: một dòng gợi ý + ô cam cho từng chi tiết dễ bị chặn, ngay dưới ô mô tả.
+
+**Điểm còn chưa chắc / chưa làm**
+- `NOT_VERIFIED_AT_RUNTIME`: chưa vẽ chân dung thật.
+- Ranh giới từ trong gợi ý mô tả dùng dải chữ Latin / tiếng Việt thay cho `\p{L}` của Web, để không phụ thuộc Hermes hỗ trợ Unicode property escape; khớp với các từ trong danh sách.
+- Mỗi màn (Nhân vật, Chi tiết bé) gọi `GET /stories/ai-pricing` một lần để biết giá (GET, không tốn credit). Chưa tải được giá → khoá nút.
+- Form hồ sơ bé (`ChildFormSheet`) chưa có gợi ý mô tả (Web có ở `ChildFormModal`); ngoài phạm vi đợt này.
