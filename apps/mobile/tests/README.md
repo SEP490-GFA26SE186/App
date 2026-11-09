@@ -64,3 +64,9 @@ node %TEMP%/sw-r9a-tests/tests/r9a.test.js
 npx tsc tests/management.test.ts --outDir %TEMP%/sw-mgmt-tests --module commonjs --target es2022 --esModuleInterop --skipLibCheck --jsx react-jsx --types react-native,node
 node %TEMP%/sw-mgmt-tests/tests/management.test.js
 ```
+
+`errorMessages.test.ts` kiểm tra bộ dịch lỗi BE → tiếng Việt (`services/errorMessages.ts`, chép từ Web: đủ 94 message + 13 regex) và quy tắc của `apiClient`: chỉ 500 bị thay bằng câu chung, 502/503 giữ câu tiếng Việt của BE, `errors[]` (vd. `attemptsLeft`) giữ nguyên. Fetch giả trong test. Chạy từ `apps/mobile`:
+```
+npx tsc tests/errorMessages.test.ts --outDir %TEMP%/sw-err-tests --module commonjs --target es2022 --esModuleInterop --skipLibCheck --jsx react-jsx --types react-native,node
+node %TEMP%/sw-err-tests/tests/errorMessages.test.js
+```

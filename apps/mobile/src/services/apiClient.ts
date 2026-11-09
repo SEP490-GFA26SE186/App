@@ -1,6 +1,7 @@
 // apps/mobile/src/services/apiClient.ts
 import { getApiBaseUrl, API_NOT_CONFIGURED_MESSAGE } from './config';
 import { safeStorage, STORAGE_KEYS } from './storage';
+import { translateErrorMessage } from './errorMessages';
 
 /** Phần tử `errors[]` của BE; có thể kèm `attemptsLeft` / `retryAfterSeconds` (PIN) hoặc `narration` (422 truyện chưa sẵn sàng) */
 export interface ApiErrorItem {
@@ -24,13 +25,22 @@ export class ApiError extends Error {
   }
 }
 
-export const extractErrorMessage = (errorData: any, fallback = 'Có lỗi xảy ra, ba mẹ thử lại sau nhé'): string => {
+const GENERIC_ERROR = 'Có lỗi xảy ra, ba mẹ thử lại sau nhé';
+
+export const extractErrorMessage = (errorData: any, fallback = GENERIC_ERROR): string => {
   if (!errorData) return fallback;
   if (errorData.errors && Array.isArray(errorData.errors) && errorData.errors.length > 0) {
-    return errorData.errors[0]?.message || fallback;
+    return translateErrorMessage(errorData.errors[0]?.message || fallback);
   }
-  return errorData.message || fallback;
+  return translateErrorMessage(errorData.message || fallback);
 };
+
+/**
+ * Chỉ 500 bị ẩn: BE trả nguyên message lỗi không lường trước (error.middleware.js). 502/503 BE cố ý trả câu
+ * tiếng Việt (giọng đọc, hàng đợi tranh, thanh toán) nên giữ. Khác Web (ẩn mọi 5xx) có chủ đích.
+ */
+export const errorMessageFor = (status: number, errorData: any, fallback: string): string =>
+  status === 500 ? GENERIC_ERROR : extractErrorMessage(errorData, fallback);
 
 /** Thiếu cấu hình API → lỗi rõ ràng (status 0: không phải lỗi xác thực), không gửi request tới URL đoán */
 const resolveBaseUrl = (): string => {
@@ -106,7 +116,7 @@ const refreshAccessToken = async (): Promise<string> => {
       if (!res.ok) {
         if (res.status >= 500) {
           // Lỗi máy chủ tạm thời: KHÔNG xóa phiên
-          throw new ApiError(extractErrorMessage(data, `Lỗi máy chủ (${res.status})`), res.status);
+          throw new ApiError(errorMessageFor(res.status, data, `Lỗi máy chủ (${res.status})`), res.status);
         }
         // 4xx: refresh token bị BE từ chối → phiên thực sự không còn hợp lệ
         safeStorage.removeItem(STORAGE_KEYS.ACCESS_TOKEN);
@@ -190,7 +200,7 @@ export const apiFetch = async <T = any>(endpoint: string, options: RequestOption
   }
 
   if (!res.ok) {
-    const errorMsg = extractErrorMessage(json, `Lỗi máy chủ (${res.status})`);
+    const errorMsg = errorMessageFor(res.status, json, `Lỗi máy chủ (${res.status})`);
     throw new ApiError(errorMsg, res.status, json?.errors);
   }
 
@@ -229,7 +239,7 @@ export const kidFetch = async <T = any>(endpoint: string, options: RequestInit =
   }
 
   if (!res.ok) {
-    const errorMsg = extractErrorMessage(json, `Lỗi Kid Mode (${res.status})`);
+    const errorMsg = errorMessageFor(res.status, json, `Lỗi Kid Mode (${res.status})`);
     throw new ApiError(errorMsg, res.status, json?.errors);
   }
 
