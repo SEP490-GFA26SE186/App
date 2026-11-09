@@ -82,3 +82,9 @@ node %TEMP%/sw-editor-tests/tests/storyEditor.test.js
 npx tsc tests/storyMedia.test.ts --outDir %TEMP%/sw-media-tests --module commonjs --target es2022 --esModuleInterop --skipLibCheck --jsx react-jsx --types react-native,node
 node %TEMP%/sw-media-tests/tests/storyMedia.test.js
 ```
+
+`characterPortrait.test.ts` (GĐ B3) kiểm chân dung nhân vật AI: đúng method/path `POST /characters/:id/portrait` (fetch giả), câu lỗi 402/409/422/503, nút khoá khi thiếu mô tả / chưa biết giá / thiếu credit và ẩn khi đang vẽ, Dialog xác nhận "trừ N credit" trước khi gọi BE, polling 4 s dừng khi xong / lỗi / quá trần / rời màn (hẹn giờ giả), tải lại credit sau khi vẽ, gợi ý mô tả ngoại hình. Chạy từ `apps/mobile`:
+```
+npx tsc tests/characterPortrait.test.ts --outDir %TEMP%/sw-portrait-tests --module commonjs --target es2022 --esModuleInterop --skipLibCheck --jsx react-jsx --types react-native,node
+node %TEMP%/sw-portrait-tests/tests/characterPortrait.test.js
+```

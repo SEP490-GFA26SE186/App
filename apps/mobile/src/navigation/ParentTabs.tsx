@@ -248,6 +248,8 @@ export const ParentTabs: React.FC<ParentTabsProps> = ({ currentUser, nav, active
               navigate(ROUTES.LIBRARY, { view: 'shelf' });
             }}
             onOpenStory={(storyId) => navigate(ROUTES.STORY, { storyId })}
+            creditBalance={currentUser.creditBalance}
+            onCreditsChanged={refreshCredit}
           />
         );
       }
@@ -259,6 +261,8 @@ export const ParentTabs: React.FC<ParentTabsProps> = ({ currentUser, nav, active
             onCharacterSaved={(c, isNew) => (isNew ? data.addCharacter(c) : data.replaceCharacter(c))}
             onCharacterDeleted={data.removeCharacter}
             onBack={goBack}
+            creditBalance={currentUser.creditBalance}
+            onCreditsChanged={refreshCredit}
           />
         );
       case ROUTES.SETTINGS:
