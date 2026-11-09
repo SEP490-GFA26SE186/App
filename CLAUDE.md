@@ -33,6 +33,7 @@ Mục tiêu hiện tại (xem §12): **cập nhật Mobile theo những gì Web/
 - **Cấm fake-success**: không token giả, user demo, ví/thanh toán giả, dữ liệu bịa khi API lỗi. Lỗi → hiển thị lỗi thật + trạng thái rỗng/thử lại.
 - Không hiển thị/ghi secret từ `.env`. Không hardcode URL/khóa trong code.
 - Không sửa `Web`, `BE`, `App_v2`. Không commit/push trừ khi được yêu cầu rõ.
+- Commit message không có dòng Co-Authored-By hay ghi công AI.
 - Giữ nguyên comment/docstring không liên quan thay đổi.
 - Prototype Vite/Express/Prisma ở gốc `App/` **đã được xóa** (báo cáo dọn dẹp cũ: lịch sử Git `a9160a7`). Repo chỉ còn `apps/mobile` + `docs/mobile`; kiểu miền nằm ở `apps/mobile/src/types/domain.ts`.
 
