@@ -27,6 +27,7 @@ import { Radius, Spacing, Touch } from '../../theme/spacing';
 import { FontFamily, Typography } from '../../theme/typography';
 import { focusRing } from '../../theme/focus';
 import { spaceActivates } from '../../utils/keyboard';
+import { imagePlan, imagePlanTitle, missingPortraitCount } from '../../utils/storyMedia';
 import { CharacterView, StoryView } from '../../types/viewModels';
 import {
   AI_LENGTHS,
@@ -97,6 +98,7 @@ export const StoryWizard: React.FC<StoryWizardProps> = ({
   const [length, setLength] = useState<StoryLength>('medium');
   const [title, setTitle] = useState('');
   const [useTts, setUseTts] = useState(true);
+  const [useAiImage, setUseAiImage] = useState(false); // GĐ B2: mặc định tắt như Web
   const [charSheet, setCharSheet] = useState(false);
   const [error, setError] = useState('');
   const [pricing, setPricing] = useState<AiPricingDto | null>(null);
@@ -143,6 +145,10 @@ export const StoryWizard: React.FC<StoryWizardProps> = ({
   const costOf = (l: StoryLength) => (isAi ? pricing?.lengths.find((p) => p.length === l)?.credits : undefined);
   const cost = costOf(length);
   const notEnough = cost != null && creditBalance != null && creditBalance < cost;
+  // GĐ B2: tranh AI – tối đa maxScenes cảnh + chân dung còn thiếu của nhân vật đã chọn (Web CreateStoryPage imagesMax/imagePlan)
+  const imageCosts = pricing?.images;
+  const missingPortraits = missingPortraitCount(characters, selected);
+  const images = imagePlan({ isAi, useAiImage, images: imageCosts, missingPortraits, creditBalance, textCost: cost });
   // Cùng quy tắc với Web (`missing`)
   const missing = useMemo(() => {
     if (!entry) return 'Ba mẹ chọn một lối vào nhé';
@@ -231,6 +237,7 @@ export const StoryWizard: React.FC<StoryWizardProps> = ({
         title: title.trim(),
         characters: orderedCharacters(),
         useTts,
+        useAiImage,
       });
     } else if (entry === 'handwritten') {
       // Tự viết: chuyện mẫu không bắt buộc; BE đặt entry = handwritten và tạo sẵn các trang trống
@@ -272,6 +279,7 @@ export const StoryWizard: React.FC<StoryWizardProps> = ({
       situation: situation.trim(),
       analysisToken: analysis.analysisToken,
       scored: true,
+      useAiImage,
     });
   };
 
@@ -508,17 +516,57 @@ export const StoryWizard: React.FC<StoryWizardProps> = ({
               value={title}
               onChangeText={(t) => { setTitle(t); setError(''); }}
             />
+            {/* Giọng đọc: mọi lối (Web), mặc định bật */}
+            <View style={styles.switchRow}>
+              <Text style={styles.switchLabel}>Có giọng đọc kể truyện</Text>
+              <Switch
+                value={useTts}
+                onValueChange={setUseTts}
+                accessibilityLabel="Có giọng đọc kể truyện"
+                trackColor={{ true: Colors.tealStrong, false: Colors.outline }}
+                thumbColor={Colors.surface}
+              />
+            </View>
+            {/* GĐ B2: tranh AI chỉ cho 2 lối AI viết; chi phí và cảnh báo theo GET /stories/ai-pricing + số dư BE */}
             {isAi && (
-              <View style={styles.switchRow}>
-                <Text style={styles.switchLabel}>Có giọng đọc kể truyện</Text>
-                <Switch
-                  value={useTts}
-                  onValueChange={setUseTts}
-                  accessibilityLabel="Có giọng đọc kể truyện"
-                  trackColor={{ true: Colors.tealStrong, false: Colors.outline }}
-                  thumbColor={Colors.surface}
-                />
-              </View>
+              <>
+                <View style={styles.switchRow}>
+                  <View style={styles.switchText}>
+                    <Text style={styles.switchLabel}>Tranh minh hoạ bằng AI</Text>
+                    <Text style={styles.hint}>
+                      {imageCosts
+                        ? `AI vẽ tối đa ${imageCosts.maxScenes} cảnh (${imageCosts.scene} credit/cảnh)${
+                            missingPortraits ? ` + ${missingPortraits} chân dung còn thiếu (${imageCosts.characterPortrait} credit/chân dung)` : ''
+                          }, vẽ sau khi chữ xong`
+                        : 'AI vẽ tranh cho từng cảnh sau khi viết xong chữ'}
+                    </Text>
+                  </View>
+                  <Switch
+                    value={useAiImage}
+                    onValueChange={setUseAiImage}
+                    accessibilityLabel="Tranh minh hoạ bằng AI"
+                    trackColor={{ true: Colors.tealStrong, false: Colors.outline }}
+                    thumbColor={Colors.surface}
+                  />
+                </View>
+                {useAiImage && images.plan && imageCosts && (
+                  <View style={[styles.notice, images.plan.full ? styles.noticeOk : styles.noticeWarn]} accessibilityRole={images.plan.full ? undefined : 'alert'}>
+                    <Icon name={images.plan.full ? 'image-outline' : 'warning-outline'} size={18} color={images.plan.full ? Colors.successText : Colors.warning} />
+                    <View style={styles.choiceBody}>
+                      <Text style={styles.choiceTitle}>{imagePlanTitle(images.plan, imageCosts.maxScenes)}</Text>
+                      <Text style={styles.choiceDesc}>
+                        Tranh tốn thêm tối đa {images.imagesMax} credit ({imageCosts.maxScenes} cảnh × {imageCosts.scene}
+                        {missingPortraits ? ` + ${missingPortraits} chân dung × ${imageCosts.characterPortrait}` : ''}). Sau khi AI viết chữ, ba mẹ còn {images.afterCost} credit.
+                      </Text>
+                      {!images.plan.full && (
+                        <Text style={styles.choiceDesc}>
+                          Truyện vẫn được viết đầy đủ{images.plan.none ? ', chỉ là không có tranh' : ', các cảnh còn lại không có tranh'}. Ba mẹ có thể chọn truyện ngắn hơn, tắt tranh, hoặc nâng gói rồi vẽ thêm trong màn Sửa truyện.
+                        </Text>
+                      )}
+                    </View>
+                  </View>
+                )}
+              </>
             )}
 
             {familyConfirm && analysis && (
@@ -624,6 +672,10 @@ const styles = StyleSheet.create({
   badges: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
   switchRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: Touch.min },
   switchLabel: { ...Typography.label, color: Colors.text, flex: 1, paddingRight: Spacing.md },
+  switchText: { flex: 1, gap: 2, paddingRight: Spacing.md },
+  notice: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.sm, padding: Spacing.md, borderRadius: Radius.md, borderWidth: 1 },
+  noticeOk: { backgroundColor: Colors.successTint, borderColor: Colors.successText },
+  noticeWarn: { backgroundColor: Colors.warningTint, borderColor: Colors.warning },
   errorBox: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.sm, backgroundColor: Colors.dangerTint, padding: Spacing.md, borderRadius: Radius.md },
   errorText: { ...Typography.label, color: Colors.danger, flex: 1 },
   footer: { padding: Spacing.page, paddingTop: Spacing.sm, gap: Spacing.xs, backgroundColor: Colors.surface, borderTopWidth: 1, borderTopColor: Colors.outline },
