@@ -17,6 +17,7 @@ import { useDialog } from '../../components/ui/Dialog';
 import { ScreenHeader } from '../../components/ui/ScreenHeader';
 import { StoryCover } from '../../components/ui/StoryCover';
 import { GenerationRunner } from '../../components/parent/GenerationRunner';
+import { StoryMediaPanel } from '../../components/parent/StoryMediaPanel';
 import { Colors } from '../../theme/colors';
 import { Radius, Spacing } from '../../theme/spacing';
 import { Typography } from '../../theme/typography';
@@ -43,6 +44,8 @@ interface StoryDetailScreenProps {
   onCreditsChanged: () => void;
   /** Mở màn Sửa truyện */
   onOpenEditor: (storyId: string) => void;
+  /** GĐ B2: số dư credit (null = chưa biết) cho khung vẽ tranh */
+  creditBalance: number | null;
 }
 
 export const StoryDetailScreen: React.FC<StoryDetailScreenProps> = ({
@@ -54,6 +57,7 @@ export const StoryDetailScreen: React.FC<StoryDetailScreenProps> = ({
   onStoryLoaded,
   onCreditsChanged,
   onOpenEditor,
+  creditBalance,
 }) => {
   const toast = useToast();
   const dialog = useDialog();
@@ -265,6 +269,24 @@ export const StoryDetailScreen: React.FC<StoryDetailScreenProps> = ({
         </View>
       )}
 
+      {/* GĐ B2: giọng đọc + tranh AI (vẽ / vẽ tiếp / vẽ lại, tự cập nhật tiến độ) */}
+      {status === 'ready' && !generating && !!story?.detailLoaded && (
+        <View style={styles.media}>
+          <StoryMediaPanel
+            storyId={storyId}
+            story={story}
+            creditBalance={creditBalance}
+            disabled={!!busy}
+            onUpdated={(dto) => {
+              const view = storyService.formatStory(dto);
+              setStory(view);
+              onStoryLoaded(view);
+            }}
+            onCreditsChanged={onCreditsChanged}
+          />
+        </View>
+      )}
+
       {status === 'ready' && !generating && pages.length > 0 && (
         <HeyCard style={styles.shelfCard}>
           <Text style={styles.shelfTitle} accessibilityRole="header">
@@ -380,6 +402,7 @@ const styles = StyleSheet.create({
   note: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.sm, marginTop: Spacing.sm },
   noteText: { ...Typography.label, color: Colors.text, flex: 1 },
   shelfCard: { gap: Spacing.sm, marginBottom: Spacing.md },
+  media: { marginBottom: Spacing.md },
   shelfTitle: { ...Typography.bodyStrong, color: Colors.text },
   shelfRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
   shelfInfo: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, flexWrap: 'wrap' },
