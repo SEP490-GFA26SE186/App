@@ -1,7 +1,7 @@
 // apps/mobile/src/components/market/ListingReviews.tsx
 // GĐ D2 – Đánh giá truyện (Web ListingReviews): phân bố sao, danh sách, viết / sửa đánh giá của mình khi BE cho (`canReview`),
 // báo cáo đánh giá của người khác. Gửi đánh giá / báo cáo LUÔN qua Dialog xác nhận, chống bấm đúp, lỗi BE hiện câu đã dịch.
-// Trả lời đánh giá (người bán) thuộc GĐ D3.
+// GĐ D3: người bán của truyện trả lời đánh giá chưa trả lời (một lần, Sheet + Dialog); báo cáo trùng (409) coi như đã gửi.
 import React, { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { HeyCard } from '../ui/HeyCard';
@@ -13,7 +13,7 @@ import { Badge } from '../ui/Badge';
 import { Sheet } from '../ui/Sheet';
 import { StateView } from '../ui/StateView';
 import { useDialog } from '../ui/Dialog';
-import { useMutationRunner } from '../management/ManagementUi';
+import { ReasonSheet, useMutationRunner } from '../management/ManagementUi';
 import { ReportSheet, StarPicker, Stars } from './MarketUi';
 import { Colors } from '../../theme/colors';
 import { Radius, Spacing } from '../../theme/spacing';
@@ -28,11 +28,13 @@ import {
   distributionRows,
   reportBody,
   reportConfirm,
+  reportOutcome,
   reviewBody,
   reviewConfirm,
   reviewFormError,
   reviewHint,
 } from '../../utils/market';
+import { REPLY_MAX, REPLY_MIN, replyConfirm } from '../../utils/selling';
 import type { ListingDetailDto, ReviewDto, ReviewTag } from '../../types/market';
 
 export const ListingReviews: React.FC<{ listing: ListingDetailDto; onChanged: () => void }> = ({ listing, onChanged }) => {
@@ -42,6 +44,8 @@ export const ListingReviews: React.FC<{ listing: ListingDetailDto; onChanged: ()
   const [form, setForm] = useState<ReviewForm | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [reporting, setReporting] = useState<ReviewDto | null>(null);
+  const [reported, setReported] = useState<string[]>([]);
+  const [replying, setReplying] = useState<ReviewDto | null>(null);
   const d = res.data;
 
   const openForm = () => {
@@ -68,8 +72,22 @@ export const ListingReviews: React.FC<{ listing: ListingDetailDto; onChanged: ()
   const report = async (category: string, description: string) => {
     if (!reporting || busy) return;
     if (!(await dialog.confirm(reportConfirm('review', category)))) return;
-    if (await run(`report:${reporting.id}`, () => marketService.reportReview(reporting.id, reportBody(category, description)), 'Đã gửi báo cáo, kiểm duyệt viên sẽ xem xét')) {
+    const target = reporting;
+    const ok = await run(`report:${target.id}`, () => reportOutcome(marketService.reportReview(target.id, reportBody(category, description))), (r) =>
+      r === 'duplicate' ? 'Ba mẹ đã báo cáo đánh giá này rồi.' : 'Đã gửi báo cáo, kiểm duyệt viên sẽ xem xét'
+    );
+    if (ok) {
+      setReported((ids) => [...ids, target.id]);
       setReporting(null);
+    }
+  };
+
+  const reply = async (text: string) => {
+    if (!replying || busy) return;
+    if (!(await dialog.confirm(replyConfirm(replying.author)))) return;
+    if (await run(`reply:${replying.id}`, () => marketService.replyReview(replying.id, text), 'Đã trả lời đánh giá')) {
+      setReplying(null);
+      void res.reload();
     }
   };
 
@@ -142,7 +160,20 @@ export const ListingReviews: React.FC<{ listing: ListingDetailDto; onChanged: ()
                   {r.sellerReply}
                 </Text>
               )}
-              {!r.mine && !d.isSeller && (
+              {d.isSeller && !r.sellerReply && (
+                <HeyButton
+                  title="Trả lời"
+                  iconName="chatbubble-outline"
+                  variant="tertiary"
+                  size="sm"
+                  onPress={() => setReplying(r)}
+                  disabled={busy}
+                  accessibilityLabel={`Trả lời đánh giá của ${r.author}`}
+                  style={styles.selfStart}
+                />
+              )}
+              {!r.mine && !d.isSeller && reported.includes(r.id) && <Text style={styles.muted}>Đã báo cáo</Text>}
+              {!r.mine && !d.isSeller && !reported.includes(r.id) && (
                 <HeyButton
                   title="Báo cáo"
                   iconName="flag-outline"
@@ -191,6 +222,19 @@ export const ListingReviews: React.FC<{ listing: ListingDetailDto; onChanged: ()
           </>
         )}
       </Sheet>
+      <ReasonSheet
+        visible={!!replying}
+        title="Trả lời đánh giá"
+        description={replying ? `${replying.author}: ${replying.comment ?? `${replying.rating} sao`}` : undefined}
+        label="Nội dung trả lời"
+        placeholder="Cảm ơn ba mẹ đã đọc truyện..."
+        minLength={REPLY_MIN}
+        maxLength={REPLY_MAX}
+        confirmLabel="Gửi trả lời"
+        busy={busy}
+        onSubmit={(t) => void reply(t)}
+        onClose={() => setReplying(null)}
+      />
       <ReportSheet
         visible={!!reporting}
         title="Báo cáo đánh giá"
