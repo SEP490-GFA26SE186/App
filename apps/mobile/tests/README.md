@@ -124,3 +124,9 @@ node %TEMP%/sw-market-tests/tests/marketplace.test.js
 npx tsc tests/selling.test.ts --outDir %TEMP%/sw-selling-tests --module commonjs --target es2022 --esModuleInterop --skipLibCheck --jsx react-jsx --types react-native,node
 node %TEMP%/sw-selling-tests/tests/selling.test.js
 ```
+
+`specialistContent.test.ts` (GĐ E2a) kiểm Chuyện mẫu, Kỹ năng con, Mẫu câu hỏi với fetch giả (không gọi BE): đúng method/path/body 13 endpoint `/topics`, `/sub-skills`, `/question-templates`; lỗi 409 "đang được dùng" hiện câu BE; kiểm form như BE (chuyện mẫu, kỹ năng con chỉ 4 trường, luật ban hành mẫu); luồng tạo → lưu nháp → ban hành; Dialog trước mọi thao tác ghi; điều hướng màn con. Chạy từ `apps/mobile`:
+```
+npx tsc tests/specialistContent.test.ts --outDir %TEMP%/sw-spec-content-tests --module commonjs --target es2022 --esModuleInterop --skipLibCheck --jsx react-jsx --types react-native,node
+node %TEMP%/sw-spec-content-tests/tests/specialistContent.test.js
+```

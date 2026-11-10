@@ -4,7 +4,7 @@ Lập ngày 2026-11-09 · Nguồn đối chiếu: GitHub `main` — App `f84c4f9
 Môi trường demo: Web `https://storyweaver.id.vn` · API `https://api.storyweaver.id.vn/api/v1` (lấy từ tài liệu deploy của BE).
 Tài khoản demo **không ghi trong tài liệu hay source**; chủ dự án tự nhập khi test.
 
-> Tiến độ: GĐ A và **GĐ B hoàn tất** (B1, B2, B3, hotfix Expo Go audio, bỏ `baseUrl` trong tsconfig đều đã merge vào `main`). **GĐ C** (trang Chính sách / Điều khoản, ô ngoại hình + gợi ý ở form hồ sơ bé) đã merge. **GĐ E1** (Chuyên gia: giám sát) đã merge. **GĐ F** (Admin: Gói & định giá, Doanh thu & đối soát, Cấu hình AI) đã merge. **GĐ D1** (mua / gia hạn gói qua payOS, lịch sử thanh toán, hoàn tiền) đã merge. **GĐ D2** (Chợ truyện; Admin nhóm cài đặt `market`) đã merge. **GĐ D3** (Bán truyện: hồ sơ người bán, đăng bán / phiên bản, doanh thu + rút tiền, cảnh cáo + kháng nghị, trả lời đánh giá) đang làm trên nhánh `feat/mobile-selling`; **GĐ D hoàn tất khi D3 merge**.
+> Tiến độ: GĐ A và **GĐ B hoàn tất** (B1, B2, B3, hotfix Expo Go audio, bỏ `baseUrl` trong tsconfig đều đã merge vào `main`). **GĐ C** (trang Chính sách / Điều khoản, ô ngoại hình + gợi ý ở form hồ sơ bé) đã merge. **GĐ E1** (Chuyên gia: giám sát) đã merge. **GĐ F** (Admin: Gói & định giá, Doanh thu & đối soát, Cấu hình AI) đã merge. **GĐ D1** (mua / gia hạn gói qua payOS, lịch sử thanh toán, hoàn tiền) đã merge. **GĐ D2** (Chợ truyện; Admin nhóm cài đặt `market`) đã merge. **GĐ D3** (Bán truyện) đã merge — **GĐ D hoàn tất**. **GĐ E2a** (Chuyên gia: Chuyện mẫu, Kỹ năng con, Mẫu câu hỏi) đang làm trên nhánh `feat/mobile-specialist-content-a`. Tiếp theo: **E2b** (Soát câu hỏi AI, Tham số báo cáo, Từ khoá chặn).
 > Quyết định 2026-11-09: **không test thật sau từng đợt; mọi test thật dồn về GĐ G.** Mỗi đợt chỉ cần tsc + test fetch giả + review.
 > Đã chạy thật trên máy ảo Android (Expo Go SDK 52) với BE deploy: đăng nhập và đọc dữ liệu OK (sau hotfix Expo Go audio).
 >
@@ -67,7 +67,7 @@ Chi tiết:
 
 ### GĐ E – Chuyên gia (M + L)
 - **E1 (M), hợp với điện thoại:** Tổng quan, Truyện tạm gỡ, Cảnh cáo, Kiểm tra ngẫu nhiên, Cảnh báo AI.
-- **E2 (L), quản lý nội dung:** Chuyện mẫu, Kỹ năng con, Mẫu câu hỏi (chọn năng lực CASEL), Soát câu hỏi AI, Tham số báo cáo, Từ khoá chặn.
+- **E2 (L), quản lý nội dung:** **E2a** Chuyện mẫu, Kỹ năng con, Mẫu câu hỏi (chọn năng lực CASEL) — màn con mở từ menu "Thêm", form dài trong Sheet; **E2b** Soát câu hỏi AI, Tham số báo cáo, Từ khoá chặn.
 
 ### GĐ F – Admin (M)
 - Gói & định giá, Doanh thu & đối soát, Cấu hình AI.

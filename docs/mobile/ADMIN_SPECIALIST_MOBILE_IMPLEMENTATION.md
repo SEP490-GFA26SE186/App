@@ -39,7 +39,8 @@ Xung đột Web ↔ BE: Web cho bấm "Đã chuyển trả — duyệt" khi tr�
 | Specialist | Hồ sơ người bán | `/moderation/sellers`, `/decision` | MISSING | API INTEGRATED | |
 | Specialist | Báo cáo vi phạm | `/moderation/reports`, dismiss, suspend, strikes, hide review | MISSING | API INTEGRATED | |
 | Specialist | Truyện tạm gỡ, Cảnh cáo, Kiểm tra ngẫu nhiên, Cảnh báo AI | `/moderation/listings`, `/strikes`, `/audits`, `/audits/run`, `/ai-flags`, `/ai-flags/:userId/block` | MISSING | API INTEGRATED (GĐ E1, FIXTURE PASS) | màn con mở từ "Thêm" + lối tắt ở Tổng quan; chọn đợt kiểm tra và khoá/mở khoá AI có Dialog xác nhận; ra cảnh cáo như Web |
-| Specialist | Kỹ năng con, Mẫu câu hỏi, Chuyện mẫu, Soát câu hỏi AI, Tham số báo cáo, Từ khoá chặn | các module tương ứng | MISSING | WEB ONLY (chưa làm) | quản trị nội dung dạng bảng/form lớn |
+| Specialist | Chuyện mẫu, Kỹ năng con, Mẫu câu hỏi | `/topics`, `/sub-skills`, `/question-templates` (+ `/draft`, `/publish`, `/duplicate`) | MISSING | API INTEGRATED (GĐ E2a, FIXTURE PASS) | thẻ + Sheet; mọi thao tác ghi (kể cả bật/tắt) qua Dialog; mục 15 |
+| Specialist | Soát câu hỏi AI, Tham số báo cáo, Từ khoá chặn | các module tương ứng | MISSING | WEB ONLY (chưa làm, GĐ E2b) | |
 
 ## 3. Quyết định thiết kế
 - Dùng lại Design System R1–R2: `HeyCard`, `HeyButton`, `HeyInput`, `HeyChip`, `Badge`, `Sheet`, `StateView`, `Dialog`, `Toast`, `ScreenHeader`, `Icon`, token `Colors/Spacing/Radius/Typography`. Không thêm hex, thư viện hay dependency.
@@ -159,3 +160,13 @@ Không đụng: `ModeratorAdminScreen.tsx` (mock cũ, không còn đường vào
 - Màn Gói & định giá có thêm khối "Chợ truyện & hoàn tiền" như Web `PlansPage` (`<SettingsGroup group="market" />`): phần người bán nhận (50–95%), số ngày giữ doanh thu, thời hạn hoàn tiền (1–30 ngày), mức rút tối thiểu.
 - Phần hàng cài đặt tách thành `components/admin/SettingsGroup.tsx`, dùng chung với Cấu hình AI. Kiểm như `settingError` của BE, thêm ràng buộc chéo: thời hạn hoàn tiền không dài hơn số ngày giữ doanh thu. Lưu qua Dialog xác nhận.
 - Kiểm thử: `tests/marketplace.test.ts`, `tests/adminPlansFinance.test.ts` — FIXTURE PASS.
+
+## 15. GĐ E2a – Chuyên gia: Chuyện mẫu, Kỹ năng con, Mẫu câu hỏi (2026-11-10, branch `feat/mobile-specialist-content-a`)
+
+3 màn trước đây WEB ONLY nay đã có trên Mobile (`screens/specialist/{TopicsScreen,SubSkillsScreen,TemplatesScreen}.tsx`), mở từ menu "Thêm" (thay 3 mục "Dùng trên Web"), là màn con, không thêm tab.
+- Chuyện mẫu: tìm, lọc năng lực + trạng thái; Sheet tạo / sửa theo `topics.validation` (kỹ năng con 1–3, chỉ chọn mục đã có mẫu ban hành; khoá năng lực khi đã có truyện); xoá: đã có truyện thì BE chỉ ngưng dùng, hiện câu BE.
+- Kỹ năng con: chỉ sửa tên / mô tả tiếng Việt, độ tuổi, bật / tắt (BE `.strict()`), không thêm / xoá.
+- Mẫu câu hỏi: lọc năng lực CASEL / kỹ năng con / trạng thái; Sheet soạn (chọn năng lực trước rồi kỹ năng con, gợi ý dạng trả lời theo năng lực như Web e704a49); lưu nháp, ban hành (kiểm trường thiếu như BE trước khi gửi), nhân bản, bật / tắt, xoá (409 khi đã có điểm dừng dùng).
+- Khác Web: bật / tắt cũng qua Dialog xác nhận; không có khung "Xem trước" của mẫu câu hỏi.
+- Kiểm thử: `tests/specialistContent.test.ts` — FIXTURE PASS; E2E với BE thật dồn về GĐ G.
+- Còn WEB ONLY: Soát câu hỏi AI, Tham số báo cáo, Từ khoá chặn (GĐ E2b).
