@@ -318,3 +318,139 @@ export const duplicateConfirm = (t: QuestionTemplate) => ({
 
 /** Năng lực CASEL có trong danh sách kỹ năng con (Web TemplatesPage) */
 export const skillsOf = (subSkills: Pick<ManagedSubSkill, 'skill'>[]) => [...new Map(subSkills.filter((s) => s.skill).map((s) => [s.skill!.id, s.skill!])).values()];
+
+// ==== GĐ E2b ====
+// Chữ / luật chép từ Web CheckpointReviewPage.jsx, ReportSettingsPage.jsx, KeywordsPage.jsx; BE checkpoint-review.validation,
+// pedagogy-settings.validation, keywords.routes.
+
+// ---- Soát câu hỏi AI ----
+
+export const REVIEW_STATUS_OPTIONS = [
+  { value: 'pending', label: 'Chờ soát' },
+  { value: 'ok', label: 'Đã ổn' },
+  { value: 'flagged', label: 'Đã gắn cờ' },
+  { value: 'all', label: 'Tất cả' },
+];
+export const REVIEW_STATUS_BADGE: Record<string, { label: string; tone: 'neutral' | 'success' | 'danger' }> = {
+  pending: { label: 'Chờ soát', tone: 'neutral' },
+  ok: { label: 'Ổn', tone: 'success' },
+  flagged: { label: 'Đã gắn cờ', tone: 'danger' },
+};
+export const FAMILY_SOURCE_LABELS: Record<string, string> = { moment: 'từ khoảnh khắc trong chuyện', need: 'theo nhu cầu của bé', parent: 'phụ huynh chọn' };
+export const FLAG_REASON_MIN = 5;
+export const FLAG_REASON_MAX = 500;
+
+/** Nút theo trạng thái (Web ReviewItem): đã gắn cờ → Gỡ cờ; chưa gắn cờ → Gắn cờ; chưa ổn → Ổn */
+export const reviewActions = (status: string) => ({ unflag: status === 'flagged', flag: status !== 'flagged', ok: status !== 'ok' });
+
+export const okConfirm = (status: string) => ({
+  title: status === 'flagged' ? 'Gỡ cờ và đánh dấu ổn?' : 'Đánh dấu câu hỏi ổn?',
+  message: 'Xác nhận câu hỏi đạt yêu cầu và được tính vào báo cáo EQ.',
+  confirmLabel: 'Ổn',
+});
+export const flagConfirm = {
+  title: 'Gắn cờ câu hỏi?',
+  message: 'Câu bị gắn cờ không còn tính điểm và không vào báo cáo EQ. Bé vẫn đọc và trả lời bình thường; nội dung truyện không đổi.',
+  confirmLabel: 'Gắn cờ',
+  destructive: true,
+};
+export const unflagConfirm = { title: 'Gỡ cờ câu hỏi?', message: 'Câu hỏi quay lại hàng chờ soát.', confirmLabel: 'Gỡ cờ' };
+
+export const flagRate = (s: { reviewed: number; flagged: number }) => (s.reviewed ? `${Math.round((s.flagged / s.reviewed) * 100)}%` : '—');
+
+// ---- Tham số báo cáo EQ (ngưỡng lưu 0..1, nhập theo %) ----
+
+export interface ReportSettingsForm {
+  window: string;
+  minItems: string;
+  developingFrom: string;
+  secureFrom: string;
+}
+export const reportSettingsForm = (s: { window: number; minItems: number; developingFrom: number; secureFrom: number }): ReportSettingsForm => ({
+  window: String(s.window),
+  minItems: String(s.minItems),
+  developingFrom: String(Math.round(s.developingFrom * 100)),
+  secureFrom: String(Math.round(s.secureFrom * 100)),
+});
+
+/** Khớp pedagogy-settings.validation.js (Web validate). null = hợp lệ */
+export const reportSettingsError = (f: ReportSettingsForm): string | null => {
+  const num = (s: string) => (s.trim() === '' ? NaN : Number(s.trim().replace(',', '.')));
+  const window = num(f.window);
+  const minItems = num(f.minItems);
+  const dev = num(f.developingFrom);
+  const sec = num(f.secureFrom);
+  if (!Number.isInteger(window) || window < 1 || window > 20) return 'Số câu xét là số nguyên từ 1 đến 20';
+  if (!Number.isInteger(minItems) || minItems < 1) return 'Số câu tối thiểu là số nguyên từ 1';
+  if (minItems > window) return 'Số câu tối thiểu không được lớn hơn số câu xét';
+  if (!Number.isFinite(dev) || dev <= 0) return 'Ngưỡng “Đang phát triển” phải lớn hơn 0%';
+  if (!Number.isFinite(sec) || sec > 100) return 'Ngưỡng “Vững” tối đa là 100%';
+  if (!(dev < sec)) return 'Ngưỡng “Vững” phải lớn hơn ngưỡng “Đang phát triển”';
+  return null;
+};
+
+/** Body PUT: đủ 4 trường, ngưỡng % → tỉ lệ */
+export const reportSettingsBody = (f: ReportSettingsForm) => ({
+  window: Number(f.window.trim()),
+  minItems: Number(f.minItems.trim()),
+  developingFrom: Number(f.developingFrom.trim().replace(',', '.')) / 100,
+  secureFrom: Number(f.secureFrom.trim().replace(',', '.')) / 100,
+});
+
+/** Quy tắc sẽ áp dụng (Web LevelPreview) — hiện trong Dialog và dưới form */
+export const reportRules = (f: ReportSettingsForm) => [
+  `Đang làm quen: dưới ${f.developingFrom}%`,
+  `Đang phát triển: ${f.developingFrom}% đến dưới ${f.secureFrom}%`,
+  `Vững: từ ${f.secureFrom}%`,
+  `Mỗi kỹ năng con xét ${f.window} câu chấm gần nhất; ít hơn ${f.minItems} câu thì phụ huynh thấy “Chưa có dữ liệu”.`,
+];
+
+export const reportSettingsConfirm = (f: ReportSettingsForm) => ({
+  title: 'Lưu tham số báo cáo EQ?',
+  message: `${reportRules(f).join('\n')}\n\nÁp dụng cho báo cáo EQ của mọi bé.`,
+  confirmLabel: 'Lưu tham số',
+});
+
+// ---- Từ khoá chặn ----
+
+export const SEVERITY: Record<'block' | 'warn', { label: string; hint: string; tone: 'danger' | 'warning' }> = {
+  block: { label: 'Chặn hẳn', hint: 'Không lưu được truyện có từ này', tone: 'danger' },
+  warn: { label: 'Cảnh báo', hint: 'Vẫn lưu được, phụ huynh thấy cảnh báo', tone: 'warning' },
+};
+export const SEVERITY_FILTERS = [
+  { value: 'all', label: 'Mọi mức độ' },
+  { value: 'block', label: 'Chặn hẳn' },
+  { value: 'warn', label: 'Cảnh báo' },
+];
+export const KEYWORD_MAX = 100;
+export const KEYWORDS_BULK_MAX = 500;
+
+/** Mỗi dòng một từ, bỏ trùng / dòng trống (Web AddKeywordsForm) */
+export const parseKeywords = (text: string) => [...new Set(text.split('\n').map((s) => s.trim()).filter(Boolean))];
+export const keywordsError = (keywords: string[]): string | null => {
+  if (!keywords.length) return 'Nhập ít nhất một từ khoá';
+  if (keywords.length > KEYWORDS_BULK_MAX) return `Tối đa ${KEYWORDS_BULK_MAX} từ khoá mỗi lần`;
+  if (keywords.some((k) => k.length > KEYWORD_MAX)) return `Mỗi từ khoá tối đa ${KEYWORD_MAX} ký tự`;
+  return null;
+};
+export const addKeywordsConfirm = (keywords: string[], severity: 'block' | 'warn') => ({
+  title: keywords.length === 1 ? `Thêm từ khoá “${keywords[0]}”?` : `Thêm ${keywords.length} từ khoá?`,
+  message: `Mức độ: ${SEVERITY[severity].label} — ${SEVERITY[severity].hint.toLowerCase()}.${keywords.length > 1 ? ' Từ đã có sẽ được cập nhật mức độ và bật lại.' : ''} Áp dụng cho cả truyện AI viết và chữ phụ huynh tự viết.`,
+  confirmLabel: 'Thêm',
+});
+export const severityConfirm = (k: { keyword: string; severity: 'block' | 'warn' }) => {
+  const next = k.severity === 'block' ? 'warn' : 'block';
+  return { title: `Đổi “${k.keyword}” sang ${SEVERITY[next].label}?`, message: SEVERITY[next].hint + '.', confirmLabel: 'Đổi mức độ' };
+};
+export const keywordToggleConfirm = (k: { keyword: string; isActive: boolean }) => ({
+  title: `${k.isActive ? 'Tắt' : 'Bật lại'} từ khoá “${k.keyword}”?`,
+  message: k.isActive ? 'Từ khoá không còn được kiểm khi AI viết hay phụ huynh tự viết.' : 'Từ khoá được kiểm lại khi AI viết và phụ huynh tự viết.',
+  confirmLabel: k.isActive ? 'Tắt' : 'Bật lại',
+  destructive: k.isActive,
+});
+export const keywordDeleteConfirm = (k: { keyword: string }) => ({
+  title: `Xoá từ khoá “${k.keyword}”?`,
+  message: 'Từ khoá bị xoá hẳn khỏi danh sách. Muốn tạm ngừng thì tắt thay vì xoá.',
+  confirmLabel: 'Xoá',
+  destructive: true,
+});
