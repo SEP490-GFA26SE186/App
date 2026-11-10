@@ -108,3 +108,47 @@ export interface QuestionTemplate {
   latestPublished: TemplateVersion | null;
   draft: TemplateVersion | null;
 }
+
+// ---- GĐ E2b: soát câu hỏi AI (checkpoint-review.service.js format), tham số báo cáo, từ khoá chặn ----
+
+export type CheckpointReviewStatus = 'pending' | 'ok' | 'flagged';
+
+export interface CheckpointReviewItem {
+  checkpointId: string;
+  createdAt: string;
+  type: string;
+  skill: { id: string; caselCode: string; nameVi: string } | null;
+  subSkill: { id: string; nameVi: string } | null;
+  template: { id: string; title: string; version: number } | null;
+  pageBefore: string | null;
+  question: string;
+  options: { text: string; role?: string; isCorrect?: boolean }[];
+  answerEmotion?: string;
+  status: CheckpointReviewStatus;
+  excludedReason?: string;
+  family: { situation: string | null; momentSummary: string | null; seedEvent: string | null; source: string | null } | null;
+}
+
+export interface CheckpointReviewStat {
+  templateId: string;
+  title: string;
+  reviewed: number;
+  flagged: number;
+}
+
+export interface ReportSettings {
+  window: number;
+  minItems: number;
+  developingFrom: number;
+  secureFrom: number;
+}
+
+export type KeywordSeverity = 'block' | 'warn';
+export interface BlockedKeyword {
+  id: string;
+  keyword: string;
+  severity: KeywordSeverity;
+  isActive: boolean;
+  createdAt: string;
+  creator: string | null;
+}

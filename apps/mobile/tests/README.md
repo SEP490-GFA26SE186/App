@@ -130,3 +130,9 @@ node %TEMP%/sw-selling-tests/tests/selling.test.js
 npx tsc tests/specialistContent.test.ts --outDir %TEMP%/sw-spec-content-tests --module commonjs --target es2022 --esModuleInterop --skipLibCheck --jsx react-jsx --types react-native,node
 node %TEMP%/sw-spec-content-tests/tests/specialistContent.test.js
 ```
+
+`specialistContentB.test.ts` (GĐ E2b) kiểm Soát câu hỏi AI, Tham số báo cáo, Từ khoá chặn và nhóm cài đặt `moderation` với fetch giả (không gọi BE): đúng method/path/body 11 endpoint (`nextCursor` đọc ngoài `data`); lỗi BE giữ câu BE; kiểm form như BE (lý do gắn cờ 5–500, 4 tham số báo cáo, từ khoá ≤ 100 ký tự / ≤ 500 từ); Dialog trước mọi thao tác ghi; nhóm `moderation` chỉ ở khu Admin; khu Chuyên gia không còn "Dùng trên Web". Chạy từ `apps/mobile`:
+```
+npx tsc tests/specialistContentB.test.ts --outDir %TEMP%/sw-spec-content-b-tests --module commonjs --target es2022 --esModuleInterop --skipLibCheck --jsx react-jsx --types react-native,node
+node %TEMP%/sw-spec-content-b-tests/tests/specialistContentB.test.js
+```

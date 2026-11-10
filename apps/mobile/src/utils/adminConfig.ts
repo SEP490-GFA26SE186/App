@@ -133,7 +133,7 @@ export const planConfirm = (plan: AdminPlan | undefined, body: Partial<PlanField
 // ---- Cấu hình (nhóm ai, market) ----
 
 /** Chỉ khoá của một nhóm (Web SettingsGroup group=...); khoá ngoài nhóm không hiện, không sửa */
-export const settingsOfGroup = (settings: PlatformSetting[], group: 'ai' | 'market'): PlatformSetting[] => settings.filter((s) => s.group === group);
+export const settingsOfGroup = (settings: PlatformSetting[], group: 'ai' | 'market' | 'moderation'): PlatformSetting[] => settings.filter((s) => s.group === group);
 /** Màn Cấu hình AI chỉ hiện nhóm `ai` */
 export const aiSettings = (settings: PlatformSetting[]): PlatformSetting[] => settingsOfGroup(settings, 'ai');
 

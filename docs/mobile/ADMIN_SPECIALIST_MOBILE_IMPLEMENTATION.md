@@ -32,7 +32,7 @@ Xung đột Web ↔ BE: Web cho bấm "Đã chuyển trả — duyệt" khi tr�
 | Admin | Kháng nghị | `/admin/appeals`, `/decision` | MISSING | API INTEGRATED | |
 | Admin | Nhật ký kiểm toán | `GET /admin/audit-logs` | MISSING | API INTEGRATED | chỉ đọc |
 | Admin | Gói & định giá | `/admin/plans` (GET, POST, PUT /:planId) | MISSING | API INTEGRATED (GĐ F, FIXTURE PASS) | thẻ gói + sheet tạo/sửa, Dialog xác nhận liệt kê thay đổi; nhóm cài đặt market/moderation của trang Web chưa làm |
-| Admin | Cấu hình AI | `/admin/settings`, `PUT /admin/settings/:key` | MISSING | API INTEGRATED (GĐ F, FIXTURE PASS) | nhóm `ai` ở Cấu hình AI; nhóm `market` ở Gói & định giá (GĐ D2); mỗi giá trị lưu qua Dialog xác nhận; nhóm `moderation`: WEB ONLY |
+| Admin | Cấu hình AI | `/admin/settings`, `PUT /admin/settings/:key` | MISSING | API INTEGRATED (GĐ F, FIXTURE PASS) | nhóm `ai` ở Cấu hình AI; nhóm `market` (GĐ D2) và `moderation` (GĐ E2b) ở Gói & định giá; mỗi giá trị lưu qua Dialog xác nhận |
 | Admin | Doanh thu & đối soát | `/admin/finance/summary`, `/reconciliation`, `/reconciliation/fix-counters` | MISSING | API INTEGRATED (GĐ F, FIXTURE PASS) | thẻ + danh sách; "Tính lại bộ đếm" qua Dialog xác nhận |
 | Specialist | Hàng chờ duyệt | `GET /moderation/submissions` | MOCK ONLY | API INTEGRATED | |
 | Specialist | Lượt duyệt | `.../claim`, `.../pages/:id/view`, `.../decision` | MOCK ONLY | API INTEGRATED | nghe giọng đọc: WEB ONLY |
@@ -40,7 +40,7 @@ Xung đột Web ↔ BE: Web cho bấm "Đã chuyển trả — duyệt" khi tr�
 | Specialist | Báo cáo vi phạm | `/moderation/reports`, dismiss, suspend, strikes, hide review | MISSING | API INTEGRATED | |
 | Specialist | Truyện tạm gỡ, Cảnh cáo, Kiểm tra ngẫu nhiên, Cảnh báo AI | `/moderation/listings`, `/strikes`, `/audits`, `/audits/run`, `/ai-flags`, `/ai-flags/:userId/block` | MISSING | API INTEGRATED (GĐ E1, FIXTURE PASS) | màn con mở từ "Thêm" + lối tắt ở Tổng quan; chọn đợt kiểm tra và khoá/mở khoá AI có Dialog xác nhận; ra cảnh cáo như Web |
 | Specialist | Chuyện mẫu, Kỹ năng con, Mẫu câu hỏi | `/topics`, `/sub-skills`, `/question-templates` (+ `/draft`, `/publish`, `/duplicate`) | MISSING | API INTEGRATED (GĐ E2a, FIXTURE PASS) | thẻ + Sheet; mọi thao tác ghi (kể cả bật/tắt) qua Dialog; mục 15 |
-| Specialist | Soát câu hỏi AI, Tham số báo cáo, Từ khoá chặn | các module tương ứng | MISSING | WEB ONLY (chưa làm, GĐ E2b) | |
+| Specialist | Soát câu hỏi AI, Tham số báo cáo, Từ khoá chặn | `/checkpoint-review` (+ `/stats`, `/:id/ok`, `/:id/flag`), `/pedagogy/report-settings`, `/moderation/keywords` (+ `/bulk`) | MISSING | API INTEGRATED (GĐ E2b, FIXTURE PASS) | mục 16 |
 
 ## 3. Quyết định thiết kế
 - Dùng lại Design System R1–R2: `HeyCard`, `HeyButton`, `HeyInput`, `HeyChip`, `Badge`, `Sheet`, `StateView`, `Dialog`, `Toast`, `ScreenHeader`, `Icon`, token `Colors/Spacing/Radius/Typography`. Không thêm hex, thư viện hay dependency.
@@ -169,4 +169,13 @@ Không đụng: `ModeratorAdminScreen.tsx` (mock cũ, không còn đường vào
 - Mẫu câu hỏi: lọc năng lực CASEL / kỹ năng con / trạng thái; Sheet soạn (chọn năng lực trước rồi kỹ năng con, gợi ý dạng trả lời theo năng lực như Web e704a49); lưu nháp, ban hành (kiểm trường thiếu như BE trước khi gửi), nhân bản, bật / tắt, xoá (409 khi đã có điểm dừng dùng).
 - Khác Web: bật / tắt cũng qua Dialog xác nhận; không có khung "Xem trước" của mẫu câu hỏi.
 - Kiểm thử: `tests/specialistContent.test.ts` — FIXTURE PASS; E2E với BE thật dồn về GĐ G.
-- Còn WEB ONLY: Soát câu hỏi AI, Tham số báo cáo, Từ khoá chặn (GĐ E2b).
+- Soát câu hỏi AI, Tham số báo cáo, Từ khoá chặn: đã làm ở GĐ E2b (mục 16).
+
+## 16. GĐ E2b – Chuyên gia: Soát câu hỏi AI, Tham số báo cáo, Từ khoá chặn; Admin nhóm `moderation` (2026-11-10, branch `feat/mobile-specialist-content-b`)
+
+3 màn trước đây WEB ONLY nay có trên Mobile (`screens/specialist/{CheckpointReviewScreen,ReportSettingsScreen,KeywordsScreen}.tsx`), mở từ menu "Thêm". **Khu Chuyên gia không còn mục "Dùng trên Web"**; hằng số `WEB_ONLY_NOTICE` đã bỏ (không còn nơi dùng).
+- Soát câu hỏi AI: tab Hàng đợi / Thống kê theo mẫu; lọc trạng thái, năng lực, kỹ năng con, mẫu; "Xem thêm" theo `nextCursor` (BE trả ngoài `data`, đọc bằng `raw`); Ổn / Gắn cờ (lý do 5–500) / Gỡ cờ qua Dialog.
+- Tham số báo cáo: 4 trường như BE (ngưỡng nhập %), quy tắc sẽ áp dụng hiện dưới form và trong Dialog.
+- Từ khoá chặn: thêm nhiều dòng (1 từ → POST, nhiều → `/bulk`), tìm, lọc mức độ, đổi mức độ, bật / tắt, xoá; BE không cho sửa chữ của từ khoá.
+- Nhóm cài đặt `moderation` (ngưỡng báo cáo tự tạm gỡ, số cảnh cáo khoá tài khoản, hạn cảnh cáo, số truyện kiểm tra mỗi tuần): `/admin/settings` chỉ `authorize('admin')` nên đặt ở màn Admin "Gói & định giá" như Web, dùng chung `SettingsGroup`.
+- Kiểm thử: `tests/specialistContentB.test.ts` — FIXTURE PASS; E2E với BE thật dồn về GĐ G.

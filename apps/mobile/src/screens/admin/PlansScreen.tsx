@@ -2,7 +2,7 @@
 // GĐ F – Gói & định giá (Web PlansPage): danh sách gói dạng thẻ; thêm / sửa gói trong bottom sheet theo đúng trường + luật BE
 // (planFields, mã + thời hạn chỉ khi tạo, gói FREE khoá giá và công tắc mở bán). Lưu LUÔN qua Dialog xác nhận liệt kê thay đổi
 // (giá / credit ảnh hưởng người dùng thật). GĐ D2: thêm nhóm cài đặt `market` (Chợ truyện & hoàn tiền) như Web PlansPage;
-// nhóm `moderation` chưa làm.
+// GĐ E2b: nhóm `moderation` (Giám sát nội dung) — BE chỉ cho Admin sửa (/admin/settings authorize('admin')).
 import React, { useEffect, useState } from 'react';
 import { StyleSheet, Switch, Text, View } from 'react-native';
 import { HeyCard } from '../../components/ui/HeyCard';
@@ -161,6 +161,8 @@ export const PlansScreen: React.FC<{ onBack: () => void }> = ({ onBack }) => {
       </ResourceBody>
       <SectionTitle>Chợ truyện & hoàn tiền</SectionTitle>
       <SettingsGroup group="market" res={settings} emptyTitle="Chưa có cài đặt chợ truyện." />
+      <SectionTitle>Giám sát nội dung</SectionTitle>
+      <SettingsGroup group="moderation" res={settings} emptyTitle="Chưa có cài đặt giám sát." />
       <PlanSheet visible={!!editing} plan={plan} busy={busy} onSave={(f) => void save(f)} onClose={() => setEditing(null)} />
     </ManagementPage>
   );
