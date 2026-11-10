@@ -663,3 +663,34 @@ Kiểm tra: `npx tsc --noEmit` PASS; `apps/mobile/tests` 20/20 file PASS (mới:
 - Đăng bán chọn truyện đã hoàn tất từ `data.stories` (truyện riêng có `reviewedAt`), không thêm nút "Đăng bán" ở Chi tiết truyện như Web.
 - Tài liệu cũ (`API_INTEGRATION_STATUS_REPORT.md`, `UI_UX_REDESIGN_PLAN.md`) còn nhắc `scope-pending` như lịch sử, không sửa.
 - `NEEDS_BACKEND_REVIEW`: phụ huynh đã mua đọc trực tiếp bản đăng bán (ghi ở `LO_TRINH_MOBILE.md` §6).
+
+## 27. GĐ E2a – Chuyên gia: Chuyện mẫu, Kỹ năng con, Mẫu câu hỏi (branch `feat/mobile-specialist-content-a`)
+
+**Bước 0 – đối chiếu (đọc trước khi code)**
+
+| Hạng mục | BE (nguồn chuẩn) | Web | Mobile trước E2a | Trạng thái |
+|---|---|---|---|---|
+| Chuyện mẫu (topics) | `GET /topics?skillId&search&isActive` (Chuyên gia/Admin: mọi bài + `guidance`, `subSkills`, `storiesCount`, data = mảng); `POST /topics` { title trim 3–200, skillId uuid, guidance trim 10–4000, subSkillIds 1–3 không trùng, ageMin/ageMax 1–18 (mặc định 5–8), displayOrder 0–10000, isActive }; `PUT /topics/:id` (trường tuỳ chọn, ≥ 1); kỹ năng con phải đang bật, cùng năng lực, giao tuổi, có mẫu đã ban hành (422 nêu tên); đã có truyện → không đổi năng lực (422); `DELETE` có truyện dùng → chỉ ngưng dùng `{ deleted:false, deactivated:true, message }` (`topics.routes.js`, `topics.validation.js`, `topics.service.js:107-240`) | `TopicsPage.jsx`: tìm, lọc năng lực + trạng thái, thẻ, bật/tắt, form (kỹ năng con chỉ chọn mục có mẫu đã ban hành, khoá năng lực khi có truyện), Dialog xoá theo `storiesCount` | Menu "Thêm" mục "Chuyện mẫu" → "Dùng trên Web" | `NEEDS_NEW_SCREEN` |
+| Kỹ năng con | `GET /sub-skills?skillId&search&isActive` (Chuyên gia: + `templatesCount`, `publishedTemplatesCount`, `topicsCount`, `checkpointsCount`); `PUT /sub-skills/:id` `.strict()` chỉ { nameVi 3–200, descriptionVi 10–4000, ageMin, ageMax 1–18, isActive } (≥ 1); không thêm / xoá (danh mục CASEL chuẩn) (`sub-skills.*`) | `SubSkillsPage.jsx`: lọc năng lực / trạng thái / tìm, form chỉ 4 trường + bật/tắt | `eqSkillService.getSubSkills(skillId)` chỉ đọc (Phụ huynh) | `NEEDS_NEW_SCREEN` |
+| Mẫu câu hỏi | `GET /question-templates?subSkillId&skillId&isActive` → `[{ id,title,answerFormat,isActive,subSkill,latestPublished,draft }]`; `POST` { subSkillId, title? (3–200 hoặc rỗng → tự sinh), answerFormat emotion_pick\|single_correct\|role_choice, nội dung nháp? }; `PUT /:id` { title?, isActive? }; `PUT /:id/draft` (nội dung, mọi trường tuỳ chọn; chưa có nháp → tạo từ bản đã ban hành); `POST /:id/publish` (422 liệt kê trường thiếu: questionFrame, rationale, parentPrompts 1–3, theo dạng: correct/distractorDesc hoặc 3 vai + điểm 0–1, Tích cực lớn nhất); `POST /:id/duplicate` (201, bản nháp v1); `DELETE` (409 khi đã có điểm dừng dùng) (`question-templates.*`, `lib/templateRules.js`) | `TemplatesPage.jsx` + `TemplateVersionForm.jsx` (e704a49: chọn năng lực CASEL trước rồi kỹ năng con, gợi ý dạng trả lời theo năng lực, lọc theo năng lực) | Không có | `NEEDS_NEW_SCREEN` |
+| Năng lực CASEL | `GET /eq-skills` → `{ skills }` | `useEqSkills` | `eqSkillService.getSkills()` | `ALREADY_SUPPORTED` (dùng lại) |
+
+**Quyết định cho Mobile**
+- 3 màn con mở từ menu "Thêm" của Chuyên gia (thay 3 mục "Dùng trên Web"), không thêm tab. Form dài (chuyện mẫu, mẫu câu hỏi) dùng `Sheet` có sẵn (cuộn + tránh bàn phím), không thêm `<Modal>`.
+- Mẫu câu hỏi: "Lưu bản nháp" = (tạo mẫu nếu mới) + `PUT /:id/draft`; "Ban hành" = lưu nháp rồi `POST /:id/publish`, có Dialog. Phần "Xem trước" của Web không làm (dài trên điện thoại).
+- Bật / tắt (chuyện mẫu, kỹ năng con, mẫu) cũng là thao tác ghi → Dialog xác nhận (Web đổi ngay).
+
+### Kết quả GĐ E2a — FIXTURE PASS
+
+| File | Thay đổi |
+|---|---|
+| `src/types/pedagogy.ts`, `src/services/pedagogyService.ts` (mới) | 13 hàm: chuyện mẫu (4), kỹ năng con (2), mẫu câu hỏi (7); năng lực CASEL dùng lại `eqSkillService.getSkills()` |
+| `src/utils/pedagogy.ts` (mới) | Kiểm form như BE, body chỉ trường đổi, payload nháp theo dạng trả lời, luật ban hành (`assertVersionComplete`), gợi ý dạng theo năng lực, nội dung Dialog |
+| `src/screens/specialist/{TopicsScreen,SubSkillsScreen,TemplatesScreen}.tsx`, `src/components/specialist/TemplateSheet.tsx` (mới) | 3 màn + Sheet soạn mẫu |
+| `src/navigation/{managementRoutes.ts,SpecialistNavigator.tsx}` | Route `SPEC_TOPICS`, `SPEC_SUB_SKILLS`, `SPEC_TEMPLATES`; 3 mục menu "Thêm" mở màn thật |
+| `tests/specialistContent.test.ts` (mới) | 8 ca |
+
+- `npx tsc --noEmit`: PASS. Toàn bộ `tests/*.test.ts`: 24/24 PASS (fetch giả).
+- `NOT_VERIFIED_AT_RUNTIME`: chưa chạy với BE thật; Sheet soạn mẫu dài — cần thử bàn phím trên Android ở GĐ G.
+- Danh sách hiện hết (BE không phân trang); Web chia trang 10 mục phía client — Mobile cuộn.
+- Năng lực bị khoá (chuyện mẫu đã có truyện) hiện chip không bấm được, chưa làm mờ.

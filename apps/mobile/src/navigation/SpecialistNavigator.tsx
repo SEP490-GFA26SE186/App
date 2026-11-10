@@ -16,6 +16,9 @@ import { SpecialistOverview, SpecialistQueueScreen } from '../screens/specialist
 import { ReviewWorkspaceScreen } from '../screens/specialist/ReviewWorkspaceScreen';
 import { SellerApplicationsScreen } from '../screens/specialist/SellerApplicationsScreen';
 import { ReportsScreen } from '../screens/specialist/ReportsScreen';
+import { TopicsScreen } from '../screens/specialist/TopicsScreen';
+import { SubSkillsScreen } from '../screens/specialist/SubSkillsScreen';
+import { TemplatesScreen } from '../screens/specialist/TemplatesScreen';
 import { MoreMenuItem, MoreScreen } from '../screens/parent/MoreScreen';
 import { ManagementShell, useManagementNavigation } from './ManagementShell';
 import { SPECIALIST_ROUTES } from './managementRoutes';
@@ -61,9 +64,9 @@ export const SpecialistNavigator: React.FC<{ user: SessionUser; onLogout: () => 
       onPress: open(SPECIALIST_ROUTES.AUDITS),
     },
     { key: 'ai-flags', group: 'Giám sát', icon: 'hardware-chip-outline', title: 'Cảnh báo AI', description: 'Phụ huynh bị chặn nội dung AI nhiều lần', onPress: open(SPECIALIST_ROUTES.AI_FLAGS) },
-    web('sub-skills', 'Chương trình sư phạm', 'leaf-outline', 'Kỹ năng con', 'Kỹ năng EQ của trẻ'),
-    web('templates', 'Chương trình sư phạm', 'help-circle-outline', 'Mẫu câu hỏi', 'Mẫu câu hỏi tại điểm dừng'),
-    web('topics', 'Chương trình sư phạm', 'bulb-outline', 'Chuyện mẫu', 'Chủ đề / truyện mẫu'),
+    { key: 'sub-skills', group: 'Chương trình sư phạm', icon: 'leaf-outline', title: 'Kỹ năng con', description: 'Kỹ năng EQ của trẻ (danh mục CASEL)', onPress: open(SPECIALIST_ROUTES.SUB_SKILLS) },
+    { key: 'templates', group: 'Chương trình sư phạm', icon: 'help-circle-outline', title: 'Mẫu câu hỏi', description: 'Mẫu câu hỏi tại điểm dừng: soạn nháp, ban hành', onPress: open(SPECIALIST_ROUTES.TEMPLATES) },
+    { key: 'topics', group: 'Chương trình sư phạm', icon: 'bulb-outline', title: 'Chuyện mẫu', description: 'Chuyện mẫu phụ huynh chọn khi tạo truyện', onPress: open(SPECIALIST_ROUTES.TOPICS) },
     web('checkpoint-review', 'Chương trình sư phạm', 'scan-outline', 'Soát câu hỏi AI', 'Câu hỏi do AI sinh cần soát'),
     web('report-settings', 'Chương trình sư phạm', 'options-outline', 'Tham số báo cáo', 'Ngưỡng báo cáo EQ'),
     web('keywords', 'Nội dung', 'ban-outline', 'Từ khoá chặn', 'Từ khoá cấm trong nội dung'),
@@ -105,6 +108,12 @@ export const SpecialistNavigator: React.FC<{ user: SessionUser; onLogout: () => 
         return <AuditsScreen onBack={nav.goBack} onOpenReview={openReview} onChanged={refresh} />;
       case SPECIALIST_ROUTES.AI_FLAGS:
         return <AiFlagsScreen onBack={nav.goBack} />;
+      case SPECIALIST_ROUTES.TOPICS:
+        return <TopicsScreen onBack={nav.goBack} />;
+      case SPECIALIST_ROUTES.SUB_SKILLS:
+        return <SubSkillsScreen onBack={nav.goBack} />;
+      case SPECIALIST_ROUTES.TEMPLATES:
+        return <TemplatesScreen onBack={nav.goBack} />;
       default:
         return null;
     }
