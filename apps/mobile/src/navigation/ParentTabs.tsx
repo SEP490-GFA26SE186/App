@@ -27,7 +27,7 @@ import { LegalScreen } from '../screens/legal/LegalScreen';
 import { MarketplaceScreen } from '../screens/parent/market/MarketplaceScreen';
 import { ListingDetailScreen } from '../screens/parent/market/ListingDetailScreen';
 import { SellerProfileScreen } from '../screens/parent/market/SellerProfileScreen';
-import { SellerDashboard } from '../screens/scope-pending/SellerDashboard';
+import { SellingScreen } from '../screens/parent/selling/SellingScreen';
 import { authService, storyService } from '../services';
 import { useAuth, useKidSession, useParentData } from '../stores/SessionProvider';
 import { ParentNavigation } from './useParentNavigation';
@@ -51,7 +51,6 @@ export const ParentTabs: React.FC<ParentTabsProps> = ({ currentUser, nav, active
   const toast = useToast();
   const dialog = useDialog();
   // Hành động chưa có API thật: báo rõ, không thay đổi dữ liệu (R9-A: dùng Dialog vì Alert.alert rỗng trên Web)
-  const notSupported = (what: string) => void dialog.notify('Chưa hỗ trợ', `${what} chưa được hỗ trợ trên ứng dụng (chưa kết nối máy chủ).`);
   const [selectedStoryToRead, setSelectedStoryToRead] = useState<Story | null>(null);
   const { navigate, goBack } = nav;
   const hasKidPin = !!currentUser.kidModePinHash;
@@ -109,6 +108,8 @@ export const ParentTabs: React.FC<ParentTabsProps> = ({ currentUser, nav, active
     { key: 'help', group: 'Hỗ trợ', icon: 'help-circle-outline', title: 'Trợ giúp', description: 'Câu hỏi thường gặp', onPress: () => navigate(ROUTES.HELP) },
     // GĐ D2: Chợ truyện (Web đặt ở menu bên "Sáng tác & Chợ truyện"); Mobile dùng lại mục có sẵn trong Hồ sơ
     { key: 'market', group: 'Chợ truyện', icon: 'storefront-outline', title: 'Chợ truyện', description: 'Truyện đã được chuyên gia duyệt từ các gia đình khác', onPress: () => navigate(ROUTES.MARKET) },
+    // GĐ D3: Bán truyện (thay màn người bán dữ liệu giả cũ — vai trò SELLER không có lối vào)
+    { key: 'selling', group: 'Chợ truyện', icon: 'pricetag-outline', title: 'Bán truyện', description: 'Đăng bán truyện, doanh thu và rút tiền', onPress: () => navigate(ROUTES.SELLING) },
   ];
 
   const renderRoute = () => {
@@ -291,6 +292,15 @@ export const ParentTabs: React.FC<ParentTabsProps> = ({ currentUser, nav, active
             onOpenKidMode={() => kid.openKidMode()}
           />
         ) : null;
+      case ROUTES.SELLING:
+        return (
+          <SellingScreen
+            stories={data.stories}
+            onBack={goBack}
+            onOpenWallet={openWallet}
+            onOpenSellerPage={(sellerId) => navigate(ROUTES.MARKET_SELLER, { sellerId })}
+          />
+        );
       case ROUTES.MARKET_SELLER:
         return nav.current.params?.sellerId ? (
           <SellerProfileScreen
@@ -334,17 +344,7 @@ export const ParentTabs: React.FC<ParentTabsProps> = ({ currentUser, nav, active
 
       {/* Body Content by Role & Route */}
       <View style={styles.main}>
-        {activeRole === 'SELLER' ? (
-          <SellerDashboard
-            currentUser={currentUser}
-            stories={data.stories}
-            onOpenStoryWizard={() => navigate(ROUTES.CREATE)}
-            onOpenWallet={openWallet}
-            onSubmitForReview={() => notSupported('Gửi duyệt truyện')}
-          />
-        ) : (
-          renderRoute()
-        )}
+        {renderRoute()}
       </View>
 
       {/* Bottom Tab Bar (for Parent role) */}

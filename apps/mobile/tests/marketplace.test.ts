@@ -171,7 +171,7 @@ const cases: [string, () => void | Promise<void>][] = [
     assert.ok(r.indexOf('dialog.confirm(reviewConfirm(') > 0 && r.indexOf('dialog.confirm(reviewConfirm(') < r.indexOf('marketService.saveReview('));
     assert.ok(r.indexOf("dialog.confirm(reportConfirm('review', category))") < r.indexOf('marketService.reportReview('));
     assert.match(r, /run\('review'/);
-    assert.match(r, /run\(`report:\$\{reporting\.id\}`/);
+    assert.match(r, /run\(`report:\$\{target\.id\}`/); // GĐ D3: giữ đánh giá đang báo cáo trong `target` để đánh dấu "Đã báo cáo"
   }],
 
   ['Admin nhóm market: chỉ 4 khoá market; hạn hoàn tiền ≤ ngày giữ doanh thu như BE; Gói & định giá hiện nhóm market', () => {

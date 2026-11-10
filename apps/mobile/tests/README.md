@@ -118,3 +118,9 @@ node %TEMP%/sw-billing-tests/tests/billingPayment.test.js
 npx tsc tests/marketplace.test.ts --outDir %TEMP%/sw-market-tests --module commonjs --target es2022 --esModuleInterop --skipLibCheck --jsx react-jsx --types react-native,node
 node %TEMP%/sw-market-tests/tests/marketplace.test.js
 ```
+
+`selling.test.ts` (GĐ D3) kiểm Bán truyện với fetch giả (không gọi BE): đúng method/path/body 12 endpoint `/sellers/me*`, `/listings*` và `POST /market/reviews/:id/reply`; màn theo trạng thái người bán; kiểm form như BE (biệt danh, giá 0 hoặc 5.000–500.000 bội 1.000, tên chung, ngân hàng, rút tiền) và lỗi 422 về đúng ô; số tài khoản không hiện đầy đủ; Dialog trước mọi thao tác ghi; báo cáo trùng (409) → "Đã báo cáo"; nút Trả lời chỉ cho người bán; polling giọng đọc có trần; không còn `scope-pending`. Chạy từ `apps/mobile`:
+```
+npx tsc tests/selling.test.ts --outDir %TEMP%/sw-selling-tests --module commonjs --target es2022 --esModuleInterop --skipLibCheck --jsx react-jsx --types react-native,node
+node %TEMP%/sw-selling-tests/tests/selling.test.js
+```

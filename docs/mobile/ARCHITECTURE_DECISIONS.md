@@ -99,7 +99,7 @@ config/     env/base URL
 ```
 navigation/   routes.ts, AppNavigator, ParentTabs, KidStack
 screens/
-  auth/  parent/  kid/  scope-pending/   (Seller, Moderator/Admin, Marketplace, Wallet-payment: giữ nguyên)
+  auth/  parent/  kid/   (scope-pending/ đã xoá ở GĐ D3: Chợ truyện → parent/market/, Bán truyện → parent/selling/)
 components/
   ui/ (Hey* hiện có + Screen, Sheet, Toaster, SelectField, Badge, TextField)
   auth/  parent/  kid/

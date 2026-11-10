@@ -25,6 +25,7 @@ export const ROUTES = {
   MARKET: 'MARKET',
   MARKET_LISTING: 'MARKET_LISTING',
   MARKET_SELLER: 'MARKET_SELLER',
+  SELLING: 'SELLING', // GĐ D3: Bán truyện (mở từ menu Hồ sơ)
 } as const;
 
 export type RouteKey = (typeof ROUTES)[keyof typeof ROUTES];

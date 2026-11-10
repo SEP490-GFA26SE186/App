@@ -30,7 +30,7 @@ import { storyService } from '../../../services/storyService';
 import { useAsyncResource } from '../../../utils/useAsyncResource';
 import { formatNumber, money } from '../../../utils/format';
 import { checkoutAndOpen, watchAppReturn } from '../../../utils/billing';
-import { buyConfirm, listingAction, listingPrice, purchaseView, ratingLabel, reportBody, reportConfirm } from '../../../utils/market';
+import { buyConfirm, listingAction, listingPrice, purchaseView, ratingLabel, reportBody, reportConfirm, reportOutcome } from '../../../utils/market';
 import type { OrderDto } from '../../../types/api';
 import type { ListingDetailDto } from '../../../types/market';
 
@@ -160,7 +160,9 @@ export const ListingDetailScreen: React.FC<{
   const report = async (category: string, description: string) => {
     if (!l || busy) return;
     if (!(await dialog.confirm(reportConfirm('listing', category)))) return;
-    const ok = await run('report', () => marketService.reportListing(l.id, reportBody(category, description)), 'Cảm ơn ba mẹ! Kiểm duyệt viên sẽ xem lại truyện này.');
+    const ok = await run('report', () => reportOutcome(marketService.reportListing(l.id, reportBody(category, description))), (r) =>
+      r === 'duplicate' ? 'Ba mẹ đã báo cáo truyện này rồi. Kiểm duyệt viên đang xem xét.' : 'Cảm ơn ba mẹ! Kiểm duyệt viên sẽ xem lại truyện này.'
+    );
     if (ok && alive.current) {
       setReported(true);
       setReportOpen(false);

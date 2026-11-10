@@ -163,6 +163,17 @@ export const reportError = (category: string, description: string): string | nul
 
 export const reportBody = (category: string, description: string): ReportBody => ({ category, ...(description.trim() ? { description: description.trim() } : {}) });
 
+/** Web ReportListingButton: 409 = đã báo cáo trước đó → coi như đã gửi (không báo lỗi đỏ) */
+export const reportOutcome = async (send: Promise<unknown>): Promise<'sent' | 'duplicate'> => {
+  try {
+    await send;
+    return 'sent';
+  } catch (e: any) {
+    if (e?.status === 409) return 'duplicate';
+    throw e;
+  }
+};
+
 export const reportConfirm = (target: 'listing' | 'review', category: string) => ({
   title: target === 'listing' ? 'Gửi báo cáo truyện?' : 'Gửi báo cáo đánh giá?',
   message: `Loại: ${REPORT_CATEGORIES[category] ?? category}. Kiểm duyệt viên sẽ xem xét; thông tin của ba mẹ không được gửi cho người bán. Mỗi ${target === 'listing' ? 'truyện' : 'đánh giá'} chỉ báo cáo được một lần.`,
