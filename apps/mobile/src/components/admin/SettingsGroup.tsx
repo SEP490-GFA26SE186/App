@@ -1,5 +1,5 @@
 // apps/mobile/src/components/admin/SettingsGroup.tsx
-// GĐ F/D2 – một nhóm cài đặt nền tảng (Web components/admin/SettingsGroup.jsx): CHỈ khoá của nhóm truyền vào (`ai` | `market`).
+// GĐ F/D2/E2b – một nhóm cài đặt nền tảng (Web components/admin/SettingsGroup.jsx): CHỈ khoá của nhóm truyền vào (`ai` | `market` | `moderation`).
 // Sửa từng giá trị, kiểm tra như BE settingError (kể cả ràng buộc chéo nhóm market), lưu LUÔN qua Dialog xác nhận, chống bấm đúp.
 import React, { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
@@ -54,7 +54,7 @@ const SettingRow: React.FC<{ setting: PlatformSetting; all: PlatformSetting[]; b
 
 /** `res` = kết quả GET /admin/settings do màn cha tải (một lần cho mọi nhóm trên màn) */
 export const SettingsGroup: React.FC<{
-  group: 'ai' | 'market';
+  group: 'ai' | 'market' | 'moderation';
   res: { status: ResourceStatus; data: SettingsResult | null; error: string | null; reload: () => unknown };
   emptyTitle: string;
 }> = ({ group, res, emptyTitle }) => {
