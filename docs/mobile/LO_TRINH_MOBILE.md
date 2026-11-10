@@ -4,7 +4,7 @@ Lập ngày 2026-11-09 · Nguồn đối chiếu: GitHub `main` — App `f84c4f9
 Môi trường demo: Web `https://storyweaver.id.vn` · API `https://api.storyweaver.id.vn/api/v1` (lấy từ tài liệu deploy của BE).
 Tài khoản demo **không ghi trong tài liệu hay source**; chủ dự án tự nhập khi test.
 
-> Tiến độ: GĐ A và **GĐ B hoàn tất** (B1, B2, B3, hotfix Expo Go audio, bỏ `baseUrl` trong tsconfig đều đã merge vào `main`). **GĐ C** (trang Chính sách / Điều khoản, ô ngoại hình + gợi ý ở form hồ sơ bé) đã merge. **GĐ E1** (Chuyên gia: giám sát) đã merge. **GĐ F** (Admin: Gói & định giá, Doanh thu & đối soát, Cấu hình AI) đã merge. **GĐ D1** (mua / gia hạn gói qua payOS, lịch sử thanh toán, hoàn tiền) đã merge. **GĐ D2** (Chợ truyện: danh sách, chi tiết, người bán, mua, đánh giá, báo cáo, truyện đã mua; Admin nhóm cài đặt `market`) đang làm trên nhánh `feat/mobile-marketplace`. Tiếp theo: **D3** (Bán truyện).
+> Tiến độ: GĐ A và **GĐ B hoàn tất** (B1, B2, B3, hotfix Expo Go audio, bỏ `baseUrl` trong tsconfig đều đã merge vào `main`). **GĐ C** (trang Chính sách / Điều khoản, ô ngoại hình + gợi ý ở form hồ sơ bé) đã merge. **GĐ E1** (Chuyên gia: giám sát) đã merge. **GĐ F** (Admin: Gói & định giá, Doanh thu & đối soát, Cấu hình AI) đã merge. **GĐ D1** (mua / gia hạn gói qua payOS, lịch sử thanh toán, hoàn tiền) đã merge. **GĐ D2** (Chợ truyện; Admin nhóm cài đặt `market`) đã merge. **GĐ D3** (Bán truyện: hồ sơ người bán, đăng bán / phiên bản, doanh thu + rút tiền, cảnh cáo + kháng nghị, trả lời đánh giá) đang làm trên nhánh `feat/mobile-selling`; **GĐ D hoàn tất khi D3 merge**.
 > Quyết định 2026-11-09: **không test thật sau từng đợt; mọi test thật dồn về GĐ G.** Mỗi đợt chỉ cần tsc + test fetch giả + review.
 > Đã chạy thật trên máy ảo Android (Expo Go SDK 52) với BE deploy: đăng nhập và đọc dữ liệu OK (sau hotfix Expo Go audio).
 >
@@ -63,7 +63,7 @@ Chi tiết:
 ### GĐ D – Gói, thanh toán, Chợ truyện, Bán truyện (L)
 1. **D1** – Mua và gia hạn gói: mở link thanh toán payOS bằng trình duyệt ngoài (`Linking`, không thêm thư viện); quay lại app thì tải lại gói. Lịch sử thanh toán + yêu cầu hoàn tiền trong hạn. **Lưu ý:** BE đặt `returnUrl`/`cancelUrl` của payOS về **Web** (`BE/api/src/modules/billing/billing.service.js:58-59`), nên thanh toán xong ba mẹ thấy trang kết quả của Web; ba mẹ tự quay lại app, app kiểm tra đơn khi trở lại (hoặc bấm "Kiểm tra thanh toán").
 2. **D2** – Chợ truyện: danh sách, lọc theo giá, chi tiết truyện, khung người bán; hồ sơ người bán công khai; mua truyện, truyện đã mua, báo cáo vi phạm. Lối vào: mục "Chợ truyện" trong menu Hồ sơ; "Đã mua" trong Tủ truyện. Mua truyện dùng lại luồng payOS của D1 (payOS cũng trả về Web `/parent/marketplace/result`). Trả lời đánh giá (người bán) để sang D3.
-3. Bán truyện: đăng ký người bán, sửa hồ sơ bán; đăng truyện, cập nhật phiên bản; doanh thu, tài khoản ngân hàng, rút tiền.
+3. **D3** – Bán truyện: đăng ký người bán, sửa hồ sơ bán; đăng truyện, cập nhật phiên bản; doanh thu, tài khoản ngân hàng, rút tiền; cảnh cáo + kháng nghị; trả lời đánh giá. Lối vào: mục "Bán truyện" trong menu Hồ sơ (thay màn người bán giả cũ, đã xoá cùng thư mục `scope-pending`).
 
 ### GĐ E – Chuyên gia (M + L)
 - **E1 (M), hợp với điện thoại:** Tổng quan, Truyện tạm gỡ, Cảnh cáo, Kiểm tra ngẫu nhiên, Cảnh báo AI.
@@ -86,6 +86,8 @@ Chi tiết:
 A → B → C → E1 → F → D → E2 → G
 
 ## 6. Quyết định chờ chủ dự án
+
+- **Đề xuất cho BE (D2/D3) — `NEEDS_BACKEND_REVIEW`:** cho phụ huynh đã mua đọc trực tiếp bản đăng bán. Hiện `loadStoryForRead` (`BE/api/src/modules/stories/stories.access.js:14-19`) chỉ cho chủ truyện (người bán) hoặc Admin/Chuyên gia, nên người mua chỉ đọc được qua tủ sách của bé trong Chế độ Bé. Gợi ý: thêm điều kiện "có `entitlement` còn hiệu lực với listing của truyện" (giống `bookshelf.service.js:107-108`). Khi BE có, Mobile chỉ cần mở trình đọc của phụ huynh cho truyện đã mua.
 
 - **Đề xuất cho BE (D1):** cho `POST /payments/plans/checkout` nhận thêm `returnUrl` (hoặc tham số `client=app`) trong danh sách cho phép, ví dụ deep link `storyweaver://billing/result?orderId=…`, để payOS đưa ba mẹ thẳng về app thay vì về Web. Khi có, Mobile chỉ cần thêm scheme + bắt link (cần duyệt vì đụng cấu hình Expo). Hiện tại Mobile không đổi BE và vẫn chạy được nhờ kiểm tra đơn khi quay lại app.
 

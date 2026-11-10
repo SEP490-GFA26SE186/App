@@ -624,3 +624,42 @@ Kiểm tra: `npx tsc --noEmit` PASS; `apps/mobile/tests` 20/20 file PASS (mới:
 - Phụ huynh chưa đọc được truyện đã mua ngoài Chế độ Bé: BE `GET /stories/:id` chỉ cho chủ truyện (`stories.access.js:17`) → `NEEDS_BACKEND_REVIEW` nếu muốn có trình đọc cho phụ huynh.
 - Báo cáo 409 ("đã báo cáo") hiện câu BE và tải lại truyện, không tự ẩn nút như Web.
 - Dialog xác nhận mở chồng lên sheet (đánh giá / báo cáo): lưu ý thứ tự lớp trên Expo Web như GĐ F.
+
+## 26. GĐ D3 – Bán truyện (branch `feat/mobile-selling`)
+
+**Bước 0 – đối chiếu (đọc trước khi code)**
+
+| Hạng mục | BE (nguồn chuẩn) | Web | Mobile trước D3 | Trạng thái |
+|---|---|---|---|---|
+| Hồ sơ người bán | `GET /sellers/me` → `{ seller{userId,displayName,bio,expertise,status,reviewedAt,createdAt} \| null, planCanSell }`; `POST /sellers/apply` (201; gói phải `canSell` → 422; đang chờ / đã duyệt → 409; bị khoá → 403); `PUT /sellers/me` (`.strict()`, ≥ 1 trường, chỉ khi pending / approved) — displayName trim 2–100, bio ≤ 2000, expertise ≤ 1000 (`publishing.routes.js:7-10`, `publishing.validation.js:6-23`, `publishing.service.js:62-98`) | `SellingPage.jsx` `ApplyForm`: gói chưa cho bán → lối tới Gói; pending / approved sửa hồ sơ; rejected nộp lại; suspended giải thích | `scope-pending/SellerDashboard.tsx` dữ liệu giả, chỉ hiện khi `activeRole === 'SELLER'` — không chỗ nào chuyển sang vai trò này (không có lối vào) | `NEEDS_NEW_SCREEN` |
+| Truyện đã đăng | `GET /listings/mine` → `{ listings: [{ id,title,description,status,priceVnd,hasAiContent,hasNarration,cover,publishedStoryId,sourceStoryId,previousListingId,submittedAt,publishedAt,lastDecision,narration }] }` (`publishing.service.js:28-46, 307-316`) | Thẻ: bìa, nhãn trạng thái (`LISTING_STATUS`, "Đã thay bằng phiên bản mới"), giá, giọng đọc + "Tạo lại giọng đọc" (`POST /stories/:publishedStoryId/narration/retry`), nhận xét chuyên gia; polling 10 s khi đang tạo giọng đọc | Không có | `NEEDS_API_INTEGRATION` |
+| Đăng bán / phiên bản | `POST /listings { storyId, title trim 3–200, description ≤ 2000?, priceVnd (0 hoặc 5.000–500.000, bội 1.000), aliases[{token {NVn}, aliasName ≤ 100}] ≥ 1 }` → 201; 403 chưa duyệt, 422 gói / chưa hoàn tất / còn tên thật (`errors[{path}]`); `POST /listings/:id/versions` (storyId tuỳ chọn; chỉ truyện `published`, 409 đang có phiên bản chờ) (`publishing.validation.js:27-46`, `publishing.service.js:139-270`) | `NewListingPage.jsx`: mở từ truyện đã hoàn tất; tên chung cho từng nhân vật; phiên bản điền sẵn từ bản đang bán | Không có (`storyService.getStoryDetail` trả `characters[{token,name,isMain}]`) | `NEEDS_NEW_SCREEN` |
+| Doanh thu, ngân hàng, rút tiền | `GET /sellers/me/earnings` → `{ balance{pendingVnd,availableVnd,lockedVnd}, sellerShareRate, holdDays, minWithdrawalVnd, bank (số TK đã che), withdrawals[], ledger[] }`; `PUT /sellers/me/bank { bankBin 6 số, bankName 2–100, accountNumber [0-9A-Za-z]{4,30}, accountHolder 2–150 }` (đổi → chặn rút 24 giờ); `POST /sellers/me/withdrawals { amountVnd int > 0 }` (≥ tối thiểu, đủ số dư, 1 yêu cầu chưa xong); `DELETE /sellers/me/withdrawals/:id` (chỉ `requested`) (`withdrawals.routes.js:12-35`, `withdrawals.service.js:39-142`) | `EarningsPanel.jsx` (danh sách ngân hàng `constants/banks.js`) | Không có | `NEEDS_API_INTEGRATION` |
+| Cảnh cáo + kháng nghị | `GET /sellers/me/strikes` → `{ sellerStatus, strikeLimit, activeStrikes, strikes[] }`; `POST /sellers/me/strikes/:id/appeal { reason trim 20–2000 }` → 201; 409 đã kháng nghị (`monitoring.routes.js:120-127`, `monitoring.service.js:274-296`) | `StrikesPanel.jsx` | Nhãn `STRIKE_SOURCES`, `APPEAL_STATUS` đã có (`constants/management.ts`) | `NEEDS_API_INTEGRATION` |
+| Trả lời đánh giá | `POST /market/reviews/:id/reply { reply trim 2–1000 }`; chỉ người bán của truyện, một lần (409) (`reviews.routes.js:35-41`) | `ListingReviews.jsx` `ReplyForm` khi `isSeller` | D2 hiện `sellerReply`, chưa có nút trả lời | `NEEDS_FEATURE_UPDATE` |
+| Báo cáo trùng | 409 "đã báo cáo" | `ReportListingButton.jsx:32`: 409 → coi như đã gửi | D2: 409 hiện lỗi đỏ | `NEEDS_FEATURE_UPDATE` |
+
+**Quyết định cho Mobile**
+- `SellerDashboard` chỉ hiện khi `activeRole === 'SELLER'` nhưng không có chỗ nào đổi sang vai trò này (`HeyTopBar` không gọi `onRoleChange`). Màn Bán truyện mới là màn con `ROUTES.SELLING` mở từ menu Hồ sơ (nhóm "Chợ truyện", cạnh mục Chợ truyện), thay hẳn nhánh `SELLER` ở `ParentTabs.tsx:337-345`; bỏ `'SELLER'` khỏi `Role`.
+- Đăng bán chọn truyện ngay trong màn Bán truyện (truyện đã hoàn tất `reviewedAt`), không thêm nút vào Chi tiết truyện (ít xáo trộn D1/D2/B1).
+- Polling giọng đọc: 10 s/lần, tối đa 30 lần, dừng khi rời màn.
+
+### Kết quả GĐ D3 — FIXTURE PASS · `OWNER_RESERVED` (đăng bán, rút tiền thật do chủ dự án test ở GĐ G)
+
+| File | Thay đổi |
+|---|---|
+| `src/types/selling.ts`, `src/services/sellingService.ts`, `src/constants/banks.ts` (mới) | 12 hàm người bán (hồ sơ, truyện đã đăng, đăng bán, phiên bản, doanh thu, ngân hàng, rút / huỷ rút, cảnh cáo, kháng nghị); danh sách ngân hàng chép từ Web |
+| `src/services/marketService.ts` | `replyReview` |
+| `src/utils/selling.ts` (mới) | Trạng thái màn, kiểm form như BE, nhãn trạng thái / phiên bản / giọng đọc, che số tài khoản, nội dung Dialog; `utils/market.ts` thêm `reportOutcome` (409 = đã gửi) |
+| `src/screens/parent/selling/SellingScreen.tsx`, `src/components/selling/{EarningsSection,StrikesSection,ListingSheet}.tsx` (mới) | Màn Bán truyện (`ROUTES.SELLING`, mục "Bán truyện" trong menu Hồ sơ) |
+| `src/components/market/ListingReviews.tsx`, `src/screens/parent/market/ListingDetailScreen.tsx` | Nút "Trả lời" cho người bán; báo cáo trùng hiện "Đã báo cáo" thay lỗi đỏ |
+| `src/navigation/{routes.ts,ParentTabs.tsx}`, `src/types/domain.ts` | Route `SELLING`; bỏ nhánh `activeRole === 'SELLER'` và `'SELLER'` khỏi `Role` |
+| Đã xoá (chủ dự án duyệt) | `src/screens/scope-pending/{MarketplaceScreen,SellerDashboard}.tsx` + thư mục `scope-pending`; `ARCHITECTURE_DECISIONS.md` cập nhật cấu trúc thư mục |
+| `tests/selling.test.ts` (mới), `tests/marketplace.test.ts` | 9 ca D3; 1 assert D2 đổi tên biến (`target.id`) |
+
+- `npx tsc --noEmit`: PASS. Toàn bộ `tests/*.test.ts`: 23/23 PASS (fetch giả).
+- `NOT_VERIFIED_AT_RUNTIME`: chưa chạy với BE thật (đăng bán, tạo giọng đọc, rút tiền).
+- Danh sách 24 ngân hàng hiện dạng chip trong sheet (Web dùng ô chọn) — dài trên màn nhỏ nhưng không cần thêm thư viện.
+- Đăng bán chọn truyện đã hoàn tất từ `data.stories` (truyện riêng có `reviewedAt`), không thêm nút "Đăng bán" ở Chi tiết truyện như Web.
+- Tài liệu cũ (`API_INTEGRATION_STATUS_REPORT.md`, `UI_UX_REDESIGN_PLAN.md`) còn nhắc `scope-pending` như lịch sử, không sửa.
+- `NEEDS_BACKEND_REVIEW`: phụ huynh đã mua đọc trực tiếp bản đăng bán (ghi ở `LO_TRINH_MOBILE.md` §6).
