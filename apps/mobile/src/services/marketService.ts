@@ -66,6 +66,13 @@ export const marketService = {
     return { review: data.review, created: !!data.created };
   },
 
+  /** Người bán trả lời đánh giá (một lần): POST /market/reviews/:id/reply { reply } (2–1000 ký tự) → { review } */
+  replyReview: async (reviewId: string, reply: string): Promise<ReviewDto> => {
+    const data = await apiFetch<{ review?: ReviewDto }>(`/market/reviews/${id(reviewId)}/reply`, post({ reply: reply.trim() }));
+    if (!data?.review?.id) throw invalidResponseError('trả lời đánh giá');
+    return data.review;
+  },
+
   /** POST /market/listings/:id/reports { category, description? } → 201 { reportId, suspended } */
   reportListing: async (listingId: string, body: ReportBody): Promise<{ reportId: string; suspended: boolean }> => {
     const data = await apiFetch<{ reportId?: string; suspended?: boolean }>(`/market/listings/${id(listingId)}/reports`, post(body));

@@ -1,0 +1,28 @@
+// apps/mobile/src/constants/banks.ts
+// Ngân hàng nhận tiền rút (chép từ Web/src/constants/banks.js — mã BIN theo VietQR, lấy 2026-10-18).
+export const BANKS = [
+  ['970436', 'Vietcombank'],
+  ['970415', 'VietinBank'],
+  ['970418', 'BIDV'],
+  ['970405', 'Agribank'],
+  ['970407', 'Techcombank'],
+  ['970422', 'MBBank'],
+  ['970416', 'ACB'],
+  ['970432', 'VPBank'],
+  ['970423', 'TPBank'],
+  ['970403', 'Sacombank'],
+  ['970441', 'VIB'],
+  ['970443', 'SHB'],
+  ['970437', 'HDBank'],
+  ['970448', 'OCB'],
+  ['970426', 'MSB'],
+  ['970431', 'Eximbank'],
+  ['970440', 'SeABank'],
+  ['970449', 'LPBank'],
+  ['970428', 'NamABank'],
+  ['970425', 'ABBANK'],
+  ['970409', 'BacABank'],
+  ['970454', 'VietCapitalBank'],
+  ['970400', 'SaigonBank'],
+  ['970452', 'KienLongBank'],
+].map(([bin, name]) => ({ bin, name }));
