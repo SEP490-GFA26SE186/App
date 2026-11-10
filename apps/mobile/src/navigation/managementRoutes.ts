@@ -47,6 +47,10 @@ export const SPECIALIST_ROUTES = {
   STRIKES: 'SPEC_STRIKES',
   AUDITS: 'SPEC_AUDITS',
   AI_FLAGS: 'SPEC_AI_FLAGS',
+  // GĐ E2a: chương trình sư phạm — màn con mở từ "Thêm"
+  TOPICS: 'SPEC_TOPICS',
+  SUB_SKILLS: 'SPEC_SUB_SKILLS',
+  TEMPLATES: 'SPEC_TEMPLATES',
 } as const;
 
 export type ManagementRoute =
