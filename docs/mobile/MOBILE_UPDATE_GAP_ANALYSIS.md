@@ -694,3 +694,36 @@ Kiểm tra: `npx tsc --noEmit` PASS; `apps/mobile/tests` 20/20 file PASS (mới:
 - `NOT_VERIFIED_AT_RUNTIME`: chưa chạy với BE thật; Sheet soạn mẫu dài — cần thử bàn phím trên Android ở GĐ G.
 - Danh sách hiện hết (BE không phân trang); Web chia trang 10 mục phía client — Mobile cuộn.
 - Năng lực bị khoá (chuyện mẫu đã có truyện) hiện chip không bấm được, chưa làm mờ.
+
+## 28. GĐ E2b – Chuyên gia: Soát câu hỏi AI, Tham số báo cáo, Từ khoá chặn; Admin nhóm `moderation` (branch `feat/mobile-specialist-content-b`)
+
+**Bước 0 – đối chiếu (đọc trước khi code)**
+
+| Hạng mục | BE (nguồn chuẩn) | Web | Mobile trước E2b | Trạng thái |
+|---|---|---|---|---|
+| Soát câu hỏi AI | `authorize('specialist','admin')`; `GET /checkpoint-review?status(pending\|ok\|flagged)&skillId&subSkillId&templateId&cursor&limit≤50` → envelope `{ data: items[], nextCursor }` (nextCursor NGOÀI `data`); item: `checkpointId, createdAt, type, skill, subSkill, template{id,title,version}, pageBefore, question, options[{text, role?, isCorrect?}], answerEmotion?, status, excludedReason?, family?` (tên đã che "Bạn A/B"); `GET /stats` → `[{ templateId, title, reviewed, flagged }]`; `POST /:id/ok` (cũng gỡ cờ); `POST /:id/flag { reason trim 5–500 }`; `DELETE /:id/flag` → `{ checkpointId, status }`; 422 khi không phải điểm dừng chấm điểm của truyện AI (`checkpoint-review.*`) | `CheckpointReviewPage.jsx`: tab Hàng đợi / Thống kê, lọc trạng thái + năng lực + kỹ năng con + mẫu, "Xem thêm" theo cursor, Ổn / Gắn cờ (modal lý do) / Gỡ cờ | Menu "Thêm" → "Dùng trên Web" | `NEEDS_NEW_SCREEN` |
+| Tham số báo cáo | `GET/PUT /pedagogy/report-settings` (specialist, admin); PUT `strictObject` đủ 4 trường: window int 1–20, minItems int ≥ 1 và ≤ window, developingFrom > 0, secureFrom ≤ 1 và > developingFrom (tỉ lệ 0..1) (`pedagogy-settings.*`) | `ReportSettingsPage.jsx`: nhập % cho ngưỡng, xem trước quy tắc | "Dùng trên Web" | `NEEDS_NEW_SCREEN` |
+| Từ khoá chặn | `GET /moderation/keywords?search≤100&severity(block\|warn)` → `{ keywords[{id,keyword,severity,isActive,createdAt,creator}] }`; `POST { keyword trim 1–100, severity=block }` (409 đã có); `POST /bulk { keywords[1–500], severity }` (đã có → cập nhật mức + bật lại); `PUT /:id { severity?, isActive? }` (không sửa chữ); `DELETE /:id` (`keywords/keywords.routes.js`) | `KeywordsPage.jsx`: thêm nhiều dòng (1 từ → POST, nhiều → bulk), tìm, lọc mức, đổi mức, bật/tắt, xoá | "Dùng trên Web" | `NEEDS_NEW_SCREEN` |
+| Nhóm cài đặt `moderation` | `GET /admin/settings`, `PUT /admin/settings/:key` chỉ `authorize('admin')` (`admin.routes.js:13, 84-86`); 4 khoá: report_threshold 1–50, strike_limit 1–10, strike_valid_days 7–365, audit_per_week 1–50 (`settingsRegistry.js`) | `PlansPage.jsx:142-145` `<SettingsGroup group="moderation" />` (trang Admin) | `SettingsGroup` có nhóm `ai`, `market` | `NEEDS_FEATURE_UPDATE` (khu **Admin**) |
+
+**Quyết định cho Mobile**
+- Chuyên gia KHÔNG gọi được `/admin/settings` (403) → nhóm `moderation` đặt ở màn Admin "Gói & định giá" cạnh nhóm `market`, như Web.
+- 3 màn con mở từ menu "Thêm" của Chuyên gia, thay 3 mục "Dùng trên Web" cuối cùng → khu Chuyên gia không còn mục WEB ONLY.
+- Từ khoá: chỉ đổi mức độ / bật tắt / xoá (BE không cho sửa chữ của từ khoá).
+- Mọi thao tác ghi (Ổn, Gắn cờ, Gỡ cờ, lưu tham số, thêm / đổi / xoá từ khoá, lưu cài đặt) qua Dialog.
+
+### Kết quả GĐ E2b — FIXTURE PASS
+
+| File | Thay đổi |
+|---|---|
+| `src/types/pedagogy.ts`, `src/services/pedagogyService.ts` | +11 hàm: soát câu hỏi AI (5, hàng đợi đọc envelope để lấy `nextCursor`), tham số báo cáo (2), từ khoá chặn (4) |
+| `src/utils/pedagogy.ts` | Nút theo trạng thái soát, kiểm tham số báo cáo như BE (% ↔ tỉ lệ), tách từ khoá theo dòng, nội dung Dialog |
+| `src/screens/specialist/{CheckpointReviewScreen,ReportSettingsScreen,KeywordsScreen}.tsx` (mới) | 3 màn |
+| `src/navigation/{managementRoutes.ts,SpecialistNavigator.tsx}`, `src/constants/management.ts` | 3 route mới; bỏ helper "Dùng trên Web" và `WEB_ONLY_NOTICE` (hết nơi dùng) |
+| `src/components/admin/SettingsGroup.tsx`, `src/utils/adminConfig.ts`, `src/screens/admin/PlansScreen.tsx` | Nhóm `moderation` ở màn Admin "Gói & định giá" |
+| `tests/specialistContentB.test.ts` (mới) | 8 ca |
+
+- `npx tsc --noEmit`: PASS. Toàn bộ `tests/*.test.ts`: 25/25 PASS (fetch giả).
+- `NOT_VERIFIED_AT_RUNTIME`: chưa chạy với BE thật.
+- Thống kê soát dạng thẻ (Web dạng bảng); không có thanh "Xem trước quy tắc" màu của Web — quy tắc hiện dạng chữ.
+- Khu Chuyên gia không còn mục WEB ONLY. Khu Admin vẫn còn các phần ghi "WEB ONLY" nhỏ trong bảng (xuất CSV, VietQR) — ngoài phạm vi E2.
