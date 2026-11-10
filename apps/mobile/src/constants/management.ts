@@ -6,8 +6,6 @@ import type { AccountRole, FinanceRange, ReviewDecision, ReviewType, StrikeSourc
 
 type Labeled = { label: string; tone: BadgeTone };
 
-/** Mục có trên Web nhưng Mobile chưa làm: báo rõ, không mở màn giả */
-export const WEB_ONLY_NOTICE = 'Tính năng này hiện chỉ dùng trên bản Web quản trị (máy tính). Ứng dụng điện thoại chưa hỗ trợ.';
 
 export const FINANCE_RANGES: { value: FinanceRange; label: string }[] = [
   { value: 'today', label: 'Hôm nay' },
