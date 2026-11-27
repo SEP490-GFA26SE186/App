@@ -16,7 +16,8 @@ import type {
 export interface CreateChildPayload {
   name: string;
   birthDate?: string;
-  preferredVoice?: string;
+  /** Sửa hồ sơ: null = về giọng mặc định (BE updateChild nullable) */
+  preferredVoice?: string | null;
   /** Ngoại hình của bé (≤500). Sửa hồ sơ: null = xoá mô tả (BE updateChild nullable) */
   appearance?: string | null;
 }
@@ -127,5 +128,6 @@ export const childService = {
     avatarUrl: raw.character?.portraitImageUrl ?? undefined,
     // GĐ C: mô tả ngoại hình của nhân vật đại diện (để form sửa hồ sơ bé điền sẵn)
     appearance: raw.character?.appearance ?? undefined,
+    preferredVoice: raw.preferredVoice ?? undefined,
   }),
 };

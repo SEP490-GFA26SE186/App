@@ -1,8 +1,8 @@
 # StoryWeaver Mobile — Hiện trạng
 
-> Cập nhật: 2026-10-27 · Nhánh `refactor/mobile-frontend-cleanup` · Commit Frontend mới nhất `a9160a7` (R9-A).
-> Thay thế các báo cáo tiến độ/QA từng đợt (R1–R9-A, Phase A–E, Safety Gate, audit/kế hoạch cũ) đã xóa; bản gốc vẫn khôi phục được từ Git (`git show a9160a7:docs/mobile/<tên-file>`).
-> Thang trạng thái: **PASS** (đã chạy thật) · **FIXTURE PASS** (dữ liệu giả trong trình duyệt, không phải E2E) · **NOT RUN** (chủ động không chạy) · **NOT VERIFIED** (thiếu bằng chứng) · **BLOCKED** (bị chặn có bằng chứng).
+> Cập nhật: 2026-11-27 · Nhánh `main` · Commit mới nhất `848c207` (sau GĐ E2b) + thay đổi chưa commit của đợt "Khớp Web trước demo" (§2).
+> Lịch sử đợt cũ (R1–R9-A) vẫn ở §2b; chi tiết từng GĐ A–F, E1–E2b: [MOBILE_UPDATE_GAP_ANALYSIS.md](MOBILE_UPDATE_GAP_ANALYSIS.md), lộ trình: [LO_TRINH_MOBILE.md](LO_TRINH_MOBILE.md).
+> Thang trạng thái: **PASS** (đã chạy thật) · **FIXTURE PASS** (dữ liệu giả, không phải E2E) · **OWNER_RESERVED** (chờ chủ dự án test thật) · **NOT RUN** · **NOT VERIFIED** · **BLOCKED**.
 
 ## 1. Kiến trúc hiện tại
 
@@ -13,9 +13,33 @@
 - **Lưu phiên:** Web = `localStorage`; **native = chỉ bộ nhớ** (`services/storage.ts`) — xem §6.
 - **Giao diện:** design system "Warm Storybook Guardian" ([UI_UX_REDESIGN_PLAN.md](UI_UX_REDESIGN_PLAN.md)): token `theme/colors|typography|spacing|shadows|focus`, UI kit `components/ui/*` (HeyButton/Input/Card/Chip, Badge, Icon, Skeleton, Toast, StateView, Sheet, ScreenHeader, **Dialog**).
 - **Lớp phủ:** khoá PIN Kid, Trình đọc phụ huynh, hộp thoại Web đều là **lớp phủ trong cây**, **không `<Modal>`** (Modal kẹt 0×0 trên Android New Architecture — lỗi CRIT-1 đã sửa ở R1). `Sheet` (form) vẫn dùng `Modal`.
-- **Test tự động (không cần BE):** `apps/mobile/tests/*.test.ts` — 9 bộ, **56 test** (quét mã nguồn + `authRace`); cách chạy: `apps/mobile/tests/README.md`.
+- **Test tự động (không cần BE):** `apps/mobile/tests/*.test.ts` — **26 bộ** (quét mã nguồn + fetch giả); cách chạy: `apps/mobile/tests/README.md`. Lần chạy 2026-11-27: `tsc --noEmit` PASS, 26/26 bộ PASS.
 
-## 2. Đã hoàn thành R0–R9-A (Frontend)
+## 2. Đối chiếu Mobile – Web – BE (rà soát 2026-11-27)
+
+**Kết quả rà soát (`VERIFIED_FROM_SOURCE`, chỉ đọc code, chưa chạy BE thật):**
+- Endpoint: mọi endpoint Web gọi (~130) đều có trong service Mobile; các endpoint chỉ Mobile gọi (quên/đặt lại mật khẩu, PIN, `/market/owned`, `/children/:id/eq-report`…) đều có route trong BE.
+- Mọi hàm gọi API trong `services/` đều đã gắn vào ít nhất một màn hình (không có API bị bỏ không).
+- Màn hình: mỗi trang Web của Phụ huynh, Kid, Admin, Chuyên gia đều có màn tương ứng. Nút Admin / Chuyên gia, Chợ truyện, Bán truyện, Gói & thanh toán khớp Web.
+
+**Đợt "Khớp Web trước demo" (2026-11-27, chủ dự án duyệt, chưa commit) — FIXTURE PASS, `NOT_VERIFIED_AT_RUNTIME`:**
+
+| # | Nội dung | File chính |
+|---|---|---|
+| 1 | Kid Mode đọc to như Web: lật trang tự đọc giọng của trang (`page.audioUrl`), nút "Nghe lại trang này", nút Tắt/Bật tiếng ở thanh trên, câu "Hết truyện" (`prompt.story_end`). Không phát được file (Expo Go SDK 52 thiếu `expo-audio`, truyện tắt giọng đọc) → đọc chữ bằng giọng máy (`speechTTS`); các nút "Nghe" ở điểm dừng cũng dùng cách này | `screens/kid/useKidUiAudio.ts`, `utils/kidUiAudio.ts`, `components/kid/KidReader.tsx`, `screens/kid/KidModeScreen.tsx` |
+| 2 | "Kể chuyện nhà mình": thêm "Chỉ kể truyện, không chấm điểm" (`scored: false`), "Đổi kỹ năng" (chọn 1–2 kỹ năng con → `POST /stories/analyze { subSkillIds }`), "Sửa lời kể", dòng "Truyện sẽ thêm" (`seedEvent`) | `screens/parent/StoryWizard.tsx`, `components/parent/SubSkillPickerSheet.tsx` |
+| 3 | Chọn giọng đọc của bé trong form hồ sơ (`preferredVoice`, null = giọng mặc định); Chi tiết bé hiện nhãn tiếng Việt | `components/parent/ChildFormSheet.tsx`, `constants/voices.ts`, `services/childService.ts` |
+| 4 | Hành trình EQ: "Tạo truyện" ở gợi ý chuyện mẫu → Wizard lối Chuyện mẫu đã chọn sẵn | `screens/parent/EqReportScreen.tsx`, `navigation/{ParentTabs.tsx,routes.ts}` |
+| 5 | Nhân vật gia đình: hiện `n/giới hạn` theo gói (`GET /subscriptions/me`), đủ thì khoá "Thêm nhân vật" + lối "Xem Gói & Credit" | `screens/parent/CharactersScreen.tsx` |
+
+Test: cập nhật `kidUiAudio`, `wizard`, `storyMedia`; thêm `webParity.test.ts`.
+
+**Còn khác Web (có chủ đích hoặc chưa làm):**
+- Xuất CSV tài chính (Admin) chỉ có trên Web (màn Mobile ghi rõ).
+- Khác chỗ đặt nút, đủ chức năng: "Đăng bán truyện này" (Web: trong trình sửa truyện; Mobile: Bán truyện → "Đăng truyện mới"); PIN Kid Mode (Web: trang Bé; Mobile: Cài đặt); sau khi tạo truyện AI, Mobile hiện màn "AI đang viết" rồi mở Chi tiết truyện (Web mở trình sửa ngay).
+- Giọng máy là phần dự phòng riêng của Mobile (Web chỉ phát file BE).
+
+## 2b. Lịch sử: đã hoàn thành R0–R9-A (Frontend)
 
 | Đợt | Nội dung | Kết quả |
 |---|---|---|
@@ -35,7 +59,10 @@ Phương án A "Warm Storybook Guardian" + Reader nền giấy + nút Kid "có �
 
 ## 4. Tính năng chính đã có (Frontend)
 
-Đăng nhập/đăng ký/đăng xuất · chọn bé · Home có số liệu thật · Wizard 3 lối vào (Nhà mình, Chuyện mẫu; "Tự viết" = chưa hỗ trợ) · theo dõi AI viết (polling 3 s) · Tủ truyện/lọc/tìm · Chi tiết + Xem lại + Lên tủ sách · Trình đọc phụ huynh (TTS thiết bị `expo-speech`) · Kid Mode (vào/thoát bằng PIN do BE xác minh) · Reader trẻ em + điểm dừng EQ · Báo cáo EQ · Ví/gói/lịch sử credit (chỉ xem) · CRUD bé/nhân vật · đổi mật khẩu/PIN · Trợ giúp.
+- **Phụ huynh:** đăng nhập/đăng ký/quên mật khẩu/xác minh email · chọn bé · Home số liệu thật + truyện chờ xem lại · Wizard 3 lối (Nhà mình, Chuyện mẫu, Tự viết) + tranh AI + giọng đọc · Sửa truyện (trang, điểm dừng, bìa, hoàn tất, xoá) · tranh/giọng đọc/thử lại · Tủ truyện, tủ sách từng bé · Trình đọc phụ huynh · Hành trình EQ · Bé nhà mình, Nhân vật + chân dung AI · Gói & Credit, mua/gia hạn qua payOS, lịch sử thanh toán, hoàn tiền · Chợ truyện (mua, nhận miễn phí, đánh giá, báo cáo) · Bán truyện (hồ sơ, đăng bán, phiên bản, doanh thu, ngân hàng, rút tiền, cảnh cáo + kháng nghị, trả lời đánh giá) · Cài đặt (mật khẩu, PIN) · Trợ giúp + Chính sách/Điều khoản.
+- **Kid Mode:** tủ sách, đọc tiếp, Reader + điểm dừng EQ, đọc to (§2), thoát bằng PIN do BE xác minh.
+- **Admin:** Tổng quan, Việc chờ, Tài khoản, Rút tiền, Hoàn tiền, Kháng nghị, Nhật ký, Gói & định giá (+ cài đặt `market`/`moderation`), Doanh thu & đối soát, Cấu hình AI.
+- **Chuyên gia:** Hàng chờ/Tổng quan, Lượt duyệt, Hồ sơ người bán, Báo cáo vi phạm, Truyện tạm gỡ, Cảnh cáo, Kiểm tra ngẫu nhiên, Cảnh báo AI, Chuyện mẫu, Kỹ năng con, Mẫu câu hỏi, Soát câu hỏi AI, Tham số báo cáo, Từ khoá chặn.
 
 ## 5. Hạn chế đã xác nhận (còn mở)
 
@@ -47,7 +74,9 @@ Phương án A "Warm Storybook Guardian" + Reader nền giấy + nút Kid "có �
 | LOW | Nút sm/chip native 36pt + `hitSlop` 44 (Web đã 44 thật) |
 | INFO | Ảnh cú dạng huy hiệu có chữ, vỡ ở 34–42px — chờ asset tách nền (A4) |
 | INFO | Expo Go luôn bật New Architecture nhưng `app.json` không khai báo `newArchEnabled` (I4) — cần quyết định cấu hình build |
-| INFO | `AuthModal` không còn được dùng (giữ, chưa duyệt xóa); màn Seller/Moderator/Admin/Marketplace **SCOPE PENDING**, chỉ chặn bằng state UI (bảo mật: cần kiểm quyền BE nếu mở lại) |
+| INFO | `AuthModal` không còn được dùng (giữ, chưa duyệt xóa) |
+| INFO | Expo Go SDK 52 không có `expo-audio`: Kid Mode chỉ có giọng máy; file giọng đọc của BE chỉ phát trên bản build (APK / development build) |
+| INFO | payOS trả về trang **Web** sau thanh toán; ba mẹ tự quay lại app rồi bấm "Kiểm tra thanh toán" (đề xuất BE ở `LO_TRINH_MOBILE.md` §6) |
 | NOT VERIFIED | TalkBack/VoiceOver thật, iOS, thiết bị Android thật, production build (J1 chỉ kiểm bằng mã/test) |
 
 ## 6. Phiên trên Android (R9A-7)
@@ -73,32 +102,16 @@ Mở lại Expo Go / tạo lại Activity (đổi `wm size`) → **về màn Đ�
 
 Chi tiết và đề nghị gửi BE: QA_R9B_READINESS.md (tài liệu chưa có trong repo) §1, §8, §12.
 
-## 9. Sẵn sàng R9-B
+## 9. Việc tiếp theo trước demo (GĐ G — chủ dự án)
 
-Sẵn sàng: Mobile, PostgreSQL, các endpoint đọc, đăng nhập/PIN. **Bị chặn:** tạo truyện AI, phân tích lời kể, credit giữ/hoàn thật (B-1…B-3). Chạy được ngay: ca chỉ xem (R9B-04, R9B-07, R9B-11) và ca ghi không cần AI trên tài khoản test (R9B-08/09/10, cần bạn duyệt). Kế hoạch: R9B_MANUAL_TEST_PLAN.md (tài liệu chưa có trong repo).
+1. Review và commit đợt "Khớp Web trước demo" (§2).
+2. Chạy thật trên Android (Expo Go SDK 52 hoặc APK) với BE deploy, tài khoản demo: Kid Mode đọc to + tắt tiếng; Wizard "Chỉ kể truyện" / "Đổi kỹ năng"; giọng đọc của bé; "Tạo truyện" từ Hành trình EQ; giới hạn nhân vật — đều `OWNER_RESERVED`.
+3. Ma trận test thật theo vai trò (Phụ huynh, Kid, Admin, Chuyên gia) cho các GĐ A–F, E1–E2b (hiện đều FIXTURE PASS).
+4. Thao tác tốn credit / giao dịch (tạo truyện AI, tranh, chân dung, payOS, rút/hoàn tiền) chỉ chạy trên tài khoản demo, do chủ dự án làm.
 
-## 10. Chức năng/độ phủ còn chờ
+## 10. Quyết định cần chủ dự án
 
-| Hạng mục | Trạng thái |
-|---|---|
-| Tạo truyện AI (chuyện mẫu, nhà mình), polling thật, credit giữ/hoàn | BLOCKED (B-1…B-3) |
-| Xem lại + lên tủ sách với truyện mới tạo | NOT RUN (cần truyện READY của tài khoản test) |
-| Kid Reader thật (R4.1), EQ sau khi đọc thật | NOT RUN |
-| CRUD bé/nhân vật, đổi mật khẩu/PIN thật | NOT RUN (cần duyệt) |
-| Ảnh AI, giọng đọc server, TTS thiết bị trên máy thật | NOT VERIFIED |
-| "Tự viết" (soạn từng trang), sửa trang/điểm dừng | Chưa hỗ trợ trên Mobile |
-
-## 11. Quyết định cần chủ dự án
-
-1. Lưu phiên bền trên native (dependency + bảo mật) — R9A-7.
+1. Lưu phiên bền trên native (dependency + bảo mật) — R9A-7: thoát app là mất phiên, ảnh hưởng demo.
 2. K1: khôi phục Kid Mode sau restart.
-3. Phạm vi Seller/Moderator/Admin/Marketplace/Payment (SCOPE PENDING).
-4. `newArchEnabled` trong `app.json` (I4); asset cú tách nền (A4).
-5. Duyệt từng ca ghi dữ liệu / tốn credit trong R9-B.
-
-## 12. Việc tiếp theo trước demo
-
-1. BE bật Redis + worker + AI service (+ Gemini/Cloudinary nếu cần nội dung thật).
-2. Chạy R9-B theo thứ tự trong R9B_MANUAL_TEST_PLAN.md (tài liệu chưa có trong repo) (bắt đầu R9B-04).
-3. Hoàn tất R4.1 (R9B-06) trên tài khoản test.
-4. Sửa lỗi Frontend phát sinh (nếu có), chạy lại 56 test + export, cập nhật tài liệu này.
+3. `newArchEnabled` trong `app.json` (I4); asset cú tách nền (A4).
+4. Demo bằng Android (iPhone không chạy Expo Go SDK 52).

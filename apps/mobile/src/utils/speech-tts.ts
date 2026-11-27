@@ -152,6 +152,11 @@ class SpeechTTSManager {
     }
   }
 
+  /** Thiết bị có giọng máy (expo-speech hoặc speechSynthesis của trình duyệt) */
+  public isAvailable(): boolean {
+    return !!(ExpoSpeech && typeof ExpoSpeech.speak === 'function') || !!this.synth;
+  }
+
   public getSpeakingState(): boolean {
     return this.isSpeaking;
   }

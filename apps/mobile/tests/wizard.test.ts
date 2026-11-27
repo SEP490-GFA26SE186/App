@@ -27,7 +27,7 @@ test('Không hex cứng, không emoji làm icon chức năng, không TouchableOp
 
 test('Giữ nguyên lời gọi BE và payload: pricing, analyze, createStory (analysisToken, scored), generate/poll', () => {
   const w = noComments(read('screens/parent/StoryWizard.tsx'));
-  for (const call of ['.getAiPricing()', 'storyService.analyze(', 'storyService.createStory(', 'analysisToken: analysis.analysisToken', 'scored: true', "entry: 'topic'", "entry: 'family'"]) {
+  for (const call of ['.getAiPricing()', 'storyService.analyze(', 'storyService.createStory(', 'analysisToken: analysis.analysisToken', 'scored,', "entry: 'topic'", "entry: 'family'"]) {
     assert.ok(w.includes(call), `thiếu ${call}`);
   }
   const r = noComments(read('components/parent/GenerationRunner.tsx'));
@@ -66,6 +66,21 @@ test('Android Back ở bước 2–3 quay về bước trước (BackHandler), b
   const w = noComments(read('screens/parent/StoryWizard.tsx'));
   assert.match(w, /BackHandler\.addEventListener\('hardwareBackPress'/);
   assert.match(w, /if \(step === 0 \|\| generating\) return;/);
+});
+
+test('Kể chuyện nhà mình như Web: "Chỉ kể truyện" (scored false), "Đổi kỹ năng" (subSkillIds 1–2), "Sửa lời kể"', () => {
+  const w = noComments(read('screens/parent/StoryWizard.tsx'));
+  assert.match(w, /onPress: \(\) => createFamily\(true\)/, 'nút chính tạo truyện có chấm điểm');
+  assert.match(w, /title="Chỉ kể truyện, không chấm điểm"[\s\S]{0,120}onPress=\{\(\) => createFamily\(false\)\}/);
+  assert.match(w, /title="Đổi kỹ năng"/);
+  assert.match(w, /title="Sửa lời kể"/);
+  assert.match(w, /subSkillIds\?\.length \? \{ subSkillIds \} : \{\}/, 'không gửi subSkillIds rỗng (BE yêu cầu 1–2)');
+  assert.match(w, /onConfirm=\{\(ids\) => void runAnalyze\(ids\)\}/);
+  const picker = noComments(read('components/parent/SubSkillPickerSheet.tsx'));
+  assert.match(picker, /const MAX = 2;/);
+  assert.match(picker, /pedagogyService\.getSubSkills\(\)/);
+  assert.match(picker, /accessibilityRole="checkbox"/, 'chọn nhiều → checkbox, không phải radio');
+  assert.match(picker, /disabled=\{busy \|\| picked\.length === 0\}/);
 });
 
 console.log(`OK ${passed}/${passed}`);

@@ -6,7 +6,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, BackHandler } from 'react-native';
 import { ChildProfile } from '../../types/domain';
 import { Colors } from '../../theme/colors';
-import { Radius, Spacing } from '../../theme/spacing';
+import { Radius, Spacing, Touch } from '../../theme/spacing';
 import { FontFamily, Typography } from '../../theme/typography';
 import { authService } from '../../services/authService';
 import { ApiError } from '../../services/apiClient';
@@ -45,8 +45,13 @@ export const KidModeScreen: React.FC<KidModeScreenProps> = ({
   const preview = __DEV__ ? previewProp : undefined;
   const reader = useKidReader(source);
   const { play } = reader;
-  // Câu đọc dùng chung (GET /kid/ui-audio): chỉ ở Kid Mode thật, chỉ phát khi bé bấm "Nghe"
+  // Âm thanh (câu đọc dùng chung + giọng đọc trang): chỉ ở Kid Mode thật. Trang tự đọc khi lật (như Web) trừ khi tắt tiếng.
   const uiAudio = useKidUiAudio(source, !preview);
+  const [muted, setMuted] = useState(false);
+  const toggleMute = () => {
+    if (!muted) uiAudio.stop();
+    setMuted(!muted);
+  };
 
   // PIN Lock
   const [showPinModal, setShowPinModal] = useState(false);
@@ -168,6 +173,14 @@ export const KidModeScreen: React.FC<KidModeScreenProps> = ({
           Chào {kidName || child?.name || 'Bé yêu'}!
         </Text>
         <HeyButton
+          iconName={muted ? 'volume-mute' : 'volume-high'}
+          accessibilityLabel={muted ? 'Bật tiếng đọc truyện' : 'Tắt tiếng đọc truyện'}
+          variant="tertiary"
+          size="md"
+          style={styles.iconBtn}
+          onPress={toggleMute}
+        />
+        <HeyButton
           title={preview ? 'Thoát Preview' : 'Thoát'}
           iconName={preview ? 'arrow-undo' : 'lock-closed'}
           accessibilityLabel={preview ? 'Thoát bản xem thử' : 'Thoát Chế độ Bé, cần mã PIN của ba mẹ'}
@@ -188,7 +201,7 @@ export const KidModeScreen: React.FC<KidModeScreenProps> = ({
       {meLost && !preview ? null : !play ? (
         <KidShelf reader={reader} childName={kidName || name} hideBehind={hideBehindPin} />
       ) : (
-        <KidReader reader={reader} hideBehind={hideBehindPin} audio={uiAudio} />
+        <KidReader reader={reader} hideBehind={hideBehindPin} audio={uiAudio} muted={muted} />
       )}
 
       {/* ── Khoá phụ huynh: lớp phủ trong cây (không dùng <Modal>, xem KidPinOverlay) ── */}
@@ -228,6 +241,8 @@ const styles = StyleSheet.create({
   },
   avatar: { width: 52, height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.surface, borderWidth: 2, borderColor: Colors.tealBright },
   avatarEmoji: { fontSize: 28 },
+  // nút chỉ có icon: vùng chạm Kid ≥ 56pt
+  iconBtn: { minWidth: Touch.kid, minHeight: Touch.kid, paddingHorizontal: 0 },
   // navy trên tealTint 13:1
   greeting: { ...Typography.kidHeading, fontFamily: FontFamily.displayBold, color: Colors.text, flex: 1 },
   lostBanner: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, padding: Spacing.md, backgroundColor: Colors.dangerTint },

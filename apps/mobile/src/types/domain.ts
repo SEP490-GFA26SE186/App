@@ -43,6 +43,8 @@ export interface ChildProfile {
   avatarUrl?: string;
   /** Mô tả ngoại hình của nhân vật đại diện (BE child.character.appearance) */
   appearance?: string;
+  /** Giọng đọc truyện (BE child.preferredVoice); không có = giọng mặc định */
+  preferredVoice?: string;
   favoriteTopics?: string[];
   favoriteThemes?: string[];
 }

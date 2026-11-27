@@ -17,7 +17,7 @@ import { Colors } from '../../theme/colors';
 import { Layout, Radius, Spacing } from '../../theme/spacing';
 import { Typography } from '../../theme/typography';
 import { CharacterView } from '../../types/viewModels';
-import { characterService, storyService } from '../../services';
+import { billingService, characterService, storyService } from '../../services';
 import type { DataStatus } from '../../stores/useParentData';
 import { CharacterPortraitAction, usePortraitPolling } from '../../components/parent/CharacterPortraitAction';
 import { countDrawingPortraits, portraitFailureText } from '../../utils/characterPortrait';
@@ -41,6 +41,8 @@ interface CharactersScreenProps {
   /** GĐ B3: số dư credit (null = chưa biết) và tải lại số dư sau khi vẽ chân dung */
   creditBalance: number | null;
   onCreditsChanged: () => void;
+  /** Đủ số nhân vật của gói → mở Gói & Credit để nâng gói (như Web) */
+  onOpenWallet: () => void;
 }
 
 /** Sheet chi tiết: nạp mới từ BE mỗi lần mở (loading / lỗi + thử lại) */
@@ -91,8 +93,13 @@ export const CharactersScreen: React.FC<CharactersScreenProps> = ({
   onBack,
   creditBalance,
   onCreditsChanged,
+  onOpenWallet,
 }) => {
   const dialog = useDialog();
+  // Giới hạn nhân vật của gói (GET /subscriptions/me). Lỗi tải gói → không chặn nút, BE vẫn từ chối khi vượt
+  const sub = useAsyncResource(() => billingService.getSubscription(), []);
+  const limit = sub.data?.plan.maxCharacters;
+  const full = limit != null && characters.length >= limit;
   // GĐ B3: giá chân dung (đọc một lần) + hỏi lại danh sách khi có chân dung đang vẽ
   const pricing = useAsyncResource(() => storyService.getAiPricing(), []);
   usePortraitPolling<CharacterView[]>({
@@ -145,9 +152,21 @@ export const CharactersScreen: React.FC<CharactersScreenProps> = ({
       />
 
       <View style={styles.topRow}>
-        <Badge label={`${characters.length} nhân vật`} tone="neutral" />
+        <Badge label={limit != null ? `${characters.length}/${limit} nhân vật` : `${characters.length} nhân vật`} tone="neutral" />
       </View>
-      <HeyButton title="Thêm nhân vật" iconName="add" onPress={() => openForm()} />
+      <HeyButton
+        title="Thêm nhân vật"
+        iconName="add"
+        onPress={() => openForm()}
+        disabled={full}
+        accessibilityLabel={full ? 'Thêm nhân vật, đã đủ số nhân vật của gói' : undefined}
+      />
+      {full && (
+        <HeyCard variant="brand" style={styles.limitBox}>
+          <Text style={styles.limitText}>Gói hiện tại cho tối đa {limit} nhân vật. Xoá bớt nhân vật không dùng hoặc nâng cấp gói.</Text>
+          <HeyButton title="Xem Gói & Credit" iconName="diamond-outline" variant="tertiary" size="sm" onPress={onOpenWallet} />
+        </HeyCard>
+      )}
 
       {loading ? (
         <StateView variant="skeleton" title="Đang tải nhân vật..." />
@@ -160,7 +179,7 @@ export const CharactersScreen: React.FC<CharactersScreenProps> = ({
               ? 'Ba mẹ thử tải lại ở dải thông báo phía trên nhé.'
               : 'Thêm người thân để AI viết truyện gần gũi với bé hơn.'
           }
-          actionLabel={dataStatus === 'error' ? undefined : 'Thêm nhân vật'}
+          actionLabel={dataStatus === 'error' || full ? undefined : 'Thêm nhân vật'}
           onAction={dataStatus === 'error' ? undefined : () => openForm()}
         />
       ) : (
@@ -229,6 +248,8 @@ export const CharactersScreen: React.FC<CharactersScreenProps> = ({
 };
 
 const styles = StyleSheet.create({
+  limitBox: { gap: Spacing.sm },
+  limitText: { ...Typography.label, color: Colors.text },
   content: { padding: Spacing.page, paddingBottom: Spacing.xxxl, gap: Spacing.md },
   topRow: { flexDirection: 'row' },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.md, rowGap: Spacing.md },

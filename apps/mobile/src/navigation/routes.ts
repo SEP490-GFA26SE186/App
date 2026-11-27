@@ -41,6 +41,8 @@ export interface RouteParams {
   listingId?: string;
   /** MARKET_SELLER */
   sellerId?: string;
+  /** CREATE: mở Wizard lối "Chuyện mẫu" đã chọn sẵn chuyện này (gợi ý ở Hành trình EQ, như Web studioNewFromTopic) */
+  topicId?: string;
 }
 
 export interface NavState {

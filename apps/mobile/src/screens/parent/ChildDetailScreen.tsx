@@ -20,6 +20,7 @@ import type { ChildDto } from '../../types/api';
 import { CharacterPortraitAction, usePortraitPolling } from '../../components/parent/CharacterPortraitAction';
 import { isPortraitDrawing } from '../../utils/characterPortrait';
 import { useAsyncResource } from '../../utils/useAsyncResource';
+import { voiceLabel } from '../../constants/voices';
 
 interface ChildDetailScreenProps {
   childId: string;
@@ -126,7 +127,7 @@ export const ChildDetailScreen: React.FC<ChildDetailScreenProps> = ({ childId, s
           {!!child.preferredVoice && (
             <Text style={styles.body}>
               <Text style={styles.bodyStrong}>Giọng đọc ưa thích: </Text>
-              {child.preferredVoice}
+              {voiceLabel(child.preferredVoice)}
             </Text>
           )}
         </HeyCard>

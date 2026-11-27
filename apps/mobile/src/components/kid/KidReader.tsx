@@ -13,20 +13,39 @@ import { KidCheckpointCard } from './KidCheckpointCard';
 import { KidState } from './KidState';
 import { useReduceMotion } from '../../utils/useReduceMotion';
 import type { KidReaderState } from '../../screens/kid/useKidReader';
-import type { KidUiAudioControls } from '../../utils/kidUiAudio';
+import { UI_AUDIO_KEYS, type KidUiAudioControls } from '../../utils/kidUiAudio';
 
 interface Props {
   reader: KidReaderState;
   hideBehind: 'auto' | 'no-hide-descendants';
-  /** Câu đọc dùng chung (tùy chọn): không có = không hiện nút Nghe */
+  /** Âm thanh (tùy chọn): không có = không đọc trang, không hiện nút Nghe */
   audio?: KidUiAudioControls;
+  /** Tắt tiếng: không tự đọc trang / câu hết truyện (bấm "Nghe lại" vẫn đọc) */
+  muted?: boolean;
 }
 
-export const KidReader: React.FC<Props> = ({ reader, hideBehind, audio }) => {
+export const KidReader: React.FC<Props> = ({ reader, hideBehind, audio, muted = false }) => {
   const { height } = useWindowDimensions();
   const reduceMotion = useReduceMotion();
   const scrollRef = useRef<ScrollView>(null);
   const { play, page } = reader;
+
+  // Như Web: sang trang mới thì tự đọc trang (nếu không tắt tiếng); bật lại tiếng không đọc lại trang đang mở
+  const mutedRef = useRef(muted);
+  mutedRef.current = muted;
+  const speak = audio?.speak;
+  const playUi = audio?.play;
+  const pageId = page?.id;
+  const pageKey = pageId ? `page:${pageId}` : '';
+  useEffect(() => {
+    if (!speak || !page || mutedRef.current) return;
+    speak(`page:${page.id}`, page.audioUrl, page.text);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- chỉ đọc khi đổi trang
+  }, [pageId, speak]);
+  useEffect(() => {
+    if (reader.finished && !mutedRef.current) playUi?.(UI_AUDIO_KEYS.storyEnd);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- chỉ phát lúc vừa đọc xong
+  }, [reader.finished]);
 
   // Điểm dừng nằm dưới tranh + chữ: tự cuộn tới để bé không phải tự tìm câu hỏi
   const checkpointId = reader.openCheckpoint?.id;
@@ -100,6 +119,20 @@ export const KidReader: React.FC<Props> = ({ reader, hideBehind, audio }) => {
           <View style={styles.textBox}>
             <Text style={styles.pageBody}>{page?.text}</Text>
           </View>
+
+          {!!page && !!audio?.canSpeak(page.audioUrl, page.text) && (
+            <View style={styles.listenWrap}>
+              <HeyButton
+                title={audio.playingKey === pageKey ? 'Đang đọc…' : 'Nghe lại trang này'}
+                accessibilityLabel="Nghe đọc lại trang này"
+                iconName="volume-high"
+                variant="tertiary"
+                size="xl"
+                onPress={() => audio.speak(pageKey, page.audioUrl, page.text)}
+              />
+              {audio.failedKey === pageKey && <Text style={styles.error}>Chưa phát được âm thanh, bé đọc chữ nhé.</Text>}
+            </View>
+          )}
 
           {/* Điểm dừng EQ (BE chấm và trả gợi ý/đáp án) */}
           {reader.openCheckpoint && (
@@ -207,6 +240,7 @@ const styles = StyleSheet.create({
   textBox: { borderRadius: Radius.xxl, backgroundColor: Colors.surfaceWarm, borderWidth: 1, borderColor: Colors.outline, padding: Spacing.xl },
   pageBody: { ...Typography.reader, color: Colors.text },
   error: { ...Typography.label, color: Colors.danger, textAlign: 'center' },
+  listenWrap: { alignItems: 'center', gap: Spacing.xs },
 
   nav: { alignItems: 'center', paddingHorizontal: Spacing.page, paddingTop: Spacing.sm, paddingBottom: Spacing.md, backgroundColor: Colors.canvas, borderTopWidth: 1, borderTopColor: Colors.outline },
   navInner: { width: '100%', maxWidth: Layout.maxContentWidth, flexDirection: 'row', gap: Spacing.md },

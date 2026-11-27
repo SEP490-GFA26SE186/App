@@ -7,6 +7,7 @@ import { ChildProfile } from '../../types/domain';
 import { Sheet } from '../ui/Sheet';
 import { HeyInput } from '../ui/HeyInput';
 import { HeyButton } from '../ui/HeyButton';
+import { HeyChip } from '../ui/HeyChip';
 import { Icon } from '../ui/Icon';
 import { Colors } from '../../theme/colors';
 import { Typography } from '../../theme/typography';
@@ -14,6 +15,8 @@ import { childService } from '../../services';
 import { CHILD_NAME_MAX, validateBirthDate } from '../../utils/validation';
 import { AppearanceHints } from './AppearanceHints';
 import { CHILD_APPEARANCE_MAX, childAppearancePayload } from '../../utils/child';
+import { VOICES } from '../../constants/voices';
+import { Spacing } from '../../theme/spacing';
 
 interface ChildFormSheetProps {
   visible: boolean;
@@ -28,6 +31,7 @@ export const ChildFormSheet: React.FC<ChildFormSheetProps> = ({ visible, child, 
   const [name, setName] = useState('');
   const [birthDate, setBirthDate] = useState('');
   const [appearance, setAppearance] = useState('');
+  const [voice, setVoice] = useState(''); // '' = giọng mặc định
   const [errors, setErrors] = useState<{ name?: string; birthDate?: string; appearance?: string }>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -39,6 +43,7 @@ export const ChildFormSheet: React.FC<ChildFormSheetProps> = ({ visible, child, 
     setName(child?.name ?? '');
     setBirthDate(child?.birthDate ?? '');
     setAppearance(child?.appearance ?? '');
+    setVoice(child?.preferredVoice ?? '');
     setErrors({});
     setFormError(null);
   }, [visible, child?.id]);
@@ -64,7 +69,14 @@ export const ChildFormSheet: React.FC<ChildFormSheetProps> = ({ visible, child, 
     setSubmitting(true);
     try {
       const look = childAppearancePayload(appearance, child?.appearance, editing);
-      const payload = { name: name.trim(), birthDate: birthDate.trim(), ...(look !== undefined && { appearance: look }) };
+      // Giọng đọc (như Web ReadingSettingsCard): sửa thì gửi null = về giọng mặc định; tạo mới chỉ gửi khi đã chọn
+      const voiceChanged = voice !== (child?.preferredVoice ?? '');
+      const payload = {
+        name: name.trim(),
+        birthDate: birthDate.trim(),
+        ...(look !== undefined && { appearance: look }),
+        ...(voiceChanged && { preferredVoice: voice || null }),
+      };
       const saved = child ? await childService.updateChild(child.id, payload) : await childService.createChild(payload);
       onSaved(saved);
       onClose();
@@ -123,6 +135,15 @@ export const ChildFormSheet: React.FC<ChildFormSheetProps> = ({ visible, child, 
         numberOfLines={3}
       />
       <AppearanceHints value={appearance} />
+      <View style={styles.voiceBox} accessibilityRole="radiogroup" accessibilityLabel="Giọng đọc truyện">
+        <Text style={styles.voiceTitle}>Giọng đọc truyện</Text>
+        <View style={styles.voices}>
+          {[{ value: '', label: 'Giọng mặc định' }, ...VOICES].map((v) => (
+            <HeyChip key={v.value || 'default'} label={v.label} selected={voice === v.value} onPress={() => setVoice(v.value)} />
+          ))}
+        </View>
+        <Text style={styles.voiceHint}>Áp dụng khi bé nghe truyện trong Chế độ Bé (truyện có bật giọng đọc).</Text>
+      </View>
       {!!formError && (
         <View style={styles.formErrorBox} accessibilityRole="alert">
           <Icon name="alert-circle" size={18} color={Colors.danger} />
@@ -143,4 +164,8 @@ const styles = StyleSheet.create({
   formErrorBox: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, backgroundColor: Colors.dangerTint, padding: 12, borderRadius: 12, marginBottom: 8 },
   formError: { ...Typography.label, color: Colors.danger, flex: 1 },
   btn: { marginTop: 4, marginBottom: 8 },
+  voiceBox: { gap: Spacing.sm, marginBottom: Spacing.md },
+  voiceTitle: { ...Typography.label, color: Colors.text },
+  voices: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
+  voiceHint: { ...Typography.caption, color: Colors.textMuted },
 });

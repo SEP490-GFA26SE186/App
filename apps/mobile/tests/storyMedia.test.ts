@@ -125,7 +125,7 @@ const cases: [string, () => void | Promise<void>][] = [
     const topic = w.slice(w.indexOf("entry: 'topic',"), w.indexOf("} else if (entry === 'handwritten')"));
     assert.match(topic, /useTts,\s*useAiImage,/);
     const family = w.slice(w.indexOf("entry: 'family',"), w.indexOf('if (generating)'));
-    assert.match(family, /scored: true,\s*useAiImage,/);
+    assert.match(family, /scored,\s*useAiImage,/);
     const hand = w.slice(w.indexOf("entry === 'handwritten') {"), w.indexOf("} else if (entry === 'family')"));
     assert.match(hand, /useAiImage: false/);
     assert.match(hand, /useTts,/);

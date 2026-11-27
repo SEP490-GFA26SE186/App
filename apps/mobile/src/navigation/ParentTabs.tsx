@@ -182,6 +182,8 @@ export const ParentTabs: React.FC<ParentTabsProps> = ({ currentUser, nav, active
       case ROUTES.CREATE:
         return (
           <StoryWizard
+            key={nav.current.params?.topicId ?? 'new'}
+            initialTopicId={nav.current.params?.topicId}
             characters={data.characters}
             templates={data.templates}
             creditBalance={currentUser.creditBalance}
@@ -207,6 +209,7 @@ export const ParentTabs: React.FC<ParentTabsProps> = ({ currentUser, nav, active
             selectedChildId={data.selectedChild?.id}
             onSelectChild={data.selectChild}
             onOpenSkills={() => navigate(ROUTES.EQ_SKILLS)}
+            onCreateFromTopic={(topicId) => navigate(ROUTES.CREATE, { topicId })}
           />
         );
       case ROUTES.EQ_SKILLS:
@@ -268,6 +271,7 @@ export const ParentTabs: React.FC<ParentTabsProps> = ({ currentUser, nav, active
             onBack={goBack}
             creditBalance={currentUser.creditBalance}
             onCreditsChanged={refreshCredit}
+            onOpenWallet={openWallet}
           />
         );
       case ROUTES.SETTINGS:

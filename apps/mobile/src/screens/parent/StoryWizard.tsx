@@ -20,6 +20,7 @@ import { StateView } from '../../components/ui/StateView';
 import { ScreenHeader } from '../../components/ui/ScreenHeader';
 import { CharacterFormSheet } from '../../components/parent/CharacterFormSheet';
 import { GenerationRunner } from '../../components/parent/GenerationRunner';
+import { SubSkillPickerSheet } from '../../components/parent/SubSkillPickerSheet';
 import { storyService } from '../../services';
 import type { AiPricingDto, AnalyzeStoryResultDto } from '../../types/api';
 import { Colors } from '../../theme/colors';
@@ -39,6 +40,8 @@ import {
 } from '../../constants/story';
 
 interface StoryWizardProps {
+  /** Mở sẵn lối "Chuyện mẫu" với chuyện này (từ gợi ý Hành trình EQ) */
+  initialTopicId?: string;
   characters: CharacterView[];
   templates: PedagogicalTemplate[];
   /** Số dư credit từ BE (null = chưa biết) */
@@ -88,10 +91,11 @@ export const StoryWizard: React.FC<StoryWizardProps> = ({
   onOpenEditor,
   onCreditsChanged,
   onCancel,
+  initialTopicId,
 }) => {
   const [step, setStep] = useState(0);
-  const [entry, setEntry] = useState<StoryEntry | null>(null);
-  const [topicId, setTopicId] = useState<string | null>(null);
+  const [entry, setEntry] = useState<StoryEntry | null>(initialTopicId ? 'topic' : null);
+  const [topicId, setTopicId] = useState<string | null>(initialTopicId ?? null);
   const [situation, setSituation] = useState('');
   const [selected, setSelected] = useState<string[]>([]); // characterId theo thứ tự chọn
   const [mainId, setMainId] = useState<string | null>(null);
@@ -104,6 +108,7 @@ export const StoryWizard: React.FC<StoryWizardProps> = ({
   const [pricing, setPricing] = useState<AiPricingDto | null>(null);
   const [pricingError, setPricingError] = useState(false);
   const [analysis, setAnalysis] = useState<AnalyzeStoryResultDto | null>(null);
+  const [pickingSkills, setPickingSkills] = useState(false);
   const [busy, setBusy] = useState(false);
   const busyRef = useRef(false);
   // Truyện đã tạo ở BE đang được AI viết (hoặc chờ thử lại)
@@ -255,16 +260,30 @@ export const StoryWizard: React.FC<StoryWizardProps> = ({
         onOpenEditor(story.id);
       }, (e) => e?.message || 'Chưa tạo được truyện.');
     } else if (entry === 'family') {
-      void run(async () => {
-        setAnalysis(
-          await storyService.analyze({ situation: situation.trim(), characters: orderedCharacters(), length })
-        );
-      }, familyMessage);
+      void runAnalyze();
     }
   };
 
-  const createFamily = () => {
+  /** POST /stories/analyze; `subSkillIds` = "Đổi kỹ năng" (1–2 kỹ năng ba mẹ chọn, mục đầu là kỹ năng chính) */
+  const runAnalyze = (subSkillIds?: string[]) =>
+    run(async () => {
+      setAnalysis(
+        await storyService.analyze({
+          situation: situation.trim(),
+          characters: orderedCharacters(),
+          length,
+          ...(subSkillIds?.length ? { subSkillIds } : {}),
+        })
+      );
+    }, familyMessage).finally(() => setPickingSkills(false)); // như Web: đóng hộp chọn để lỗi (nếu có) hiện ra
+
+  /** scored = false: "Chỉ kể truyện, không chấm điểm" — không có câu hỏi chấm điểm, chỉ câu suy ngẫm cuối truyện */
+  const createFamily = (scored: boolean) => {
     if (!analysis) return;
+    if (notEnough) {
+      setError(`Truyện này cần ${cost} credit, ba mẹ còn ${creditBalance} credit`);
+      return;
+    }
     if (analysis.expiresAt && new Date(analysis.expiresAt) <= new Date()) {
       setAnalysis(null);
       setError('Bản phân tích đã hết hạn, ba mẹ bấm “Xem bé sẽ tập gì” lại nhé');
@@ -278,7 +297,7 @@ export const StoryWizard: React.FC<StoryWizardProps> = ({
       useTts,
       situation: situation.trim(),
       analysisToken: analysis.analysisToken,
-      scored: true,
+      scored,
       useAiImage,
     });
   };
@@ -307,7 +326,7 @@ export const StoryWizard: React.FC<StoryWizardProps> = ({
   let primary: { title: string; icon: 'arrow-forward' | 'search' | 'sparkles' | 'create-outline'; onPress: () => void; disabled?: boolean };
   if (!last) primary = { title: 'Tiếp tục', icon: 'arrow-forward', onPress: goNext };
   else if (entry === 'handwritten') primary = { title: 'Tạo truyện và bắt đầu viết', icon: 'create-outline', onPress: submit };
-  else if (familyConfirm) primary = { title: `Tạo truyện${costText}`, icon: 'sparkles', onPress: createFamily };
+  else if (familyConfirm) primary = { title: `Tạo truyện${costText}`, icon: 'sparkles', onPress: () => createFamily(true) };
   else if (entry === 'family') primary = { title: 'Xem bé sẽ tập gì', icon: 'search', onPress: submit };
   else primary = { title: `Tạo truyện${costText}`, icon: 'sparkles', onPress: submit };
 
@@ -580,6 +599,20 @@ export const StoryWizard: React.FC<StoryWizardProps> = ({
                     ))}
                   </View>
                 )}
+                {!!analysis.seedEvent && (
+                  <Text style={styles.choiceDesc}>
+                    <Text style={styles.choiceTitle}>Truyện sẽ thêm: </Text>
+                    {analysis.seedEvent} AI thêm tình tiết nhỏ này để bé có dịp tập kỹ năng; phần còn lại giữ đúng chuyện ba mẹ kể.
+                  </Text>
+                )}
+                <View style={styles.familyActions}>
+                  <HeyButton title="Đổi kỹ năng" iconName="swap-horizontal" variant="tertiary" size="sm" onPress={() => setPickingSkills(true)} disabled={busy} />
+                  <HeyButton title="Chỉ kể truyện, không chấm điểm" iconName="book-outline" variant="tertiary" size="sm" onPress={() => createFamily(false)} disabled={busy} />
+                  <HeyButton title="Sửa lời kể" iconName="create-outline" variant="ghost" size="sm" onPress={() => { setAnalysis(null); setError(''); }} disabled={busy} />
+                </View>
+                <Text style={styles.hint}>
+                  “Chỉ kể truyện”: truyện vẫn bám chuyện ba mẹ kể nhưng không có câu hỏi chấm điểm, chỉ có câu suy ngẫm cuối truyện. Credit chỉ bị trừ khi ba mẹ tạo truyện.
+                </Text>
               </HeyCard>
             )}
           </>
@@ -621,6 +654,14 @@ export const StoryWizard: React.FC<StoryWizardProps> = ({
         </View>
       </View>
 
+      <SubSkillPickerSheet
+        visible={pickingSkills}
+        initial={analysis?.subSkills.map((k) => k.id) ?? []}
+        busy={busy}
+        onClose={() => setPickingSkills(false)}
+        onConfirm={(ids) => void runAnalyze(ids)}
+      />
+
       <CharacterFormSheet
         visible={charSheet}
         onClose={() => setCharSheet(false)}
@@ -654,6 +695,7 @@ const styles = StyleSheet.create({
   block: { gap: Spacing.sm },
   blockTitle: { ...Typography.heading, color: Colors.text },
   choice: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.md, minHeight: Touch.min, padding: Spacing.md, borderRadius: Radius.lg, borderWidth: 1.5, borderColor: Colors.outline, backgroundColor: Colors.surface },
+  familyActions: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
   choiceSelected: { borderColor: Colors.brandStrong, backgroundColor: Colors.brandTint },
   choiceBody: { flex: 1, gap: 4 },
   choiceTitle: { ...Typography.bodyStrong, color: Colors.text },

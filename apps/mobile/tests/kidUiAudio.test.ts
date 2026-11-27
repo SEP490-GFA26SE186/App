@@ -1,6 +1,6 @@
 // apps/mobile/tests/kidUiAudio.test.ts
-// Kid UI Audio: ánh xạ response GET /kid/ui-audio, chỉ token kid_session, nút "Nghe" không gửi câu trả lời,
-// không tạo/tổng hợp âm thanh. Fetch GIẢ (http://test.invalid), không gọi BE thật, không phát âm thanh thật.
+// Kid Audio: ánh xạ response GET /kid/ui-audio, chỉ token kid_session, nút "Nghe" không gửi câu trả lời, không gọi AI;
+// trang tự đọc khi lật (như Web), có tắt tiếng; không phát được file BE → giọng máy đọc chữ (quyết định 2026-11-27). Fetch GIẢ (http://test.invalid), không gọi BE thật, không phát âm thanh thật.
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -10,7 +10,8 @@ process.env.EXPO_PUBLIC_API_URL = 'http://test.invalid';
 
 import { kidService } from '../src/services/kidService';
 import { safeStorage, STORAGE_KEYS } from '../src/services/storage';
-import { playableUrl, UI_AUDIO_KEYS } from '../src/utils/kidUiAudio';
+import { pickSource, playableUrl, UI_AUDIO_KEYS } from '../src/utils/kidUiAudio';
+import { speechTTS } from '../src/utils/speech-tts';
 // Chỉ lấy kiểu (để tsc biên dịch kèm file hook); module được nạp bằng require trong ca hotfix, sau khi chặn expo-audio
 import type * as HookModule from '../src/screens/kid/useKidUiAudio';
 
@@ -75,11 +76,33 @@ const run = async () => {
     const hook = noComments(read('screens/kid/useKidUiAudio.ts'));
     assert.match(hook, /source\s*\.getUiAudio\(\)/);
     assert.match(hook, /player\.current\?\.remove\(\)/, 'rời Kid Mode phải giải phóng player');
-    assert.match(hook, /player\.current\.pause\(\);\s*player\.current\.replace\(url\)/, 'một player dùng chung, dừng câu cũ trước');
+    assert.match(hook, /silence\(\);[\s\S]*player\.current\.replace\(src\.url\)/, 'một player dùng chung, dừng câu cũ trước');
+    assert.match(hook, /speechTTS\.stop\(\)/, 'dừng / rời Kid Mode phải dừng cả giọng máy');
     assert.match(noComments(read('components/kid/KidReader.tsx')), /audio=\{audio\}/);
     const kid = noComments(read('services/kidService.ts'));
     assert.match(kid, /await kidFetch<[\s\S]{0,120}?>\('\/kid\/ui-audio'\)/);
     assert.doesNotMatch(kid, /apiFetch/, 'kidService không dùng client Parent');
+  });
+
+  await test('pickSource: file BE khi có trình phát → giọng máy đọc chữ → không phát', () => {
+    assert.deepEqual(pickSource('https://cdn/p.mp3', 'Chữ', true, true), { kind: 'audio', url: 'https://cdn/p.mp3' });
+    assert.deepEqual(pickSource('https://cdn/p.mp3', ' Chữ ', false, true), { kind: 'tts', text: 'Chữ' }, 'Expo Go thiếu expo-audio');
+    assert.deepEqual(pickSource(null, 'Chữ', true, true), { kind: 'tts', text: 'Chữ' }, 'truyện tắt giọng đọc');
+    assert.deepEqual(pickSource('ftp://x', 'Chữ', true, true), { kind: 'tts', text: 'Chữ' });
+    assert.equal(pickSource(null, '   ', true, true), null);
+    assert.equal(pickSource(null, 'Chữ', true, false), null, 'không có giọng máy');
+  });
+
+  await test('Trình đọc: tự đọc trang khi lật, có "Nghe lại trang này", tắt tiếng, câu hết truyện', () => {
+    const reader = noComments(read('components/kid/KidReader.tsx'));
+    assert.match(reader, /speak\(`page:\$\{page\.id\}`, page\.audioUrl, page\.text\)/);
+    assert.match(reader, /mutedRef\.current\) return/, 'tắt tiếng thì không tự đọc');
+    assert.match(reader, /\[pageId, speak\]/, 'chỉ tự đọc khi đổi trang');
+    assert.match(reader, /Nghe lại trang này/);
+    assert.match(reader, /UI_AUDIO_KEYS\.storyEnd/);
+    const screen = noComments(read('screens/kid/KidModeScreen.tsx'));
+    assert.match(screen, /muted=\{muted\}/);
+    assert.match(screen, /if \(!muted\) uiAudio\.stop\(\)/, 'bấm tắt tiếng dừng ngay câu đang đọc');
   });
 
   await test('Nút "Nghe" chỉ phát âm thanh: không gửi câu trả lời, không tạo giọng đọc / gọi AI', () => {
@@ -89,12 +112,12 @@ const run = async () => {
     assert.doesNotMatch(listen, /onChoose|onSkip|onContinue|submit|complete/);
     assert.match(listen, /audio\.play\(audioKey\)/);
     for (const f of ['screens/kid/useKidUiAudio.ts', 'utils/kidUiAudio.ts', 'components/kid/KidCheckpointCard.tsx']) {
-      assert.doesNotMatch(noComments(read(f)), /expo-speech|Speech\.|narration|generate|synthesize|apiFetch|\/stories\//i, f);
+      assert.doesNotMatch(noComments(read(f)), /narration|generate|synthesize|apiFetch|\/stories\//i, f);
     }
     assert.doesNotMatch(noComments(read('screens/kid/useKidUiAudio.ts')), /useEffect\([^)]*\.play\(/, 'không tự phát');
   });
 
-  await test('Hotfix Expo Go SDK 52: require("expo-audio") ném lỗi → hook không crash, không tải câu đọc, không có nút nghe', async () => {
+  await test('Hotfix Expo Go SDK 52: require("expo-audio") ném lỗi → hook không crash, chỉ còn giọng máy', async () => {
     // Chặn require: expo-audio ném lỗi như Expo Go; react thay bằng hook giả chạy đồng bộ (không cần renderer)
     const Module = require('node:module') as any;
     const origLoad = Module._load;
@@ -126,8 +149,10 @@ const run = async () => {
       const controls = useKidUiAudio(source as any, true);
       const cleanups = effects.map((run) => run());
       await new Promise((r) => setTimeout(r, 0));
-      assert.equal(loads, 0, 'không gọi GET /kid/ui-audio khi thiếu module');
-      assert.equal(controls.canPlay(UI_AUDIO_KEYS.correct), false, 'không có nút nghe');
+      assert.equal(loads, 1, 'vẫn tải câu đọc (để giọng máy đọc chữ)');
+      // Hook giả không cập nhật state → assets chưa có; trang có chữ thì nghe được nếu thiết bị có giọng máy
+      assert.equal(controls.canSpeak('https://cdn/p.mp3', 'Chữ trang'), speechTTS.isAvailable(), 'không phát file khi thiếu module');
+      assert.doesNotThrow(() => controls.speak('page:1', 'https://cdn/p.mp3', 'Chữ trang'));
       assert.doesNotThrow(() => controls.play(UI_AUDIO_KEYS.correct));
       assert.doesNotThrow(() => controls.stop());
       assert.equal(controls.playingKey, null);

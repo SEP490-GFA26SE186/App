@@ -25,6 +25,8 @@ interface EqReportScreenProps {
   onSelectChild: (id: string) => void;
   /** Phase 2: mở màn "5 năng lực CASEL" (GET /eq-skills, /sub-skills) */
   onOpenSkills: () => void;
+  /** Gợi ý chuyện mẫu → mở Wizard đã chọn sẵn chuyện đó (Web EqJourneyPage "Tạo truyện") */
+  onCreateFromTopic: (topicId: string) => void;
 }
 
 /** 3 đoạn = 3 mức; ngoài màu còn có chữ mức bên dưới và nhãn trợ năng (không chỉ dựa vào màu). */
@@ -121,6 +123,7 @@ export const EqReportScreen: React.FC<EqReportScreenProps> = ({
   selectedChildId,
   onSelectChild,
   onOpenSkills,
+  onCreateFromTopic,
 }) => {
   const child = childrenProfiles.find((c) => c.id === selectedChildId) ?? childrenProfiles[0];
   const childId = child?.id;
@@ -201,7 +204,16 @@ export const EqReportScreen: React.FC<EqReportScreenProps> = ({
                   <View style={styles.recText}>
                     <Text style={styles.label}>{r.title}</Text>
                     <Text style={styles.level}>Giúp bé tập: {r.skill.nameVi}</Text>
+                    {r.subSkills.length > 0 && <Text style={styles.recSkills}>{r.subSkills.map((s) => s.nameVi).join(' · ')}</Text>}
                   </View>
+                  <HeyButton
+                    title="Tạo truyện"
+                    iconName="chevron-forward"
+                    variant="tertiary"
+                    size="sm"
+                    accessibilityLabel={`Tạo truyện từ chuyện mẫu ${r.title}`}
+                    onPress={() => onCreateFromTopic(r.id)}
+                  />
                 </HeyCard>
               ))}
             </>
@@ -243,5 +255,6 @@ const styles = StyleSheet.create({
   trendCell: { flex: 1, height: 14, borderRadius: 3 },
   rec: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
   recText: { flex: 1, gap: 2 },
+  recSkills: { ...Typography.caption, color: Colors.textMuted },
   note: { ...Typography.caption, color: Colors.textMuted, textAlign: 'center', marginTop: Spacing.md },
 });
