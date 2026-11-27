@@ -132,6 +132,9 @@ const cases: [string, () => void | Promise<void>][] = [
   }],
   ['Form từ BE: token → tên, problem_solving đủ 3 vai theo thứ tự, perspective đủ 3 phương án', () => {
     assert.equal(fillNames('{NV1} chào {NV2}. {NV9}', chars), 'Bin chào Mẹ. {NV9}');
+    // Trình đọc phụ huynh (formatStory) cũng phải hiện tên, không hiện token
+    const view = storyService.formatStory({ id: 's', title: 't', status: 'ready', characters: chars, pages: [{ id: 'p', pageOrder: 1, contentText: '{NV1} vui lắm' }] } as any);
+    assert.equal(view.pages?.[0].text, 'Bin vui lắm');
     const ps = initialCheckpointForm(cp({ type: 'problem_solving', question: '{NV1} làm gì?', options: [{ id: 'o', optionOrder: 1, text: '{NV1} xin lỗi', role: 'impulsive' }] }), chars);
     assert.deepEqual(ps.options.map((o) => o.role), ['constructive', 'avoidant', 'impulsive']);
     assert.equal(ps.options[2].text, 'Bin xin lỗi');
