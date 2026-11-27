@@ -1,5 +1,6 @@
 // apps/mobile/src/services/storyService.ts
 import { apiFetch, invalidResponseError } from './apiClient';
+import { fillNames } from '../utils/storyEditor';
 import { PedagogicalTemplate } from '../types/domain';
 import { StoryView } from '../types/viewModels';
 import type {
@@ -292,7 +293,7 @@ export const storyService = {
       pages: (raw.pages ?? []).map((p) => ({
         id: p.id,
         pageNumber: p.pageOrder,
-        text: p.contentText ?? '',
+        text: fillNames(p.contentText, raw.characters), // BE lưu token {NV1}; trình đọc + giọng đọc cần tên thật
         illustrationUrl: (p.sceneId && sceneImage.get(p.sceneId)) || '',
         audioNarrationUrl: p.audioUrl ?? undefined,
       })),
